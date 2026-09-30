@@ -77,6 +77,58 @@ select.ic{width:auto;padding:0 8px;font-size:13px;color:var(--text);appearance:n
 .cols li{margin-bottom:6px}
 .card .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
 .scrim{display:none}
+/* ---- challenges ---- */
+.brand .stars{display:block;margin-top:6px;font-size:13px;color:var(--amber);font-variant-numeric:tabular-nums}
+.ch .st{margin-left:auto;flex:none;font-size:11px;letter-spacing:1px;color:#4b5670}
+.ch .st.got{color:var(--amber)}
+.btn.chal{border-color:rgba(251,191,36,.55);color:var(--amber)}
+.btn.chal:hover{background:rgba(251,191,36,.1);border-color:var(--amber)}
+.btn:active,.ic:active{transform:scale(.97)}
+.btn,.ic{transition:transform 120ms cubic-bezier(.23,1,.32,1),background-color 150ms ease,border-color 150ms ease}
+.btn:disabled,.cpanel button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.cpanel{display:none;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 18px;gap:12px;flex-direction:column}
+body.play .cpanel{display:flex}
+body.play .controls,body.play .caption{display:none}
+body.play canvas{cursor:default}
+.chead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.ctag{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);border:1px solid rgba(251,191,36,.45);border-radius:20px;padding:2px 9px}
+.chead b{font-size:17px}
+.cgoal{margin:0;color:#cfd7e6;font-size:15px;line-height:1.5}
+.cctl{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center}
+.cctl:empty{display:none}
+.ctl{display:flex;align-items:center;gap:10px;font-size:13.5px;color:var(--dim)}
+.ctl input[type=range]{accent-color:var(--accent);width:150px}
+.ctl output{min-width:84px;color:var(--text);font-variant-numeric:tabular-nums;font-size:13px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:none;border:0;padding:6px 11px;font-size:13px;cursor:pointer;color:#c9d2e3}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:rgba(167,139,250,.2);color:#fff}
+.tog{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:6px 12px 6px 30px;font-size:13px;cursor:pointer;position:relative;color:#c9d2e3}
+.tog::before{content:"";position:absolute;left:9px;top:50%;width:12px;height:12px;margin-top:-6px;border-radius:50%;border:1.5px solid var(--dim)}
+.tog[aria-pressed="true"]{border-color:var(--accent);color:#fff}
+.tog[aria-pressed="true"]::before{background:var(--accent);border-color:var(--accent)}
+.cbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.cstatus{margin:0;flex:1;min-width:220px;font-size:14px;color:#c9d2e3;line-height:1.5}
+.cstatus .bad{color:var(--red);font-weight:700}
+kbd{font:600 11.5px ui-monospace,Consolas,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--bg);color:var(--text)}
+.chint{margin:0;font-size:14px;color:var(--amber);line-height:1.5}
+.result{position:absolute;inset:0;display:grid;place-items:center;background:rgba(4,6,13,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:16px;padding:18px;opacity:0;visibility:hidden;transition:opacity 180ms cubic-bezier(.23,1,.32,1),visibility 0s linear 180ms}
+.result.show{opacity:1;visibility:visible;transition:opacity 220ms cubic-bezier(.23,1,.32,1),visibility 0s}
+.result .in{width:min(560px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 28px;text-align:center;transform:translateY(8px) scale(.97);transition:transform 220ms cubic-bezier(.23,1,.32,1)}
+.result.show .in{transform:none}
+.result .stars{font-size:44px;letter-spacing:8px;line-height:1;margin-bottom:12px}
+.result .stars i{font-style:normal;color:#2a3450;display:inline-block}
+.result .stars i.on{color:var(--amber);text-shadow:0 0 18px rgba(251,191,36,.55)}
+.result.show .stars i.on{animation:starPop 360ms cubic-bezier(.23,1,.32,1) both;animation-delay:calc(var(--i)*140ms + 120ms)}
+@keyframes starPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+.result h2{margin:0 0 8px;font-size:21px}
+.result p{margin:0 auto 18px;max-width:46ch;color:#cfd7e6;font-size:15px;line-height:1.55}
+.result .acts{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){
+  .btn:active,.ic:active{transform:none}
+  .result .in,.result.show .in{transform:none;transition:none}
+  .result.show .stars i.on{animation:none}
+}
 @media (max-width:900px){
   #app{grid-template-columns:1fr}
   aside{position:fixed;inset:0 auto 0 0;width:290px;z-index:20;transform:translateX(-100%);transition:transform .3s}
@@ -143,7 +195,7 @@ select.ic{width:auto;padding:0 8px;font-size:13px;color:var(--text);appearance:n
 </div></div>
 <div id="app">
   <aside id="side">
-    <div class="brand"><b>System Design</b><span>Visually explained · 22 animated chapters</span></div>
+    <div class="brand"><b>System Design</b><span>Visually explained · watch it, then solve it</span><span class="stars" id="starTotal"></span></div>
     <div class="prog"><i id="progBar"></i></div>
     <nav id="toc"></nav>
   </aside>
@@ -157,6 +209,7 @@ select.ic{width:auto;padding:0 8px;font-size:13px;color:var(--text);appearance:n
         </div>
         <div class="nav">
           <button class="btn" id="menuBtn">☰ Chapters</button>
+          <button class="btn chal" id="chalBtn" title="Hands-on challenge (P)" aria-pressed="false">★ Challenge</button>
           <button class="btn" id="prevBtn" title="Previous chapter ( [ )">← Prev</button>
           <button class="btn" id="nextBtn" title="Next chapter ( ] )">Next →</button>
         </div>
@@ -172,9 +225,23 @@ select.ic{width:auto;padding:0 8px;font-size:13px;color:var(--text);appearance:n
           <div class="acts">
             <button class="btn" id="cardReplay">↺ Replay</button>
             <button class="btn" id="cardClose">Keep watching</button>
-            <button class="btn pri" id="cardNext">Next chapter →</button>
+            <button class="btn" id="cardNext">Next chapter →</button>
+            <button class="btn pri" id="cardChal">★ Take the challenge</button>
           </div>
         </div></div>
+        <div class="result" id="result" role="dialog" aria-labelledby="resTitle"><div class="in">
+          <div class="stars" id="resStars" aria-hidden="true"></div>
+          <h2 id="resTitle"></h2><p id="resMsg"></p>
+          <div class="acts"><button class="btn" id="resRetry">↺ Try again</button><button class="btn" id="resWatch">Watch the lesson</button><button class="btn pri" id="resNext">Next lesson →</button></div>
+        </div></div>
+      </div>
+      <div class="cpanel" id="cpanel" aria-label="Challenge">
+        <div class="chead"><span class="ctag">Challenge</span><b id="cTitle"></b></div>
+        <p class="cgoal" id="cGoal"></p>
+        <div class="cctl" id="cCtl"></div>
+        <div class="cbar"><p class="cstatus" id="cStatus" aria-live="polite"></p><span id="cRun" class="cbar"></span>
+          <button class="btn" id="cHintBtn">Hint</button><button class="btn" id="cRestart">↺ Restart</button><button class="btn" id="cBack">Back to lesson</button></div>
+        <p class="chint" id="cHint" hidden></p>
       </div>
       <div class="controls">
         <button class="ic" id="playBtn" title="Play / pause (Space)"></button>
@@ -192,7 +259,7 @@ select.ic{width:auto;padding:0 8px;font-size:13px;color:var(--text);appearance:n
         <span><i style="background:var(--green);box-shadow:0 0 8px var(--green)"></i>Success / response</span>
         <span><i style="background:var(--red);box-shadow:0 0 8px var(--red)"></i>Failure</span>
         <span><i style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></i>Cached / queued</span>
-        <span class="keys">Space play · ←/→ seek · [ ] chapters · C captions</span>
+        <span class="keys">Space play · ←/→ seek · [ ] chapters · C captions · P challenge</span>
       </div>
     </div>
   </main>
@@ -1740,6 +1807,521 @@ cons:['301 (permanent) redirects are cached by browsers: great for speed, but cl
 }});})();
 </script>
 <script>
+const reduceMQ=matchMedia('(prefers-reduced-motion: reduce)');
+/* ============================================================
+   CHALLENGES: one hands-on problem per lesson.
+   Lessons are pure draw(t). Challenges are live: they run on real
+   time, react to the pointer and keyboard, and end in 1–3 stars.
+   Each definition gets an `api` from the player (controls, status,
+   win) and returns {draw(now,dt), down/move/up(x,y), key(k)}.
+   ============================================================ */
+const CHAL={};
+function chal(id,def){CHAL[id]=def;}
+
+// ---------- small helpers ----------
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const inBox=(x,y,b)=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;
+function wrapLines(s,maxW,z=14,wt=600){const out=[];let cur='';for(const w of s.split(' ')){const t=cur?cur+' '+w:w;if(tw(t,z,wt)>maxW&&cur){out.push(cur);cur=w;}else cur=t;}if(cur)out.push(cur);return out;}
+function textBlock(s,x,y,maxW,o={}){const{z=14,wt=600,c=C.text,lh=z*1.3,al='center',a=1}=o;const L=wrapLines(s,maxW,z,wt);const y0=y-(L.length-1)*lh/2;L.forEach((l,i)=>tx(l,x,y0+i*lh,{z,wt,c,al,a}));return L.length;}
+// a rounded plate centred on x,y
+function plate(x,y,w,h,o={}){const{c=C.edge,fill=C.panel,glow=0,a=1,r=12,lw=2,s=1}=o;draw(x,y,{a,s},()=>{if(glow)glowOn(c,glow);rr(-w/2,-h/2,w,h,r);g.fillStyle=fill;g.fill();glowOff();g.strokeStyle=c;g.lineWidth=lw;g.stroke();});}
+function meter(x,y,w,h,f,c,bg=C.line){rr(x,y,w,h,h/2);g.fillStyle=bg;g.fill();if(f>0){rr(x,y,Math.max(h,w*clamp(f)),h,h/2);g.fillStyle=c;g.fill();}}
+// a packet flying along pts, started at t0 (real seconds), lasting d; drawn with its trail
+function flyer(now,f){const p=(now-f.t0)/f.d;if(p<0)return false;if(f.drop&&p>=f.drop){const q=(now-f.t0-f.d*f.drop)/.8;if(q>=1)return true;const[x,y]=along(f.pts,esin(f.drop));dot(x-10*q,y+60*q*q,C.red,(f.r||5)*.9,1-q);return false;}
+  pk(now,f.t0,f.d,f.pts,f.c,{r:f.r||5,label:f.label});return p>=1+TRAIL_FADE/f.d;}
+function flyers(now,list){for(let i=list.length-1;i>=0;i--)if(flyer(now,list[i]))list.splice(i,1);}
+
+// ---------- effects: bursts and floating text (real time) ----------
+const FX={p:[],
+  burst(x,y,c,n=18,sp=170){if(reduceMQ.matches)n=Math.min(n,4),sp*=.3;for(let i=0;i<n;i++){const a=Math.random()*6.283,v=sp*(.35+Math.random()*.65);this.p.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:.6+Math.random()*.5,age:0,c,r:1.8+Math.random()*2.4});}},
+  text(x,y,s,c=C.green,z=17){this.p.push({x,y,vx:0,vy:reduceMQ.matches?0:-36,life:1.15,age:0,c,s,z});},
+  step(dt){for(let i=this.p.length-1;i>=0;i--){const q=this.p[i];q.age+=dt;if(q.age>=q.life){this.p.splice(i,1);continue;}q.x+=q.vx*dt;q.y+=q.vy*dt;const a=1-q.age/q.life;
+    if(q.s){tx(q.s,q.x,q.y,{z:q.z,wt:800,c:q.c,a});}else{q.vy+=260*dt;q.vx*=.985;g.save();g.globalAlpha=a;glowOn(q.c,8);g.fillStyle=q.c;g.beginPath();g.arc(q.x,q.y,q.r*a+.4,0,7);g.fill();glowOff();g.restore();}}},
+  clear(){this.p.length=0;}};
+
+// ---------- mechanic: sort cards into boxes ----------
+// o.bins:[{id,label,sub,c}]  o.cards:[{t,b,why}]  o.timer: seconds per card (optional)
+// o.keepOrder: deal in the given order  o.side(api,state): extra drawing  o.done(miss,n): {stars,title,msg}
+function sortGame(o){return api=>{
+  const cards=o.keepOrder?o.cards.slice():shuffle(o.cards.slice());const n=o.bins.length,gap=14,bw=Math.min(220,(W-60-(n-1)*gap)/n),x0=(W-(n*bw+(n-1)*gap))/2;
+  const bins=o.bins.map((b,k)=>({...b,k,x:x0+k*(bw+gap),y:356,w:bw,h:150,got:[]}));
+  const HOME=[W/2,o.side?205:200];let i=0,miss=0,streak=0,best=0,cx=HOME[0],cy=HOME[1],drag=null,hover=-1,shake=0,dealt=0,flying=[],over=false,deadline=0;
+  const state={cards,get i(){return i;}};
+  function deal(now){dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer)deadline=now+o.timer;api.status(`Card <b>${i+1}</b> of ${cards.length}. Drag it into a box, or press <kbd>1</kbd>–<kbd>${n}</kbd>.`);}
+  function place(k,now){if(over||i>=cards.length)return;const c=cards[i],b=bins[k],right=o.bins[k].id===c.b;
+    const tgt=bins.find(q=>q.id===c.b);flying.push({c,from:[cx,cy],to:[tgt.x+tgt.w/2,tgt.y+40+Math.min(tgt.got.length,4)*14],t0:now,ok:right});
+    if(right){streak++;best=Math.max(best,streak);FX.burst(b.x+b.w/2,b.y+30,b.c);FX.text(b.x+b.w/2,b.y-10,streak>2?`${streak} in a row!`:'Right!',C.green);}
+    else{miss++;streak=0;shake=now;FX.text(b.x+b.w/2,b.y-10,'Not quite',C.red);api.status(`<span class="bad">✕</span> ${c.why||''}`);}
+    tgt.got.push(c);i++;if(i>=cards.length){over=true;setTimeout(()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
+      api.win(st,r&&r.title||(miss===0?'Flawless sorting':`${cards.length-miss} of ${cards.length} right`),r&&r.msg||(miss?`You missed ${miss}. Replay the lesson if a box felt fuzzy, then try again for three stars.`:'Every card in the right box.'));},900);}
+    else{if(right)deal(now);else{dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer)deadline=now+o.timer+2;}}}
+  let started=false;
+  return{
+    draw(now,dt){if(!started){started=true;deal(now);}
+      if(o.side)o.side(state,now);
+      bins.forEach((b,k)=>{const hot=hover===k;plate(b.x+b.w/2,b.y+b.h/2,b.w,b.h,{c:hot?b.c:hexA(b.c,.6),fill:hot?hexA(b.c,.12):C.panel,glow:hot?16:0,r:14});
+        tx(`${k+1}`,b.x+16,b.y+18,{z:12,wt:800,c:hexA(b.c,.8),f:MONO});tx(b.label,b.x+b.w/2,b.y+22,{z:15,wt:750,c:b.c});
+        if(b.sub)tx(b.sub,b.x+b.w/2,b.y+42,{z:11.5,c:C.dim});
+        b.got.slice(-5).forEach((c,j)=>{rr(b.x+10,b.y+56+j*18,b.w-20,14,4);g.fillStyle=hexA(b.c,.16);g.fill();tx(c.t.length>28?c.t.slice(0,27)+'…':c.t,b.x+b.w/2,b.y+63+j*18,{z:10.5,c:C.dim});});});
+      flying=flying.filter(f=>{const p=clamp((now-f.t0)/.45),e=eio(p);const x=lerp(f.from[0],f.to[0],e),y=lerp(f.from[1],f.to[1],e);plate(x,y,lerp(300,120,e),lerp(64,20,e),{c:f.ok?C.green:C.red,a:1-p*.6,r:10});return p<1;});
+      if(!over&&i<cards.length){const c=cards[i];if(!drag){cx=lerp(cx,HOME[0],clamp(dt*10));cy=lerp(cy,HOME[1],clamp(dt*10));}
+        const sh=now-shake<.35?Math.sin((now-shake)*60)*6*(1-(now-shake)/.35):0,lines=wrapLines(c.t,270,16,650),h=Math.max(70,lines.length*21+34);
+        plate(cx+sh,cy,320,h,{c:drag?C.accent:C.edge,fill:C.panel2,glow:drag?20:0,r:14});
+        textBlock(c.t,cx+sh,cy,270,{z:16,wt:650});
+        if(o.timer&&deadline){const left=clamp((deadline-now)/o.timer);meter(cx-150,cy+h/2+10,300,5,left,left>.35?C.accent:C.red);if(now>deadline){deadline=0;place((bins.findIndex(b=>b.id!==c.b)+n)%n,now);}}
+        if(streak>1)pill(`streak ×${streak}`,W-80,34,{c:C.amber,z:12});
+        tx(`${i+1} / ${cards.length}`,80,34,{z:13,wt:700,c:C.dim,f:MONO});}
+    },
+    down(x,y){if(over||i>=cards.length)return;if(Math.abs(x-cx)<165&&Math.abs(y-cy)<60)drag={dx:x-cx,dy:y-cy};},
+    move(x,y){if(drag){cx=x-drag.dx;cy=y-drag.dy;}hover=bins.findIndex(b=>inBox(drag?cx:x,drag?cy:y,b));if(!drag&&hover>=0&&y<b0y())hover=-1;},
+    up(x,y,now){if(!drag)return;drag=null;const k=bins.findIndex(b=>inBox(cx,cy,b));hover=-1;if(k>=0)place(k,now);},
+    click(x,y,now){const k=bins.findIndex(b=>inBox(x,y,b));if(k>=0&&!drag)place(k,now);},
+    key(k,now){const d=+k;if(d>=1&&d<=n)place(d-1,now);}};
+  function b0y(){return 356;}
+};}
+
+// ---------- mechanic: put steps in order ----------
+// o.steps:[{t,sub}] in the correct order. o.play(now,p): optional scene while checking.
+function orderGame(o){return api=>{
+  const n=o.steps.length,sw=Math.min(150,(W-60)/n-10),gap=(W-60-n*sw)/(n-1||1),sy=250,ty=440;
+  const slots=o.steps.map((s,k)=>({x:30+k*(sw+gap),y:sy-38,w:sw,h:76,card:null}));
+  const cards=shuffle(o.steps.map((s,k)=>({...s,k})));const tray=cards.map((c,j)=>({x:30+j*(sw+gap),y:ty-38,w:sw,h:76}));
+  cards.forEach((c,j)=>{c.home=j;c.slot=-1;c.x=tray[j].x+sw/2;c.y=tray[j].y+38;});
+  let drag=null,tries=0,check=null,won=false;
+  const pos=c=>c.slot>=0?[slots[c.slot].x+sw/2,slots[c.slot].y+38]:[tray[c.home].x+sw/2,tray[c.home].y+38];
+  const btn=api.button('Check my order',()=>{if(cards.some(c=>c.slot<0)){api.status('Fill every numbered slot first.');return;}tries++;check={t0:api.now(),res:slots.map((s,k)=>s.card.k===k)};api.lock(true);},{primary:true});
+  api.status('Drag each step into the numbered slots, in the order it really happens.');
+  return{
+    draw(now,dt){tx(o.head||'What happens, in order?',W/2,150,{z:15,wt:650,c:C.dim});
+      slots.forEach((s,k)=>{let c=C.line;if(check){const p=(now-check.t0)/.45;if(p>k)c=check.res[k]?C.green:C.red;}
+        g.save();g.setLineDash([6,6]);rr(s.x,s.y,s.w,s.h,12);g.strokeStyle=c;g.lineWidth=2;g.stroke();g.restore();tx(`${k+1}`,s.x+s.w/2,s.y-16,{z:13,wt:800,c:C.dim,f:MONO});});
+      if(check){const p=(now-check.t0)/.45;const k=Math.min(n-1,Math.floor(p));const x=lerp(slots[0].x+sw/2,slots[n-1].x+sw/2,clamp(p/(n-1)));
+        if(p<n)dot(x,sy-58,C.blue,6);if(o.play)o.play(now,p);
+        if(p>=n+.3){const ok=check.res.every(v=>v);if(ok&&!won){won=true;FX.burst(W/2,sy,C.green,40,260);api.win(tries===1?3:tries===2?2:1,tries===1?'Perfect order':'Got it',o.msg||'Every step in its place.');}
+          else if(!ok){check.res.forEach((v,j)=>{if(!v){const c=slots[j].card;c.slot=-1;slots[j].card=null;}});FX.text(W/2,sy-90,'Some steps are out of place',C.red,15);check=null;api.lock(false);api.status('The red ones went back to the tray. Try again.');}}}
+      cards.forEach(c=>{if(c!==drag){const[hx,hy]=pos(c);c.x=lerp(c.x,hx,clamp(dt*12));c.y=lerp(c.y,hy,clamp(dt*12));}});
+      [...cards.filter(c=>c!==drag),...(drag?[drag]:[])].forEach(c=>{plate(c.x,c.y,sw,70,{c:c===drag?C.accent:c.slot>=0?C.blue:C.edge,fill:C.panel2,glow:c===drag?16:0});
+        textBlock(c.t,c.x,c.y-(c.sub?8:0),sw-16,{z:13.5,wt:700});if(c.sub)tx(c.sub,c.x,c.y+20,{z:10.5,c:C.dim});});},
+    down(x,y){if(check)return;drag=cards.find(c=>Math.abs(x-c.x)<sw/2&&Math.abs(y-c.y)<36)||null;if(drag){drag.dx=x-drag.x;drag.dy=y-drag.y;}},
+    move(x,y){if(drag){drag.x=x-drag.dx;drag.y=y-drag.dy;}},
+    up(){if(!drag)return;const k=slots.findIndex(s=>Math.abs(drag.x-(s.x+sw/2))<sw/2+gap/2&&Math.abs(drag.y-(s.y+38))<70);
+      if(k>=0){const other=slots[k].card;if(drag.slot>=0)slots[drag.slot].card=other;if(other)other.slot=drag.slot;slots[k].card=drag;drag.slot=k;}
+      else if(drag.slot>=0){slots[drag.slot].card=null;drag.slot=-1;}drag=null;}};
+};}
+
+// ---------- mechanic: tune, then run a simulation ----------
+// o.controls(api,p): builds controls that write into p. o.build(p,api): returns a sim with
+// step(dt,now), draw(now,running), hud():[[label,value,colour]], score():{stars,title,msg}. o.dur: seconds.
+function simGame(o){return api=>{
+  const p=Object.assign({},o.defaults);let sim=o.build(p,api),running=false,t0=0,last=0,speed=o.speed||1,done=false;
+  const rebuild=()=>{if(!running){sim=o.build(p,api);}};
+  o.controls(api,p,rebuild);
+  const run=api.button(o.runLabel||'Run it',()=>{if(running)return;sim=o.build(p,api);running=true;done=false;api.lock(true);t0=api.now();last=0;api.status(o.runStatus||'Running…');},{primary:true});
+  api.status(o.intro||'Set it up, then press <b>Run it</b>.');
+  return{draw(now,dt){if(running){const el=(now-t0)*speed;const step=Math.min(el-last,.1);if(step>0){sim.step(step,el);last+=step;}
+        if(el>=o.dur&&!done){done=true;running=false;api.lock(false);const r=sim.score();api.win(r.stars,r.title,r.msg);}}
+      sim.draw(now,running);
+      const hud=sim.hud(running);hud.forEach(([l,v,c],k)=>{const x=W-20,y=26+k*22;tx(l,x-92,y,{z:11.5,c:C.dim,al:'right'});tx(v,x,y,{z:13,wt:800,c:c||C.text,al:'right',f:MONO});});
+      if(running){const f=clamp(((now-t0)*speed)/o.dur);meter(20,H-14,W-40,4,f,C.accent);}},
+    down(x,y,now){sim.down&&sim.down(x,y,now,running);},move(x,y){sim.move&&sim.move(x,y);},up(x,y,now){sim.up&&sim.up(x,y,now);},
+    key(k,now){sim.key&&sim.key(k,now,running);}};
+};}
+
+/* ---------------- 1. CLIENT–SERVER: put the page load in order ---------------- */
+chal('client-server',{title:'Load the page',goal:'Put the six steps of opening a website in the right order.',
+  hint:'Before anything else, the browser needs an address. Then it needs a connection, a secure one, and only then can it ask.',
+  make:orderGame({head:'You type example.com and press Enter. What happens, in order?',msg:'Name → address → connection → secure channel → ask → answer → draw. That is every page load.',
+    steps:[{t:'DNS lookup',sub:'name → IP'},{t:'TCP handshake',sub:'SYN · SYN-ACK · ACK'},{t:'TLS handshake',sub:'agree on keys'},{t:'HTTP request',sub:'GET /'},{t:'HTTP response',sub:'200 OK + HTML'},{t:'Render',sub:'draw the page'}]})});
+
+/* ---------------- 2. SCALING: survive launch day ---------------- */
+chal('scaling',{title:'Survive launch day',goal:'Traffic climbs to 1,200 requests/s and one machine will crash. Drop under 1% of requests and spend no more than $12/hour.',
+  hint:'One huge box is expensive and dies alone. Several medium boxes cost less and keep serving when one fails.',
+  make:(()=>{const SZ={S:{cap:200,cost:1,w:84},M:{cap:450,cost:3,w:100},L:{cap:800,cost:8,w:116},XL:{cap:1100,cost:20,w:132}};
+    const traffic=t=>100+1100*(x=>x*x*(3-2*x))(clamp(t/16));
+    return simGame({dur:18,defaults:{size:'M',n:1},
+      intro:'Pick a machine size and how many. Press <b>Run it</b> to open the doors.',
+      controls(api,p,re){api.seg('Machine size',[['S','S · 200/s · $1'],['M','M · 450/s · $3'],['L','L · 800/s · $8'],['XL','XL · 1100/s · $20']],p.size,v=>{p.size=v;re();});
+        api.slider('Machines',1,6,1,p.n,v=>`${v}`,v=>{p.n=v;re();});},
+      build(p,api){const S=SZ[p.size],ms=Array.from({length:p.n},(_,k)=>({alive:true,load:0,y:p.n===1?280:130+k*(300/(p.n-1))}));
+        let total=0,dropped=0,acc=0,rr=0,rate=100,crashed=false;const fl=[];const LB=[380,280];
+        return{step(dt,t){rate=traffic(t);if(!crashed&&t>=11){crashed=true;ms[0].alive=false;FX.burst(740,ms[0].y,C.red,26);}if(crashed&&t>=15&&!ms[0].alive){ms[0].alive=true;}
+            const alive=ms.filter(m=>m.alive),cap=alive.length*S.cap,drop=Math.max(0,rate-cap);total+=rate*dt;dropped+=drop*dt;ms.forEach(m=>m.load=m.alive?Math.min(1,rate/Math.max(cap,1)):0);
+            acc+=rate*dt/45;const now=api.now();while(acc>=1){acc--;const u=[90,170+Math.random()*220];const m=alive.length?alive[rr++%alive.length]:null;
+              const isDrop=!m||Math.random()<drop/rate;const to=m?[740-S.w/2,m.y]:[740,280];fl.push({t0:now,d:.9,pts:[u,LB,to],c:isDrop?C.red:C.blue,r:4,drop:isDrop?.62:0});}},
+          draw(now,running){flyers(now,fl);for(let i=0;i<3;i++)user(90,170+i*110,{c:C.blue,r:13});tx('your users',90,470,{z:12,c:C.dim});
+            box(LB[0],LB[1],{label:'Load balancer',w:140,h:54});ms.forEach((m,k)=>server(740,m.y,{label:`${p.size}-${k+1}`,sub:`${S.cap}/s`,w:S.w,h:p.n>4?48:58,st:m.alive?(m.load>.95?'hot':'ok'):'fail',load:m.alive?m.load:null}));
+            if(!running&&!total){tx(`Capacity ${p.n*S.cap}/s  ·  peak 1,200/s`,W/2,520,{z:14,wt:700,c:p.n*S.cap>=1200?C.green:C.amber});}},
+          hud(){const cap=ms.filter(m=>m.alive).length*S.cap;return[['traffic',`${Math.round(rate)}/s`],['capacity',`${cap}/s`,cap>=rate?C.green:C.red],['dropped',`${total?(dropped/total*100).toFixed(1):'0.0'}%`,dropped/Math.max(total,1)<.01?C.green:C.red],['cost',`$${p.n*S.cost}/h`,p.n*S.cost<=12?C.green:C.amber]];},
+          score(){const d=dropped/total,cost=p.n*S.cost;
+            if(d<.01&&cost<=12)return{stars:3,title:'Launch day survived',msg:`${p.n} × ${p.size} for $${cost}/h dropped ${(d*100).toFixed(1)}%. Scaling out beats scaling up: cheaper, and one crash is only a dent.`};
+            if(d<.03)return{stars:2,title:'Mostly survived',msg:`Dropped ${(d*100).toFixed(1)}% at $${cost}/h. ${cost>12?'It works, but costs too much. Several smaller machines give the same capacity for less.':'Close. Leave room for one machine to fail at peak.'}`};
+            if(d<.2)return{stars:1,title:'Rough launch',msg:`${(d*100).toFixed(1)}% of requests failed. When the crash hit, there was not enough spare capacity.`};
+            return{stars:0,title:'The site went down',msg:`${(d*100).toFixed(0)}% of requests were dropped. You need total capacity above 1,200/s, even with one machine gone.`};}};}});})()});
+
+/* ---------------- 3. LOAD BALANCERS: be the load balancer ---------------- */
+chal('load-balancers',{title:'Be the load balancer',goal:'For 30 seconds, send each request to a server. Never let a server overflow. Server C is older and slower.',
+  hint:'Big requests (4) to the emptiest server. C drains slowly, so only give it small jobs. This is least connections, done by hand.',
+  make:api=>{const S=[{n:'A',y:150,rate:2.3},{n:'B',y:280,rate:2.3},{n:'C',y:410,rate:1.2}].map(s=>({...s,load:0,flash:0}));const CAP=10,DUR=30,LB=[430,280];
+    let t0=null,next=0,queue=[],strikes=0,fl=[],done=false,served=0;const gen=()=>{const r=Math.random();return r<.4?1:r<.7?2:r<.9?3:4;};for(let i=0;i<4;i++)queue.push({sz:gen(),born:0});
+    api.status('Click a server (or press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>) to send it the glowing request.');
+    function send(k,now){if(done||!queue.length||t0===null)return;const q=queue.shift();queue.push({sz:gen(),born:now});queue[0].born=now;const s=S[k];
+      fl.push({t0:now,d:.5,pts:[LB,[760-60,s.y]],c:C.blue,r:4+q.sz*1.6,label:`${q.sz}`,onArrive:()=>{if(s.load+q.sz>CAP){strikes++;s.flash=api.now();FX.burst(760,s.y,C.red,22);FX.text(760,s.y-50,'Overflow!',C.red);}else{s.load+=q.sz;served++;FX.burst(700,s.y,C.green,8,90);}},arrive:now+.5});}
+    return{draw(now,dt){if(t0===null){t0=now;queue[0].born=now;}const el=now-t0;
+        if(!done){S.forEach(s=>s.load=Math.max(0,s.load-s.rate*dt));
+          if(now-queue[0].born>3.2){strikes++;FX.text(LB[0],LB[1]-70,'Too slow: timed out',C.red,15);queue.shift();queue.push({sz:gen(),born:now});queue[0].born=now;}
+          if(el>=DUR||strikes>=6){done=true;const st=strikes>=6?0:strikes===0?3:strikes<=2?2:1;
+            api.win(st,st===3?'Perfectly balanced':st?`${strikes} overflow${strikes>1?'s':''}`:'The servers melted',st===3?`${served} requests, zero overflows. You did least connections by eye: watch the load, feed the emptiest server.`:`Watch each server's fill level and send big requests to the emptiest one. C drains at half speed.`);}}
+        fl.forEach(f=>{if(!f.hit&&now>=f.arrive){f.hit=true;f.onArrive();}});flyers(now,fl);
+        for(let i=0;i<3;i++)user(90,170+i*110,{c:C.blue,r:13});box(LB[0],LB[1],{label:'You',sub:'the balancer',w:120,h:58,glow:true});
+        S.forEach((s,k)=>{const f=s.load/CAP,hot=now-s.flash<.4;server(760,s.y,{label:`Server ${s.n}`,sub:s.rate<2?'slow · old':'fast',w:120,h:58,st:hot?'fail':f>.75?'hot':'ok',down:''});
+          meter(830,s.y-6,120,12,f,f>.75?C.red:f>.5?C.amber:C.green);tx(`${s.load.toFixed(1)} / ${CAP}`,890,s.y+20,{z:11.5,c:C.dim,f:MONO});tx(`${k+1}`,690,s.y-40,{z:12,wt:800,c:C.dim,f:MONO});});
+        // incoming queue: the glowing one is next
+        queue.forEach((q,j)=>{const x=LB[0]-110-j*62,a=j?0.45:1;dot(x,LB[1],C.blue,5+q.sz*2,a);tx(`${q.sz}`,x,LB[1]+1,{z:12,wt:800,c:'#0b1019',a});});
+        const wait=clamp((now-queue[0].born)/3.2);meter(LB[0]-150,LB[1]+34,80,5,1-wait,wait>.6?C.red:C.accent);
+        tx(`${Math.max(0,Math.ceil(DUR-el))}s`,70,40,{z:22,wt:800,c:C.text,f:MONO});tx(`strikes ${'●'.repeat(strikes)}${'○'.repeat(Math.max(0,6-strikes))}`,70,70,{z:12,c:strikes?C.red:C.dim,al:'left'});},
+      click(x,y,now){const k=S.findIndex(s=>Math.abs(x-800)<150&&Math.abs(y-s.y)<50);if(k>=0)send(k,now);},
+      key(k,now){if(k>='1'&&k<='3')send(+k-1,now);}};}});
+
+/* ---------------- 4. GATEWAY: route by path ---------------- */
+chal('proxy-gateway',{title:'Run the gateway',goal:'Route each request to the right service, and reject anything without a valid token. You have 7 seconds per request.',
+  hint:'/users → Users, /orders → Orders, /static → Static files (public, no token needed). Private paths without a valid token → 401.',
+  make:sortGame({timer:7,bins:[{id:'u',label:'Users service',sub:'/users/*',c:C.blue},{id:'o',label:'Orders service',sub:'/orders/*',c:C.green},{id:'s',label:'Static files',sub:'/static/* · public',c:C.amber},{id:'x',label:'Reject 401',sub:'no valid token',c:C.red}],
+    cards:[{t:'GET /users/42 · valid token',b:'u',why:'/users paths go to the Users service.'},{t:'GET /static/logo.png',b:'s',why:'Static files are public, so no token is needed.'},{t:'POST /orders · valid token',b:'o',why:'/orders goes to Orders.'},
+      {t:'DELETE /users/7 · no token',b:'x',why:'A private path without a token is rejected at the gateway, before any service sees it.'},{t:'GET /orders/981 · valid token',b:'o',why:'/orders/… goes to Orders.'},
+      {t:'GET /static/app.js',b:'s',why:'Everything under /static is served as a file.'},{t:'PUT /users/42/avatar · valid token',b:'u',why:'Still a /users path.'},
+      {t:'GET /orders/981 · expired token',b:'x',why:'An expired token is not valid. Reject it.'},{t:'GET /users/me · no token',b:'x',why:'No token, no entry.'},{t:'PATCH /orders/12 · valid token',b:'o',why:'/orders goes to Orders.'}]})});
+
+/* ---------------- 5. CDN: place two edges ---------------- */
+chal('cdn',{title:'Place the edge caches',goal:'You can afford two edge caches. Place them so the average user waits 40 ms or less. The origin is in US-East.',
+  hint:'Put copies where the most users are far from the origin. Count both how many people are there and how far away they are.',
+  make:(()=>{const R=[{id:'naw',n:'US-West',x:150,y:205,pop:.10,o:70},{id:'nae',n:'US-East',x:300,y:190,pop:.20,o:15,origin:true},{id:'sa',n:'S. America',x:320,y:390,pop:.05,o:120},{id:'eu',n:'Europe',x:545,y:170,pop:.30,o:90},{id:'as',n:'Asia',x:800,y:235,pop:.35,o:180}];
+    const lat=(r,E)=>r.origin?15:E.has(r.id)?15+.1*r.o:r.o,avg=E=>R.reduce((a,r)=>a+r.pop*lat(r,E),0);
+    let E=new Set();
+    return simGame({dur:7,defaults:{},intro:'Click up to two regions to put an edge cache there, then press <b>Run it</b>.',
+      controls(){},
+      build(p,api){let acc=0;const fl=[];let el=0;
+        return{step(dt,t){el=t;acc+=dt*40;const now=api.now();while(acc>=1){acc--;let x=Math.random(),r=R[R.length-1];for(const q of R){if(x<q.pop){r=q;break;}x-=q.pop;}
+            const tgt=E.has(r.id)||r.origin?r:R[1],ms=lat(r,E);fl.push({t0:now,d:.25+ms/220,pts:[[r.x+(Math.random()-.5)*50,r.y+50],[tgt.x,tgt.y]],c:ms<40?C.green:ms<100?C.amber:C.red,r:3.5});}},
+          draw(now){g.save();g.globalAlpha=.5;[[190,230,150,95],[340,400,70,80],[560,190,110,70],[790,250,190,100],[870,420,60,40]].forEach(([x,y,a,b])=>{g.beginPath();g.ellipse(x,y,a,b,0,0,7);g.fillStyle='#10182a';g.fill();});g.restore();
+            flyers(now,fl);R.forEach(r=>{const on=E.has(r.id);for(let i=0;i<Math.round(r.pop*20);i++)dot(r.x-40+(i%7)*13,r.y+44+Math.floor(i/7)*12,C.blue,2.4,.7);
+              if(r.origin)server(r.x,r.y,{label:'Origin',sub:'US-East',w:104,h:52,col:C.accent,st:'acc'});else box(r.x,r.y,{label:on?'Edge cache':r.n,sub:on?r.n:`${r.o} ms to origin`,c:on?C.amber:C.edge,w:118,h:50,glow:on});
+              tx(`${Math.round(r.pop*100)}% of users`,r.x,r.y+92,{z:11,c:C.dim});});
+            tx(`edges placed: ${E.size} / 2`,W/2,520,{z:13,wt:700,c:E.size===2?C.amber:C.dim});},
+          hud(){const a=avg(E);return[['avg wait',`${a.toFixed(0)} ms`,a<=40?C.green:a<=60?C.amber:C.red],['no CDN',`${avg(new Set()).toFixed(0)} ms`,C.dim]];},
+          down(x,y,now,running){if(running)return;const r=R.find(q=>!q.origin&&Math.abs(x-q.x)<70&&Math.abs(y-q.y)<35);if(!r)return;if(E.has(r.id))E.delete(r.id);else if(E.size<2){E.add(r.id);FX.burst(r.x,r.y,C.amber,14);}else FX.text(r.x,r.y-40,'Budget: 2 edges',C.red,14);},
+          score(){const a=avg(E);return a<=40?{stars:3,title:`${a.toFixed(0)} ms average`,msg:'Edges where the most distant users live (Asia and Europe) cut the average wait by two thirds. That is exactly what a CDN is for.'}:
+            a<=60?{stars:2,title:`${a.toFixed(0)} ms average`,msg:'Better than no CDN, but one of your edges serves too few people. Weigh distance and headcount together.'}:
+            {stars:1,title:`${a.toFixed(0)} ms average`,msg:'The biggest groups of users are still crossing oceans. Move the edges closer to them.'};}};}});})()});
+
+/* ---------------- 6. RATE LIMITING: tune the bucket ---------------- */
+chal('rate-limiting',{title:'Tune the token bucket',goal:'Let a real user through (≥95% of their requests) while blocking at least 80% of a bot flooding 25 requests/s.',
+  hint:'Capacity decides how big a burst fits. The refill rate decides the long-run speed: the bot can never beat it. The user bursts 6 at a time, every 2 s.',
+  make:simGame({dur:13,defaults:{cap:3,rate:12},intro:'Set the bucket size and refill rate for each client, then press <b>Run it</b>.',
+    controls(api,p,re){api.slider('Bucket size',1,20,1,p.cap,v=>`${v} tokens`,v=>{p.cap=v;re();});api.slider('Refill rate',1,20,1,p.rate,v=>`${v} / s`,v=>{p.rate=v;re();});},
+    build(p,api){const cl=[{n:'A real user',y:170,c:C.blue,tok:p.cap,ok:0,no:0,ev:[]},{n:'A bot',y:390,c:C.red,tok:p.cap,ok:0,no:0,ev:[]}];
+      for(let b=1;b<12;b+=2)for(let i=0;i<6;i++)cl[0].ev.push(b+i*.09);for(let x=2;x<12.6;x+=.04)cl[1].ev.push(x);
+      const fl=[];let last=0;
+      return{step(dt,t){cl.forEach((c,ci)=>{c.tok=Math.min(p.cap,c.tok+p.rate*dt);while(c.ev.length&&c.ev[0]<=t){c.ev.shift();const now=api.now();
+          if(c.tok>=1){c.tok--;c.ok++;fl.push({t0:now,d:.7,pts:[[150,c.y],[430,c.y],[820,280]],c:ci?C.amber:C.green,r:ci?3.2:4.5});}
+          else{c.no++;fl.push({t0:now,d:.5,pts:[[150,c.y],[430,c.y]],c:C.red,r:3.2,drop:.95});}}});last=t;},
+        draw(now){flyers(now,fl);cl.forEach((c,ci)=>{user(110,c.y,{c:ci?C.red:C.blue,label:c.n,r:16});
+            draw(430,c.y,{},()=>{rr(-34,-46,68,92,10);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=2;g.stroke();const f=c.tok/p.cap;rr(-28,40-80*f,56,80*f,6);g.fillStyle=hexA(C.accent,.5);g.fill();});
+            tx(`${Math.floor(c.tok)} / ${p.cap}`,430,c.y+62,{z:11.5,c:C.dim,f:MONO});tx('bucket',430,c.y-58,{z:11.5,c:C.dim});});
+          server(820,280,{label:'API',sub:'protected',w:110});tx(`+${p.rate} tokens / s`,430,280,{z:13,wt:700,c:C.accent});},
+        hud(){const[u,b]=cl,uo=u.ok+u.no?u.ok/(u.ok+u.no):1,bb=b.ok+b.no?b.no/(b.ok+b.no):0;return[['user allowed',`${(uo*100).toFixed(0)}%`,uo>=.95?C.green:C.red],['bot blocked',`${(bb*100).toFixed(0)}%`,bb>=.8?C.green:C.red]];},
+        score(){const[u,b]=cl,uo=u.ok/(u.ok+u.no),bb=b.no/(b.ok+b.no);
+          if(uo>=.95&&bb>=.8)return{stars:3,title:'Fair and firm',msg:`User ${(uo*100).toFixed(0)}% through, bot ${(bb*100).toFixed(0)}% blocked. A bucket big enough for one burst and a refill just above the user's average: the bot can only ever get the refill rate.`};
+          if(uo>=.85&&bb>=.6)return{stars:2,title:'Nearly there',msg:uo<.95?'The real user hit the limit during bursts. Give the bucket room for a burst of 6.':'The bot still gets through too often. Lower the refill rate: in the long run it is all the bot can get.'};
+          return{stars:1,title:uo<.85?'Real users are being blocked':'The bot walked right in',msg:'Capacity sets the burst size. Refill sets the long-run rate. Tune one at a time.'};}};}})});
+
+/* ---------------- 7. SQL vs NoSQL: sort the workloads ---------------- */
+chal('sql-nosql',{title:'Pick the database',goal:'Sort each workload into the kind of database that fits it best.',
+  hint:'Money, bookings and reports that join tables → SQL. Huge volume, flexible shapes, lookups by one key → NoSQL.',
+  make:sortGame({bins:[{id:'sql',label:'SQL',sub:'tables · joins · transactions',c:C.blue},{id:'no',label:'NoSQL',sub:'documents · key-value · wide rows',c:C.green}],
+    cards:[{t:'Bank transfers between two accounts',b:'sql',why:'Money needs transactions: both sides change, or neither does.'},{t:'Product catalog where every item has different attributes',b:'no',why:'Documents let every product keep its own shape.'},
+      {t:'Monthly report joining orders, customers and products',b:'sql',why:'JOINs across related tables are what SQL is built for.'},{t:'Chat messages: millions per minute, read by conversation',b:'no',why:'Enormous write volume, always read by one key. That is NoSQL territory.'},
+      {t:'Shopping carts and login sessions by user id',b:'no',why:'A simple key → value lookup, at huge scale.'},{t:'Hotel booking: never double-book a room',b:'sql',why:'Constraints and transactions prevent double-booking.'},
+      {t:'Readings from a million IoT sensors',b:'no',why:'A firehose of time-stamped writes suits wide-column or time-series stores.'},{t:'Employee records with a strict schema',b:'sql',why:'Fixed columns and relationships favour SQL.'}]})});
+
+/* ---------------- 8. INDEXING: find the row ---------------- */
+chal('indexing',{title:'Find the row',goal:'Walk down the index to one user id in as few page reads as possible. A full table scan would read up to 10,000 rows.',
+  hint:'At each level, pick the range that contains the id. Four reads is perfect.',
+  make:api=>{let target,lvl,lo,hi,reads,path,done,flash,pageRows;
+    function reset(){target=1+Math.floor(Math.random()*9999);lvl=0;lo=1;hi=10000;reads=0;path=[];done=false;flash=null;pageRows=null;api.status(`Find user <b>#${target}</b>. Click the range that contains it.`);}
+    reset();
+    const kids=()=>{const n=4,step=Math.ceil((hi-lo+1)/n);return Array.from({length:n},(_,k)=>({a:lo+k*step,b:Math.min(hi,lo+(k+1)*step-1),x:130+k*247,y:300,w:210,h:80}));};
+    return{draw(now){tx(`Find user #${target}`,W/2,70,{z:26,wt:800,c:C.accent});
+        tx(path.length?'index path:  '+path.join('  →  '):'root of the index',W/2,108,{z:13,c:C.dim,f:MONO});
+        if(pageRows){pageRows.forEach((r,j)=>{const x=150+j*140,hit=r===target;plate(x,300,120,70,{c:hit?C.green:C.edge,fill:C.panel2});tx(`#${r}`,x,292,{z:15,wt:750,f:MONO,c:hit?C.green:C.text});tx(hit?'← here?':'row',x,316,{z:11,c:C.dim});});tx('Leaf page: click the row',W/2,210,{z:14,c:C.dim});}
+        else kids().forEach((k,j)=>{const bad=flash&&flash.j===j&&now-flash.t<.6;plate(k.x+k.w/2,k.y,k.w,k.h,{c:bad?C.red:C.edge,fill:C.panel2});
+          tx(`${k.a.toLocaleString()} – ${k.b.toLocaleString()}`,k.x+k.w/2,k.y-6,{z:16,wt:750,f:MONO});tx(lvl===0?'index node':`level ${lvl+1}`,k.x+k.w/2,k.y+20,{z:11.5,c:C.dim});});
+        for(let i=0;i<reads;i++)dot(90+i*22,460,C.amber,6);tx(`page reads: ${reads}`,90,490,{z:14,wt:700,c:C.amber,al:'left'});
+        tx('full scan: up to 10,000 rows',W-90,490,{z:13,c:C.dim,al:'right'});},
+      click(x,y,now){if(done)return;
+        if(pageRows){const j=pageRows.findIndex((r,j)=>Math.abs(x-(150+j*140))<60&&Math.abs(y-300)<35);if(j<0)return;reads++;if(pageRows[j]===target){done=true;FX.burst(150+j*140,300,C.green,40,240);
+            api.win(reads<=4?3:reads<=6?2:1,`Found in ${reads} reads`,`A full scan could need 10,000. The index halves and quarters the search at every level, so a million rows would take only a couple more reads.`);}else FX.text(150+j*140,260,'not this one',C.red,13);return;}
+        const K=kids(),j=K.findIndex(k=>inBox(x,y,{x:k.x,y:k.y-k.h/2,w:k.w,h:k.h}));if(j<0)return;reads++;const k=K[j];
+        if(target<k.a||target>k.b){flash={j,t:now};FX.text(k.x+k.w/2,k.y-60,'not in this range',C.red,13);return;}
+        path.push(`${k.a}–${k.b}`);lo=k.a;hi=k.b;lvl++;FX.burst(k.x+k.w/2,k.y,C.green,12,120);
+        if(hi-lo<200){const s=new Set([target]);while(s.size<6)s.add(lo+Math.floor(Math.random()*(hi-lo+1)));pageRows=[...s].sort((a,b)=>a-b);}}};}});
+
+/* ---------------- 9. REPLICATION: build it, then survive the crash ---------------- */
+chal('replication',{title:'Keep it serving',goal:'Handle 150 requests/s (70% reads). Each node takes 60/s. Mid-run the leader crashes: click a follower to promote it. Stay above 95% success.',
+  hint:'Writes can only go to the leader. Spread the reads across followers. After a promotion you lose one follower, so keep a spare.',
+  make:simGame({dur:14,defaults:{f:1,reads:false},intro:'Choose followers and where reads go. Be ready: when the leader dies, click a follower fast.',
+    controls(api,p,re){api.slider('Followers',0,3,1,p.f,v=>`${v}`,v=>{p.f=v;re();});api.toggle('Send reads to followers',p.reads,v=>{p.reads=v;re();});},
+    build(p,api){const L={x:560,y:130,role:'leader',alive:true},F=Array.from({length:p.f},(_,k)=>({x:p.f===1?560:360+k*(400/Math.max(1,p.f-1)),y:370,role:'follower',alive:true}));
+      const nodes=[L,...F];let ok=0,fail=0,crash=false,need=false,crashAt=0,down=0,acc=0;const fl=[];const APP=[150,250];
+      const leader=()=>nodes.find(n=>n.role==='leader'&&n.alive);
+      return{step(dt,t){if(!crash&&t>=6){crash=true;L.alive=false;need=!!F.length;crashAt=t;FX.burst(L.x,L.y,C.red,30);}
+          const ld=leader();if(!ld)down+=dt;const fol=nodes.filter(n=>n.role==='follower'&&n.alive);
+          const W_=45,Rd=105;let wOk=ld?Math.min(W_,60):0;let rd=0;if(p.reads&&fol.length){rd=Math.min(Rd,fol.length*60);wOk=ld?Math.min(W_,60):0;}else if(ld){const cap=60-wOk;rd=Math.min(Rd,Math.max(0,cap));}
+          ok+=(wOk+rd)*dt;fail+=(150-wOk-rd)*dt;
+          acc+=dt*18;const now=api.now();while(acc>=1){acc--;const isW=Math.random()<.3;let tgt=isW?ld:(p.reads&&fol.length?fol[Math.floor(Math.random()*fol.length)]:ld);
+            const bad=!tgt||(isW?0:Math.random()>rd/Rd);fl.push({t0:now,d:.6,pts:[APP,tgt?[tgt.x,tgt.y]:[L.x,L.y]],c:bad?C.red:isW?C.amber:C.blue,r:4,drop:bad?.8:0});}},
+        draw(now,running){flyers(now,fl);server(APP[0],APP[1],{label:'App',sub:'150 req/s',w:110});
+          nodes.forEach((n,k)=>db(n.x,n.y,{label:n.role==='leader'?'Leader':`Follower ${k}`,sub:n.alive?(n.role==='leader'?'writes':'reads'):'',st:n.alive?(n.role==='leader'?'acc':'ok'):'fail',col:n.role==='leader'?C.accent:undefined,w:96,h:84}));
+          F.forEach(f=>{if(f.alive&&L.alive)ln([[L.x,L.y+44],[f.x,f.y-44]],{c:hexA(C.accent,.4),dash:[4,6]});});
+          if(need&&Math.sin(now*10)>-.2)tx('Leader down! Click a follower to promote it',W/2,500,{z:18,wt:800,c:C.red});
+          tx('writes',80,470,{z:11,c:C.amber,al:'left'});tx('reads',80,490,{z:11,c:C.blue,al:'left'});},
+        hud(){const s=ok+fail?ok/(ok+fail):1;return[['success',`${(s*100).toFixed(1)}%`,s>=.95?C.green:C.red],['no leader for',`${down.toFixed(1)} s`,down<1.5?C.green:C.red]];},
+        down(x,y,now,running){if(!need||!running)return;const f=F.find(q=>q.alive&&Math.abs(x-q.x)<60&&Math.abs(y-q.y)<50);if(!f)return;f.role='leader';need=false;FX.burst(f.x,f.y,C.green,30,220);FX.text(f.x,f.y-70,'Promoted!',C.green);},
+        score(){const s=ok/(ok+fail);if(s>=.95)return{stars:3,title:`${(s*100).toFixed(1)}% served`,msg:`Reads spread over followers, a quick promotion (${down.toFixed(1)} s without a leader) and a spare follower left afterwards. That is textbook replication.`};
+          if(s>=.85)return{stars:2,title:`${(s*100).toFixed(1)}% served`,msg:p.f<3?'After the promotion you ran short of followers for all the reads. Keep a spare.':'Promote faster, or send reads to followers.'};
+          if(s>=.6)return{stars:1,title:`${(s*100).toFixed(1)}% served`,msg:'One node cannot take everything. Add followers and move reads onto them.'};
+          return{stars:0,title:'Mostly down',msg:'A single database had to do all the work, and it died. Add followers.'};}};}})});
+
+/* ---------------- 10. SHARDING: pick the shard key ---------------- */
+chal('sharding',{title:'Pick the shard key',goal:'Split the users table so no shard gets more than 30% of the traffic, using at most 4 shards.',
+  hint:'Real-world values (countries, dates) are lumpy. A hash spreads keys evenly, whatever they look like.',
+  make:(()=>{const C_=[['US',45],['India',20],['Brazil',12],['Germany',10],['Japan',8],['Other',5]],M=[2,2,3,3,4,4,5,6,8,11,18,34];
+    function dist(key,n){const s=new Array(n).fill(0);if(key==='country')C_.forEach(([c,w],k)=>s[k%n]+=w);else if(key==='month'){M.forEach((w,k)=>s[Math.min(n-1,Math.floor(k*n/12))]+=w);}else{for(let k=0;k<n;k++)s[k]=100/n*(1+(rnd(k*7+n)-.5)*.08);}const tot=s.reduce((a,b)=>a+b,0);return s.map(v=>v/tot);}
+    return simGame({dur:6,defaults:{key:'country',n:3},intro:'Choose a shard key and the number of shards, then press <b>Run it</b> to send traffic.',
+      controls(api,p,re){api.seg('Shard key',[['country','country'],['month','signup month'],['hash','hash(user_id)']],p.key,v=>{p.key=v;re();});api.slider('Shards',2,6,1,p.n,v=>`${v}`,v=>{p.n=v;re();});},
+      build(p,api){const d=dist(p.key,p.n),sx=k=>p.n===1?500:170+k*(660/(p.n-1));let acc=0;const fl=[];const RT=[500,150];
+        return{step(dt){acc+=dt*50;const now=api.now();while(acc>=1){acc--;let x=Math.random(),k=0;for(;k<p.n-1;k++){if(x<d[k])break;x-=d[k];}fl.push({t0:now,d:.55,pts:[RT,[sx(k),350]],c:d[k]>.3?C.red:C.blue,r:3.5});}},
+          draw(now){flyers(now,fl);box(RT[0],RT[1],{label:'Router',sub:`shard by ${p.key==='hash'?'hash(user_id)':p.key}`,w:200,h:54});
+            d.forEach((v,k)=>{db(sx(k),380,{label:`Shard ${k+1}`,w:88,h:76,st:v>.3?'hot':'ok'});meter(sx(k)-44,432,88,8,v/.6,v>.3?C.red:v>.2?C.amber:C.green);tx(`${(v*100).toFixed(0)}%`,sx(k),456,{z:13,wt:800,c:v>.3?C.red:C.text,f:MONO});});},
+          hud(){const m=Math.max(...d);return[['busiest shard',`${(m*100).toFixed(0)}%`,m<=.3?C.green:C.red],['shards',`${p.n}`,p.n<=4?C.text:C.amber]];},
+          score(){const m=Math.max(...d);if(m<=.3&&p.n<=4)return{stars:3,title:'Evenly split',msg:`Hashing the user id spreads users almost perfectly: the busiest shard takes ${(m*100).toFixed(0)}%. Country and signup date are lumpy in real life.`};
+            if(m<=.3)return{stars:2,title:'Even, but costly',msg:'It works, but you did not need that many shards. Try fewer.'};
+            return{stars:1,title:`Hot shard: ${(m*100).toFixed(0)}%`,msg:p.key==='country'?'Almost half the users are in the US, so their shard melts.':p.key==='month'?'New users all land in the newest month. One shard takes every write.':'Too few shards. Each one still carries a big share.'};}};}});})()});
+
+/* ---------------- 11. CACHING: beat LRU ---------------- */
+chal('caching',{title:'Beat LRU',goal:'The cache holds 4 items. When it is full and a new item arrives, you choose what to evict. Match or beat LRU\'s hit count.',
+  hint:'Things used recently tend to be used again soon. Evict the item that has gone longest without being asked for.',
+  make:api=>{const N=26,SL=4;let stream=[],slots,i,hits,lru,waiting,t0,last,done,cur,curT;
+    function gen(){const s=[];let hot=['A','B','C'];for(let k=0;k<N;k++){if(k===13)hot=['D','E','B'];const r=Math.random();s.push(r<.72?hot[Math.floor(Math.random()*3)]:'FGHK'[Math.floor(Math.random()*4)]);}return s;}
+    function lruHits(s){const c=[];let h=0;s.forEach(x=>{const j=c.indexOf(x);if(j>=0){h++;c.splice(j,1);}else if(c.length>=SL)c.shift();c.push(x);});return h;}
+    function reset(){stream=gen();lru=lruHits(stream);slots=[];i=0;hits=0;waiting=false;done=false;t0=null;cur=null;api.status(`Requests arrive one by one. LRU would score <b>${lru}</b> hits on this exact stream.`);}
+    reset();const SX=k=>320+k*120,SY=270;
+    function arrive(now){cur=stream[i];curT=now;const j=slots.findIndex(s=>s.k===cur);
+      if(j>=0){hits++;slots[j].used=now;FX.burst(SX(j),SY,C.green,14,120);FX.text(SX(j),SY-58,'HIT',C.green,15);next(now);}
+      else if(slots.length<SL){slots.push({k:cur,used:now});FX.text(SX(slots.length-1),SY-58,'miss',C.amber,14);next(now);}
+      else{waiting=true;api.status(`<b>${cur}</b> is not cached and the cache is full. Click an item to evict.`);}}
+    function next(now){i++;last=now;cur=null;if(i>=N){done=true;setTimeout(()=>api.win(hits>=lru?3:hits>=lru-2?2:1,`${hits} hits · LRU got ${lru}`,hits>=lru?'You matched the machine. Evicting what was least recently used is hard to beat when popularity shifts over time.':'Evict the item that has waited longest since its last request. That is exactly what LRU does.'),500);}}
+    return{draw(now){if(t0===null){t0=now;last=now-.4;}if(!waiting&&!done&&!cur&&now-last>.75)arrive(now);
+        tx('incoming',120,150,{z:12,c:C.dim});stream.slice(i,i+6).forEach((k,j)=>{const x=120-j*0+0,y=190+j*44;plate(120+(j?0:0),200+j*44,j?50:66,j?34:44,{c:j?C.edge:C.blue,a:j?.5:1,fill:C.panel2});tx(k,120,201+j*44,{z:j?15:22,wt:800,a:j?.5:1});});
+        tx('cache (4 slots)',SX(0)+180,180,{z:13,c:C.dim});
+        for(let k=0;k<SL;k++){const s=slots[k],pick=waiting;plate(SX(k),SY,96,96,{c:pick?C.red:s?C.accent:C.line,fill:C.panel,glow:pick?(8+6*Math.sin(now*8)):0});
+          if(s){tx(s.k,SX(k),SY-4,{z:34,wt:800});tx(`used ${(now-s.used).toFixed(1)}s ago`,SX(k),SY+32,{z:10.5,c:C.dim});}}
+        tx('database',860,SY,{z:12,c:C.dim});db(860,SY+60,{label:'DB',w:70,h:60});
+        tx(`hits ${hits}`,SX(0)-40,420,{z:18,wt:800,c:C.green,al:'left'});tx(`LRU target ${lru}`,SX(3)+48,420,{z:14,wt:700,c:C.dim,al:'right'});tx(`${Math.min(i+1,N)} / ${N}`,SX(0)+180,450,{z:12,c:C.dim,f:MONO});},
+      click(x,y,now){if(!waiting)return;const k=[0,1,2,3].find(k=>Math.abs(x-SX(k))<50&&Math.abs(y-SY)<50);if(k==null)return;FX.burst(SX(k),SY,C.red,10,120);slots[k]={k:cur,used:now};waiting=false;api.status('Keep going…');next(now);},
+      key(k,now){if(waiting&&k>='1'&&k<='4')this.click(SX(+k-1),SY,now);}};}});
+
+/* ---------------- 12. CAP: choose a side ---------------- */
+chal('cap',{title:'Partition! Pick a side',goal:'The network just split. For each feature, choose: refuse to answer until it heals (CP), or answer with maybe-stale data (AP).',
+  hint:'If a wrong answer costs money or double-sells something, choose consistency. If a slightly old number is harmless, stay available.',
+  make:sortGame({bins:[{id:'cp',label:'Consistent (CP)',sub:'refuse rather than be wrong',c:C.blue},{id:'ap',label:'Available (AP)',sub:'answer now, fix up later',c:C.green}],
+    cards:[{t:'Bank account balance',b:'cp',why:'Showing an old balance could let someone spend money twice.'},{t:'Like count on a post',b:'ap',why:'An old like count for a few seconds hurts nobody.'},
+      {t:'Adding items to a shopping cart',b:'ap',why:'Amazon famously keeps carts available and merges them later.'},{t:'Selling the last concert ticket',b:'cp',why:'Two nodes could each sell the same last ticket.'},
+      {t:'DNS records',b:'ap',why:'DNS happily serves cached, slightly old answers.'},{t:'A distributed lock (who is leader?)',b:'cp',why:'Two leaders at once is exactly the bug a lock prevents.'},
+      {t:'Comments under a video',b:'ap',why:'A comment showing up a second late is fine.'},{t:'Booking seat 14C on a flight',b:'cp',why:'Double-booking a seat is not acceptable.'}]})});
+
+/* ---------------- 13. REST / gRPC / WebSockets ---------------- */
+chal('rest-grpc-ws',{title:'Pick the protocol',goal:'Match each feature to REST, gRPC or WebSockets.',
+  hint:'Public and simple → REST. Service-to-service and fast → gRPC. The server must push the moment something happens → WebSockets.',
+  make:sortGame({bins:[{id:'rest',label:'REST',sub:'HTTP + JSON',c:C.blue},{id:'grpc',label:'gRPC',sub:'binary · internal',c:C.accent},{id:'ws',label:'WebSockets',sub:'stays open · push',c:C.green}],
+    cards:[{t:'Public API for third-party developers',b:'rest',why:'Anyone can call REST with curl and read JSON.'},{t:'Chat: messages must appear instantly',b:'ws',why:'The server has to push new messages without being asked.'},
+      {t:'Internal calls between 40 microservices',b:'grpc',why:'Compact binary messages and strict contracts, fast between services.'},{t:'Live sports scores pushed to fans',b:'ws',why:'Scores are pushed the moment they change.'},
+      {t:'Mobile app loads a user profile',b:'rest',why:'One simple request-response for a resource.'},{t:'Streaming ML predictions between backends',b:'grpc',why:'gRPC streams typed messages efficiently between services.'},
+      {t:'Showing other people\'s cursors in a shared doc',b:'ws',why:'Constant two-way updates need an open connection.'},{t:'CRUD for a small blog',b:'rest',why:'Create, read, update, delete: REST\'s home turf.'}]})});
+
+/* ---------------- 14. QUEUES: survive the order surge ---------------- */
+chal('queues-pubsub',{title:'Survive the order surge',goal:'Orders triple for 4 seconds, then the workers restart. Lose zero orders, clear the backlog by the end, and use at most 4 workers.',
+  hint:'A queue turns "too many right now" into "a bit later". It needs enough workers to catch up afterwards.',
+  make:simGame({dur:14,defaults:{q:false,n:2},intro:'Decide whether to put a queue in the middle and how many workers to run.',
+    controls(api,p,re){api.toggle('Put a queue in the middle',p.q,v=>{p.q=v;re();});api.slider('Workers',1,5,1,p.n,v=>`${v} × 25/s`,v=>{p.n=v;re();});},
+    build(p,api){let backlog=0,lost=0,done_=0,rate=40,acc=0,out=false;const fl=[];const WY=k=>p.n===1?280:150+k*(260/(p.n-1));
+      return{step(dt,t){rate=t>=3&&t<7?120:40;out=t>=9&&t<10.5;const cap=out?0:p.n*25;const arr=rate*dt;
+          if(p.q){backlog+=arr;const d=Math.min(backlog,cap*dt);backlog-=d;done_+=d;}else{const d=Math.min(arr,cap*dt);done_+=d;lost+=arr-d;}
+          acc+=arr/3;const now=api.now();while(acc>=1){acc--;const full=!p.q&&(out||rate>cap);fl.push({t0:now,d:p.q?.4:.7,pts:p.q?[[120,280],[440,280]]:[[120,280],[760,WY(Math.floor(Math.random()*p.n))]],c:full&&Math.random()<(out?1:1-cap/rate)?C.red:C.amber,r:3.5,drop:0});
+            const last=fl[fl.length-1];if(last.c===C.red)last.drop=.7;}
+          if(p.q&&backlog>0&&!out&&Math.random()<cap*dt/3)fl.push({t0:now,d:.5,pts:[[520,280],[760,WY(Math.floor(Math.random()*p.n))]],c:C.green,r:3.5});},
+        draw(now){flyers(now,fl);server(120,280,{label:'Web shop',sub:`${rate} orders/s`,w:120,st:rate>40?'hot':'ok'});
+          if(p.q){box(480,280,{label:'Queue',sub:`${Math.round(backlog)} waiting`,c:C.amber,w:140,h:64,glow:backlog>0});meter(410,322,140,8,backlog/300,C.amber);}
+          for(let k=0;k<p.n;k++)server(800,WY(k),{label:`Worker ${k+1}`,sub:out?'restarting':'25/s',w:110,h:52,st:out?'off':'ok'});
+          if(out&&Math.sin(now*9)>0)tx('Workers restarting…',800,480,{z:14,wt:700,c:C.red});},
+        hud(){return[['lost',`${Math.round(lost)}`,lost<1?C.green:C.red],['waiting',`${Math.round(backlog)}`,backlog<1?C.green:C.amber],['processed',`${Math.round(done_)}`]];},
+        score(){if(lost>=1)return{stars:1,title:`${Math.round(lost)} orders lost`,msg:'Without a queue, anything beyond the workers\' speed, and everything sent while they restarted, is simply gone. Put a queue in between.'};
+          if(backlog>=1)return{stars:1,title:`${Math.round(backlog)} still waiting`,msg:'Nothing was lost, but the workers never caught up. Add a worker so the queue drains after the surge.'};
+          return p.n<=4?{stars:3,title:'Zero lost, queue drained',msg:'The queue absorbed the surge and the restart. Four workers were just enough to drain it. That is buffering.'}:{stars:2,title:'Zero lost',msg:'It works, but four workers would have been enough.'};}};}})});
+
+/* ---------------- 15. SYNC vs ASYNC: make checkout fast ---------------- */
+chal('sync-async',{title:'Make checkout fast',goal:'For each task in "Place order", decide: do it now, before replying, or later in a background worker. The customer must never be misled.',
+  hint:'Only what the customer must know before the page says "Order placed" belongs in "now". Everything else can happen seconds later.',
+  make:sortGame({bins:[{id:'now',label:'Now (they wait)',sub:'before replying',c:C.amber},{id:'later',label:'Later (worker)',sub:'after replying',c:C.green}],
+    cards:[{t:'Check the cart is valid · 50 ms',b:'now',why:'You cannot accept an invalid order.',ms:50},{t:'Charge the card · 400 ms',b:'now',why:'The customer must know if payment failed before you say "done".',ms:400},
+      {t:'Save the order · 30 ms',b:'now',why:'If you have not saved it, the order does not exist yet.',ms:30},{t:'Send confirmation email · 800 ms',b:'later',why:'An email a few seconds later is fine.',ms:800},
+      {t:'Update recommendations · 1200 ms',b:'later',why:'Nobody waits for recommendations.',ms:1200},{t:'Generate PDF invoice · 900 ms',b:'later',why:'The invoice can arrive by email later.',ms:900},{t:'Notify the warehouse · 300 ms',b:'later',why:'The warehouse can pick it up from a queue.',ms:300}],
+    done(miss,n){return miss===0?{stars:3,title:'480 ms instead of 3.7 s',msg:'Only three tasks (validate, charge, save) make the customer wait. Everything else happens in the background, so the reply is about 8× faster.'}:
+      {stars:miss<=1?2:1,title:`${miss} task${miss>1?'s':''} in the wrong lane`,msg:'Doing slow work before replying makes everyone wait. Doing the payment later lies to the customer. Find the balance.'};}})});
+
+/* ---------------- 16. SPOF: survive the chaos monkey ---------------- */
+chal('spof',{title:'Survive the chaos monkey',goal:'The chaos monkey will kill three components. Click components to add a standby ($1 each, budget $4) and stay up the whole time.',
+  hint:'Look at which boxes stand alone. DNS is a managed service and already redundant.',
+  make:(()=>{const K=[{id:'dns',n:'DNS',sub:'managed · redundant',x:150,managed:true},{id:'lb',n:'Load balancer',x:370},{id:'app',n:'App server',x:600},{id:'db',n:'Database',x:830,isDb:true}];const kills=[['app',3],['lb',6.5],['db',10]];
+    const dup=new Set();
+    return simGame({dur:13,defaults:{},intro:'Click components to give them a standby, then press <b>Unleash chaos</b>.',runLabel:'Unleash chaos',
+      controls(){},
+      build(p,api){let up=0,down=0,dead={},acc=0;const fl=[];
+        return{step(dt,t){kills.forEach(([id,at])=>{if(t>=at&&!(id in dead)){dead[id]=t;const k=K.find(q=>q.id===id);FX.burst(k.x,250,C.red,30,220);FX.text(k.x,170,dup.has(id)?'Failover!':'DEAD',dup.has(id)?C.green:C.red);}});
+            const broken=Object.keys(dead).some(id=>!dup.has(id)&&t-dead[id]<2.5);if(broken)down+=dt;else up+=dt;
+            acc+=dt*12;const now=api.now();while(acc>=1){acc--;fl.push({t0:now,d:.9,pts:[[40,250],...K.map(k=>[k.x,250])],c:broken?C.red:C.blue,r:4,drop:broken?.55:0});}},
+          draw(now,running){flyers(now,fl);K.forEach(k=>{const d=k.id in dead,has=dup.has(k.id);const st=d?(has?'ok':'fail'):'ok';
+              if(k.isDb)db(k.x,250,{label:k.n,st,w:100,h:86});else server(k.x,250,{label:k.n,sub:k.sub||'',w:130,st});
+              if(has){if(k.isDb)db(k.x,390,{label:'Standby',st:d?'good':'ok',w:84,h:70});else server(k.x,390,{label:'Standby',w:110,h:52,st:d?'good':'ok'});ln([[k.x,300],[k.x,358]],{c:hexA(C.green,.5),dash:[4,5]});}
+              else if(!running&&!k.managed)tx('+ add standby',k.x,390,{z:12,c:C.dim});});
+            tx(`spent $${dup.size} of $4`,W/2,500,{z:14,wt:700,c:dup.size<=4?C.amber:C.red});},
+          hud(){const tot=up+down;return[['uptime',`${tot?(up/tot*100).toFixed(0):100}%`,down<.01?C.green:C.red],['budget',`$${dup.size} / $4`]];},
+          down(x,y,now,running){if(running)return;const k=K.find(q=>Math.abs(x-q.x)<70&&y>200&&y<440);if(!k)return;if(dup.has(k.id))dup.delete(k.id);else if(dup.size<4){dup.add(k.id);FX.burst(k.x,390,C.green,12,120);}},
+          score(){const ok=down<.01;if(ok&&!dup.has('dns'))return{stars:3,title:'Zero downtime',msg:'Every single point of failure had a standby, and you did not waste money on DNS, which was already redundant.'};
+            if(ok)return{stars:2,title:'Zero downtime, $1 wasted',msg:'DNS was already a managed, redundant service. That standby bought nothing.'};
+            return{stars:1,title:`Down ${down.toFixed(1)} s`,msg:'A box with no standby took the whole system down when it died. Find every box that stands alone.'};}};}});})()});
+
+/* ---------------- 17. RESILIENCE: tune the client ---------------- */
+function resilSim(p){ // discrete-event model, also used by the challenge
+  const CAP=60,load=[],att=[];let ok=0,gave=0,state='closed',openUntil=0,fails=[],id=0,peak=0;
+  for(let t=0;t<12;t+=1/50)att.push({t,k:0,id:id++});const n0=att.length;
+  return{step(T){att.sort((a,b)=>a.t-b.t);while(att.length&&att[0].t<=T){const a=att.shift(),t=a.t;
+      let fast=false;if(p.cb&&state==='open'){if(t>=openUntil)state='half';else fast=true;}
+      let good=false;if(!fast){load.push(t);while(load.length&&load[0]<t-.5)load.shift();peak=Math.max(peak,load.length*2);const down=t>=4&&t<6,over=load.length>CAP/2*1.9;good=!down&&!over;}
+      if(good){ok++;if(state==='half')state='closed';}
+      else{if(p.cb&&!fast){fails.push(t);while(fails.length&&fails[0]<t-1)fails.shift();if(state==='half'||fails.length>=15){state='open';openUntil=t+1;fails=[];}}
+        if(a.k<p.retries){let d=p.backoff==='exp'?.25*Math.pow(2,a.k):.15;if(p.jitter)d*=.5+rnd(a.id*7+a.k*13+1);att.push({t:t+d,k:a.k+1,id:a.id,fast});}else gave++;}}},
+    get ok(){return ok;},n0,get gave(){return gave;},get peak(){return peak;},get state(){return state;},pending:att};}
+chal('resilience',{title:'Stop the retry storm',goal:'The payment service (60 req/s max) goes down for 2 seconds while 50 payments/s keep coming. Get ≥95% through without trampling it with more than 3× normal load.',
+  hint:'Retries rescue payments, but naive retries arrive all at once. Back off exponentially, add jitter, and let a circuit breaker stop hammering a dead service.',
+  make:simGame({dur:16,defaults:{retries:1,backoff:'none',jitter:false,cb:false},intro:'Tune how clients retry. The outage hits at 4 s.',
+    controls(api,p,re){api.slider('Retries',0,5,1,p.retries,v=>`${v}`,v=>{p.retries=v;re();});api.seg('Backoff',[['none','none'],['exp','exponential']],p.backoff,v=>{p.backoff=v;re();});
+      api.toggle('Jitter',p.jitter,v=>{p.jitter=v;re();});api.toggle('Circuit breaker',p.cb,v=>{p.cb=v;re();});},
+    build(p,api){const m=resilSim(p);let T=0,hist=[];const fl=[];let lastOk=0,lastGave=0,acc=0;
+      return{step(dt,t){T=t;m.step(t);const now=api.now();const dOk=m.ok-lastOk,dG=m.gave-lastGave;lastOk=m.ok;lastGave=m.gave;
+          acc+=dt*14;while(acc>=1){acc--;const down=t>=4&&t<6;fl.push({t0:now,d:.6,pts:[[120,280],[450,280],[780,280]],c:m.state==='open'?C.amber:down?C.red:C.blue,r:4,drop:down||m.state==='open'?.5:0});}
+          hist.push([t,m.peak]);},
+        draw(now){flyers(now,fl);for(let i=0;i<3;i++)user(110,190+i*90,{c:C.blue,r:13});tx('50 payments/s',110,470,{z:12,c:C.dim});
+          box(450,280,{label:'Circuit breaker',sub:p.cb?m.state.toUpperCase():'off',c:!p.cb?C.edge:m.state==='open'?C.red:m.state==='half'?C.amber:C.green,w:170,h:58});
+          const down=T>=4&&T<6;server(780,280,{label:'Payments',sub:down?'outage':'60/s max',w:130,st:down?'fail':m.peak>180?'hot':'ok'});
+          tx(`retries ${p.retries} · ${p.backoff==='exp'?'exponential':'no'} backoff${p.jitter?' + jitter':''}`,450,370,{z:12,c:C.dim});},
+        hud(){const s=m.ok/m.n0;return[['succeeded',`${(Math.min(1,s)*100).toFixed(0)}%`,s>=.95?C.green:C.red],['peak load',`${(m.peak/50).toFixed(1)}×`,m.peak/50<=3?C.green:C.red],['gave up',`${m.gave}`]];},
+        score(){const s=m.ok/m.n0,pk=m.peak/50;if(s>=.95&&pk<=3)return{stars:3,title:`${(s*100).toFixed(0)}% through, peak ${pk.toFixed(1)}×`,msg:'Retries rescued the payments, backoff and jitter spread them out, and the service was never trampled. That is resilience.'};
+          if(s>=.85)return{stars:2,title:`${(s*100).toFixed(0)}% through, peak ${pk.toFixed(1)}×`,msg:pk>3?'Your retries arrived in a stampede. Add jitter and exponential backoff.':'Some payments gave up too early. Allow a few more retries, spaced out.'};
+          return{stars:1,title:`${(s*100).toFixed(0)}% through`,msg:p.retries===0?'With no retries, every payment during the outage is simply lost.':'Retries fired too fast and too close together, overloading the service as it came back.'};}};}})});
+
+/* ---------------- 18. IDEMPOTENCY: be the payment server ---------------- */
+chal('idempotency',{title:'Never charge twice',goal:'You are the payment server. For each request, charge the card, or return the saved result if you have already seen that key.',
+  hint:'The amount does not matter, the key does. A new key means a new payment, even for the same amount.',
+  make:sortGame({keepOrder:true,timer:8,bins:[{id:'new',label:'Charge the card',sub:'first time this key',c:C.green},{id:'dup',label:'Return saved result',sub:'seen this key before',c:C.accent}],
+    cards:[['50','7f3a','new'],['20','b21c','new'],['50','7f3a','dup'],['35','9d04','new'],['20','b21c','dup'],['50','e811','new'],['35','9d04','dup'],['12','40aa','new'],['50','e811','dup'],['12','5c2e','new']].map(([a,k,b])=>({t:`Pay $${a} · key ${k}`,b,k,why:b==='dup'?`Key ${k} was already processed. Return the saved receipt and do not charge again.`:`Key ${k} is new. It is a real payment, even if the amount looks familiar.`})),
+    side(st){const seen=st.cards.slice(0,st.i).map(c=>c.k);tx('keys seen',860,110,{z:12,c:C.dim});[...new Set(seen)].forEach((k,j)=>{pill(k,860,140+j*28,{c:C.accent,z:12,f:MONO});});},
+    done(miss){return miss===0?{stars:3,title:'Not one double charge',msg:'Same key, same result, no new charge. With that one rule, retrying is completely safe.'}:{stars:miss<=1?2:1,title:`${miss} mistake${miss>1?'s':''}`,msg:'Look only at the key. A repeated key means "I already did this".'};}})});
+
+/* ---------------- 19. MICROSERVICES: draw the boundaries ---------------- */
+chal('microservices',{title:'Draw the service boundaries',goal:'Split six features into three services so the fewest calls cross the network. Thick lines are chatty pairs.',
+  hint:'Keep chatty pairs together: each thick line that crosses a boundary becomes a slow network call.',
+  make:api=>{const F=[['Users'],['Auth'],['Catalog'],['Search'],['Cart'],['Payments']].map(([n],k)=>({n,k,box:-1,x:140+k*146,y:150}));
+    const E=[[0,1,5],[2,3,5],[4,5,4],[4,2,1],[4,0,1]];const B=[0,1,2].map(k=>({x:60+k*300,y:250,w:280,h:230}));let drag=null,checked=false;
+    const home=f=>{if(f.box<0)return[140+f.k*146,150];const inB=F.filter(q=>q.box===f.box),j=inB.indexOf(f),b=B[f.box];return[b.x+b.w/2,b.y+60+j*62];};
+    const cross=()=>E.reduce((a,[i,j,w])=>a+(F[i].box!==F[j].box?w:0),0);
+    api.button('Check boundaries',()=>{if(F.some(f=>f.box<0)){api.status('Place every feature in a service first.');return;}if(B.some((b,k)=>!F.some(f=>f.box===k))){api.status('Every service needs at least one feature.');return;}
+      checked=true;const c=cross();FX.burst(W/2,360,c<=2?C.green:C.amber,30,220);api.win(c<=2?3:c<=4?2:1,`${c*100} network calls/s`,c<=2?'Chatty pairs live together: Users + Auth, Catalog + Search, Cart + Payments. Only light traffic crosses the network.':'Some heavy pairs were split across services, and every one of those calls now goes over the network. Keep chatty pairs together.');},{primary:true});
+    api.status('Drag each feature into a service box.');
+    return{draw(now,dt){B.forEach((b,k)=>{g.save();g.setLineDash([7,6]);rr(b.x,b.y,b.w,b.h,16);g.strokeStyle=C.edge;g.lineWidth=2;g.stroke();g.restore();tx(`Service ${k+1}`,b.x+b.w/2,b.y+22,{z:14,wt:750,c:C.dim});});
+        E.forEach(([i,j,w])=>{const a=F[i],b=F[j],x=a.box>=0&&b.box>=0&&a.box!==b.box;ln([[a.x,a.y],[b.x,b.y]],{c:x?C.red:hexA(C.accent,.55),w:1+w*1.3,dash:x?[6,6]:null});
+          if(x){const q=(now*.8+i*.3)%1;dot(lerp(a.x,b.x,q),lerp(a.y,b.y,q),C.red,3.5);}});
+        F.forEach(f=>{if(f!==drag){const[hx,hy]=home(f);f.x=lerp(f.x,hx,clamp(dt*12));f.y=lerp(f.y,hy,clamp(dt*12));}plate(f.x,f.y,130,44,{c:f===drag?C.accent:C.edge,fill:C.panel2,r:22,glow:f===drag?14:0});tx(f.n,f.x,f.y+1,{z:15,wt:750});});
+        const c=cross();tx(`calls crossing the network: ${c*100}/s`,W/2,520,{z:14,wt:700,c:c<=2?C.green:c<=4?C.amber:C.red});},
+      down(x,y){if(checked)return;drag=F.find(f=>Math.abs(x-f.x)<65&&Math.abs(y-f.y)<22)||null;if(drag){drag.dx=x-drag.x;drag.dy=y-drag.y;}},
+      move(x,y){if(drag){drag.x=x-drag.dx;drag.y=y-drag.dy;}},
+      up(){if(!drag)return;const k=B.findIndex(b=>inBox(drag.x,drag.y,b));if(k>=0&&F.filter(f=>f.box===k&&f!==drag).length<3)drag.box=k;else if(k<0)drag.box=-1;else FX.text(drag.x,drag.y-30,'max 3 per service',C.red,13);drag=null;}};}});
+
+/* ---------------- 20. EVENT-DRIVEN: subscribe the services ---------------- */
+chal('event-driven',{title:'Wire up the events',goal:'Each service reacts to one event. Subscribe it to the right one. Nobody calls anybody directly.',
+  hint:'Ask: what just happened that this service cares about?',
+  make:sortGame({bins:[{id:'op',label:'OrderPlaced',sub:'an order came in',c:C.blue},{id:'pf',label:'PaymentFailed',sub:'the card was declined',c:C.red},{id:'is',label:'ItemShipped',sub:'the box left the warehouse',c:C.green}],
+    cards:[{t:'Send the order confirmation email',b:'op',why:'The confirmation goes out when the order is placed.'},{t:'Reserve the items in stock',b:'op',why:'Reserve stock as soon as the order exists.'},{t:'Ask the customer to update their card',b:'pf',why:'Only needed when payment fails.'},
+      {t:'Release the reserved stock',b:'pf',why:'If payment failed, free the items for others.'},{t:'Text the tracking link',b:'is',why:'A tracking link only exists once the box has shipped.'},{t:'Ask for a review 7 days later',b:'is',why:'Ask after delivery is under way.'},{t:'Award loyalty points',b:'op',why:'Points for placing an order, added with zero changes to the order service. That is the magic.'}]})});
+
+/* ---------------- 21. OBSERVABILITY: find the culprit ---------------- */
+chal('observability',{title:'Find the culprit',goal:'Checkout is slow for some users. Open as few clues as you need, then click the component causing it.',
+  hint:'Metrics tell you when and where it hurts. Logs tell you what happened. A trace shows one request\'s whole path. Two clues are usually enough.',
+  make:api=>{const N=[{id:'gw',n:'Gateway',x:150,y:120},{id:'cart',n:'Cart',x:380,y:120},{id:'pay',n:'Payments',x:380,y:250},{id:'price',n:'Pricing',x:610,y:120},{id:'inv',n:'Inventory',x:610,y:250},{id:'pdb',n:'Pricing DB',x:840,y:120,isDb:true}];
+    const L=[['gw','cart'],['gw','pay'],['cart','price'],['cart','inv'],['price','pdb']];let view=null,used=new Set(),wrong=0,done=false;
+    const open=v=>()=>{view=v;used.add(v);api.status(`Clues opened: <b>${used.size}</b>. When you know, click the culprit on the diagram.`);};
+    api.button('Metrics',open('m'));api.button('Logs',open('l'));api.button('Trace',open('t'));
+    api.status('Open a clue, or click a component if you already know.');
+    const series=(id,k)=>{const base=id==='gw'||id==='cart'||id==='price'?1:0,s=[];for(let i=0;i<40;i++){const spike=base&&i>18&&i<34?.55+.3*rnd(i+k):0;s.push(.12+.08*rnd(i*3+k)+spike);}return s;};
+    return{draw(now){L.forEach(([a,b])=>{const A=N.find(n=>n.id===a),B=N.find(n=>n.id===b);ln([[A.x,A.y],[B.x,B.y]],{c:C.line});});
+        N.forEach(n=>{if(n.isDb)db(n.x,n.y,{label:n.n,w:92,h:70});else server(n.x,n.y,{label:n.n,w:112,h:50});});
+        const y0=320;if(!view){tx('Pick a clue: Metrics, Logs or Trace',W/2,y0+90,{z:15,c:C.dim});return;}
+        panel(40,y0,920,200,{});
+        if(view==='m'){[['gw','Gateway'],['cart','Cart'],['pay','Payments'],['price','Pricing']].forEach(([id,n],k)=>{const x=60+k*228,s=series(id,k);tx(`${n} · p99 latency`,x,y0+22,{z:12,c:C.dim,al:'left'});
+            g.beginPath();s.forEach((v,i)=>{const px=x+i*5,py=y0+180-v*130;i?g.lineTo(px,py):g.moveTo(px,py);});g.strokeStyle=Math.max(...s)>.5?C.red:C.green;g.lineWidth=2;g.stroke();});}
+        if(view==='l'){[['WARN','payments','card network slow, retry 1 of 3 (succeeded)'],['INFO','cart','checkout ok in 1.9 s'],['WARN','pricing','slow query 1.8 s: SELECT * FROM prices WHERE sku IN (…)'],['INFO','inventory','reserve ok in 38 ms'],['INFO','gateway','POST /checkout 200 in 2.1 s']]
+            .forEach(([lv,svc,m],k)=>{tx(lv,60,y0+30+k*34,{z:12.5,wt:800,c:lv==='WARN'?C.amber:C.dim,al:'left',f:MONO});tx(svc,120,y0+30+k*34,{z:12.5,c:C.accent,al:'left',f:MONO});tx(m,220,y0+30+k*34,{z:12.5,c:C.text,al:'left',f:MONO});});}
+        if(view==='t'){[['gateway',0,2.1],['cart',.05,2.0],['inventory',.1,.04],['pricing',.15,1.9],['pricing-db query',.2,1.8]].forEach(([n,s,d],k)=>{const x=220+s*300,w=d*300;tx(n,60,y0+34+k*32,{z:12.5,c:C.dim,al:'left',f:MONO});
+            rr(x,y0+24+k*32,Math.max(4,w),18,5);g.fillStyle=hexA(d>1.5?C.red:C.blue,.75);g.fill();tx(`${d>=1?d.toFixed(1)+' s':Math.round(d*1000)+' ms'}`,x+w+8,y0+34+k*32,{z:11.5,c:C.dim,al:'left',f:MONO});});}},
+      click(x,y,now){if(done)return;const n=N.find(q=>Math.abs(x-q.x)<60&&Math.abs(y-q.y)<40);if(!n)return;
+        if(n.id==='pdb'||n.id==='price'){done=true;FX.burst(n.x,n.y,C.green,40,240);const st=Math.max(1,(used.size<=2?3:2)-wrong);
+          api.win(st,'Found it: a slow pricing query',`Metrics showed where it hurt (Gateway, Cart, Pricing). The trace showed the time sinking into one database query. The Payments warning was a red herring: it retried and succeeded.${wrong?' Wrong guesses cost a star.':''}`);}
+        else{wrong++;FX.burst(n.x,n.y,C.red,16);FX.text(n.x,n.y-45,'not the cause',C.red,14);}}};}});
+
+/* ---------------- 22. CAPSTONE: launch the URL shortener ---------------- */
+chal('capstone',{title:'Launch the shortener',goal:'Build it, then survive the load test: launch traffic, a viral link at 3,000 req/s, an app server dying, then a bot attack. Serve ≥99% of real users, p95 ≤ 80 ms, spend ≤ $18/h.',
+  hint:'The viral link is almost all reads: cache it. Counting clicks writes to the DB on every redirect, so push that through a queue. Keep a spare app server, and put a limiter in front of the bots.',
+  make:(()=>{const COST={app:3,cache:2,queue:1,rl:1,rep:2};
+    return simGame({dur:18,defaults:{apps:2,cache:false,queue:false,rl:false,rep:0},intro:'Choose your building blocks, watch the cost, then press <b>Run load test</b>.',runLabel:'Run load test',
+      controls(api,p,re){api.slider('App servers',1,4,1,p.apps,v=>`${v} × 1,000/s`,v=>{p.apps=v;re();});api.toggle('Cache (Redis)',p.cache,v=>{p.cache=v;re();});api.toggle('Queue for click counts',p.queue,v=>{p.queue=v;re();});
+        api.toggle('Rate limiter',p.rl,v=>{p.rl=v;re();});api.slider('DB read replicas',0,2,1,p.rep,v=>`${v}`,v=>{p.rep=v;re();});},
+      build(p,api){const cost=p.apps*COST.app+(p.cache?COST.cache:0)+(p.queue?COST.queue:0)+(p.rl?COST.rl:0)+p.rep*COST.rep;let tot=0,bad=0,lat=[],phase='Launch',alive=p.apps,acc=0,appU=0,dbU=0;const fl=[];
+        const X={u:70,rl:190,lb:310,app:450,cache:610,db:800,q:610,wk:800};const AY=k=>alive===1&&p.apps===1?240:150+k*(180/Math.max(1,p.apps-1));
+        return{step(dt,t){const legit=t<6?1000:t<12?3000:2000,bot0=t>=12?2000:0;phase=t<6?'Launch':t<12?(t>=9?'Viral + a server dies':'Viral link'):'Bot attack';alive=t>=9?p.apps-1:p.apps;
+            const bot=p.rl?bot0*.05:bot0,inc=legit+bot,cap=Math.max(0,alive)*1000,served=Math.min(inc,cap),sL=served*legit/inc;appU=cap?inc/cap:9;
+            const reads=sL*.95,writes=sL*.05,miss=p.cache?reads*.1:reads,clicks=p.queue?0:reads,dbCap=600*(1+p.rep),wr=writes+clicks;
+            const readOk=Math.min(miss,dbCap-Math.min(wr,600)),wOk=Math.min(wr,600),dbFail=(miss-Math.max(0,readOk))+(wr-wOk)*(clicks?reads/Math.max(wr,1):0);dbU=(miss+wr)/dbCap;
+            const good=Math.max(0,sL-Math.max(0,dbFail));tot+=legit*dt;bad+=(legit-good)*dt;
+            let ms=15+(p.cache?3:25)+(appU>.95?45:appU>.8?15:0)+(dbU>.95?70:dbU>.8?20:0);lat.push([ms,legit*dt]);
+            acc+=dt*inc/150;const now=api.now();while(acc>=1){acc--;const isBot=Math.random()<bot0/(legit+bot0);const blocked=isBot&&p.rl;const k=Math.floor(Math.random()*Math.max(1,alive));
+              const fail=!blocked&&(Math.random()>(served/inc)||Math.random()<Math.max(0,dbFail)/Math.max(sL,1));
+              const pts=blocked?[[X.u,240],[X.rl,240]]:[[X.u,240],[X.lb,240],[X.app,AY(k)],p.cache?[X.cache,150]:[X.db,240]];
+              fl.push({t0:now,d:.8,pts,c:blocked?C.amber:isBot?C.red:fail?C.red:C.blue,r:3.5,drop:blocked?.95:fail?.7:0});}},
+          draw(now,running){flyers(now,fl);user(X.u,240,{label:'users',c:C.blue});if(p.rl)box(X.rl,240,{label:'Limiter',c:C.amber,w:96,h:48});
+            box(X.lb,240,{label:'LB',w:70,h:48});for(let k=0;k<p.apps;k++)server(X.app,AY(k),{label:`App ${k+1}`,w:96,h:44,st:running&&k>=alive?'fail':appU>.95&&running?'hot':'ok',down:''});
+            if(p.cache)box(X.cache,150,{label:'Cache',c:C.green,w:100,h:48});db(X.db,240,{label:'DB',w:86,h:74,st:running&&dbU>.95?'hot':'ok'});
+            for(let r=0;r<p.rep;r++)db(X.db+80+r*60,300,{label:'R'+(r+1),w:50,h:46});
+            if(p.queue){box(X.q,360,{label:'Queue',c:C.amber,w:96,h:46});server(X.wk,380,{label:'Counter',w:96,h:44});}
+            if(running)tx(phase,W/2,40,{z:17,wt:800,c:phase.includes('Bot')||phase.includes('dies')?C.red:C.accent});
+            tx(`$${cost}/h`,90,470,{z:18,wt:800,c:cost<=18?C.green:C.red,f:MONO});},
+          hud(){const s=tot?1-bad/tot:1;const sorted=lat.slice().sort((a,b)=>a[0]-b[0]);let w=0,W_=sorted.reduce((a,b)=>a+b[1],0),p95=0;for(const[m,v]of sorted){w+=v;if(w>=W_*.95){p95=m;break;}}
+            this._p95=p95;return[['served',`${(s*100).toFixed(1)}%`,s>=.99?C.green:C.red],['p95',`${p95} ms`,p95<=80?C.green:C.red],['cost',`$${cost}/h`,cost<=18?C.green:C.red]];},
+          score(){const s=1-bad/tot;this.hud();const p95=this._p95;
+            if(s>=.99&&p95<=80&&cost<=18)return{stars:3,title:'Launched without a scratch',msg:`${(s*100).toFixed(1)}% served, p95 ${p95} ms, $${cost}/h. Cache for the viral reads, a queue for click counts, a spare server and a limiter: every chapter, working together.`};
+            if(s>=.95)return{stars:2,title:`${(s*100).toFixed(1)}% served`,msg:[p95>80?'Latency spiked: something was running hot.':'',cost>18?'Over budget.':'','Check which phase hurt most and add the one block that fixes it.'].filter(Boolean).join(' ')};
+            if(s>=.7)return{stars:1,title:`${(s*100).toFixed(1)}% served`,msg:'Part of the load test broke you. Viral reads need a cache, click counting needs a queue, bots need a limiter.'};
+            return{stars:0,title:'The launch crashed',msg:'Most users got errors. Start with a cache and enough app servers, then add the rest.'};}};}});})()});
+</script>
+<script>
 /* ============================================================
    PLAYER / UI
    ============================================================ */
@@ -1747,13 +2329,15 @@ cons:['301 (permanent) redirects are cached by browsers: great for speed, but cl
 const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
 let seen={};try{seen=JSON.parse(store.get('sdve-seen')||'{}')||{};}catch(e){seen={};}
+let stars={};try{stars=JSON.parse(store.get('pim-stars')||'{}')||{};}catch(e){stars={};}
+let mode='watch',inst=null,api=null,ct=0,pdown=null;
 let cur=0,t=0,playing=false,speed=1,last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
 // sidebar
 const toc=$('toc');let grp='';
 chapters.forEach((c,i)=>{if(c.group!==grp){grp=c.group;const h=document.createElement('div');h.className='grp';h.textContent=grp;toc.appendChild(h);}
-  const b=document.createElement('button');b.className='ch';b.dataset.i=i;b.innerHTML=`<span class="n">${i+1}</span><span>${c.title}</span>`;b.onclick=()=>{load(i,true);document.body.classList.remove('menu');};toc.appendChild(b);});
+  const b=document.createElement('button');b.className='ch';b.dataset.i=i;b.innerHTML=`<span class="n">${i+1}</span><span>${c.title}</span>${CHAL[c.id]?'<span class="st"></span>':''}`;b.onclick=()=>{load(i,true);document.body.classList.remove('menu');};toc.appendChild(b);});
 
 function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2.5);cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.width*H/W*dpr));K=cv.width/W;render();}
 const fmt=s=>{s=Math.max(0,s);return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');};
@@ -1763,7 +2347,6 @@ function beatIndex(c,tt){let k=0;c.beats.forEach((b,i)=>{if(tt>=b[0])k=i;});retu
 // light and motes that rise with time. Driven by the clock it is given, so a
 // paused lesson holds still and seek stays exact.
 const MOTES=Array.from({length:80},(_,i)=>({x:rnd(i+1)*W,y:rnd(i+201)*H,r:.5+rnd(i+401)*1.7,d:.25+rnd(i+601)*.75,a:.12+rnd(i+801)*.5,p:rnd(i+1001)*6.28}));
-const reduceMQ=matchMedia('(prefers-reduced-motion: reduce)');
 function drawVoid(clock){const tt=reduceMQ.matches?0:clock;g.fillStyle=C.bg;g.fillRect(0,0,W,H);
   const fog=(x,y,rx,col)=>{const gr=g.createRadialGradient(x,y,0,x,y,rx);gr.addColorStop(0,col);gr.addColorStop(1,'rgba(4,6,13,0)');g.fillStyle=gr;g.fillRect(0,0,W,H);};
   fog(640+60*Math.sin(tt*.07),330+20*Math.cos(tt*.05),460,'rgba(44,66,130,.30)');
@@ -1779,7 +2362,7 @@ function drawBeatTitle(c,tt){const k=beatIndex(c,tt),b=c.beats[k],a=clamp((tt-b[
   tx(chip,26+cw/2,34.5,{z:12,wt:700,c:C.accent});
   tx(b[1],26+cw+12-8*(1-e),35,{z:19,wt:650,al:'left',c:C.text});g.restore();}
 
-function render(){const c=chapters[cur];g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBackground();
+function render(){if(mode==='play'){renderChal(0);return;}const c=chapters[cur];g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBackground();
   try{c.draw(t);}catch(e){console.error(e);}
   g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBeatTitle(c,t);
   // UI sync
@@ -1791,8 +2374,9 @@ function setPlaying(v){playing=v;$('playBtn').innerHTML=v?ICON_PAUSE:ICON_PLAY;$
 function showCard(v,done){$('card').classList.toggle('show',v);$('card').classList.toggle('done',!!done);}
 function seek(nt){const c=chapters[cur];t=clamp(nt,0,c.dur);if(t<c.dur)showCard(false);render();}
 window.seek=seek;
-function load(i,autoplay){cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;showCard(false);
+function load(i,autoplay){if(mode==='play')exitChal(true);hideResult();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;showCard(false);
   $('eyebrow').textContent=`${c.group} · Chapter ${cur+1} of ${chapters.length}`;$('title').textContent=c.title;document.title=c.title+' · System Design, Visually';
+  $('chalBtn').hidden=!CHAL[c.id];$('cardChal').hidden=!CHAL[c.id];
   $('cardTitle').textContent=c.title;$('useList').innerHTML=c.use.map(s=>`<li>${s}</li>`).join('');$('conList').innerHTML=c.cons.map(s=>`<li>${s}</li>`).join('');
   $('ticks').innerHTML=c.beats.slice(1).map(b=>`<b style="left:${b[0]/c.dur*100}%"></b>`).join('');
   document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i;b.classList.toggle('on',j===cur);b.classList.toggle('seen',!!seen[chapters[j].id]);});
@@ -1804,7 +2388,8 @@ function finish(){const c=chapters[cur];seen[c.id]=1;store.set('sdve-seen',JSON.
   document.querySelectorAll('.ch').forEach(b=>b.classList.toggle('seen',!!seen[chapters[+b.dataset.i].id]));updProg();showCard(true,true);}
 function updProg(){$('progBar').style.width=(Object.keys(seen).filter(k=>chapters.some(c=>c.id===k)).length/chapters.length*100)+'%';}
 function frame(ts){if(last==null)last=ts;const dt=Math.min(.06,(ts-last)/1000);last=ts;
-  if(playing&&!dragging){const c=chapters[cur];t+=dt*speed;if(t>=c.dur){t=c.dur;setPlaying(false);finish();}render();}
+  if(mode==='play'){ct+=dt;renderChal(dt);}
+  else if(playing&&!dragging){const c=chapters[cur];t+=dt*speed;if(t>=c.dur){t=c.dur;setPlaying(false);finish();}render();}
   requestAnimationFrame(frame);}
 
 // controls
@@ -1822,12 +2407,53 @@ sc.addEventListener('pointerdown',()=>{dragging=true;wasPlaying=playing;});
 sc.addEventListener('input',()=>{seek(sc.value/1000*chapters[cur].dur);});
 const endDrag=()=>{if(dragging){dragging=false;last=null;}};
 sc.addEventListener('pointerup',endDrag);sc.addEventListener('change',endDrag);window.addEventListener('pointerup',endDrag);
-cv.addEventListener('click',()=>$('playBtn').click());
+cv.addEventListener('click',()=>{if(mode!=='play')$('playBtn').click();});
+/* ---------------- challenge mode ---------------- */
+function renderChal(dt){g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawVoid(ct);try{if(inst)inst.draw(ct,dt);}catch(e){console.error(e);}g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;FX.step(dt);}
+function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[];ctl.innerHTML='';run.innerHTML='';
+  const field=(label,node)=>{const d=document.createElement('div');d.className='ctl';const s=document.createElement('span');s.textContent=label;d.append(s,node);ctl.appendChild(d);return d;};
+  return{now:()=>ct,
+    status(h){$('cStatus').innerHTML=h;},
+    button(label,fn,o={}){const b=document.createElement('button');b.type='button';b.className='btn'+(o.primary?' pri':'');b.textContent=label;b.onclick=()=>fn();run.appendChild(b);els.push(b);return b;},
+    slider(label,min,max,step,val,fmt,fn){const i=document.createElement('input');i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;i.setAttribute('aria-label',label);const o=document.createElement('output');o.textContent=fmt(val);
+      i.oninput=()=>{o.textContent=fmt(+i.value);fn(+i.value);};field(label,i).appendChild(o);els.push(i);return i;},
+    seg(label,opts,val,fn){const box=document.createElement('div');box.className='seg';box.setAttribute('role','group');box.setAttribute('aria-label',label);
+      opts.forEach(([v,txt])=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.setAttribute('aria-pressed',String(v===val));b.onclick=()=>{box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));fn(v);};box.appendChild(b);els.push(b);});field(label,box);return box;},
+    toggle(label,val,fn){const b=document.createElement('button');b.type='button';b.className='tog';b.textContent=label;b.setAttribute('aria-pressed',String(val));b.onclick=()=>{const v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(v));fn(v);};ctl.appendChild(b);els.push(b);return b;},
+    lock(v){els.forEach(e=>e.disabled=v);},
+    win(st,title,msg){showResult(st,title,msg);}};}
+function startChal(){const c=chapters[cur],d=CHAL[c.id];if(!d)return;setPlaying(false);showCard(false);hideResult();mode='play';document.body.classList.add('play');
+  $('cTitle').textContent=d.title;$('cGoal').textContent=d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
+  FX.clear();ct=0;api=makeApi();inst=d.make(api);$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';render();}
+function exitChal(quiet){mode='watch';inst=null;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
+function showResult(st,title,msg){const c=chapters[cur];if(st>(stars[c.id]||0)){stars[c.id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();}
+  const all=Object.keys(CHAL).every(id=>stars[id]===3);
+  $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
+  $('resMsg').textContent=msg+(all&&st===3?' That was the last star: you have mastered every challenge in the course!':'');
+  $('resNext').textContent=cur===chapters.length-1?'Back to lesson 1 →':'Next lesson →';$('result').classList.add('show');if(st===3)FX.burst(W/2,H/2,C.amber,50,300);
+  setTimeout(()=>{const b=$(st?'resNext':'resRetry');if(b)b.focus({preventScroll:true});},60);}
+function hideResult(){$('result').classList.remove('show');}
+function updStars(){let n=0;document.querySelectorAll('.ch').forEach(b=>{const id=chapters[+b.dataset.i].id,s=b.querySelector('.st');if(!s)return;const k=stars[id]||0;n+=k;s.textContent='★'.repeat(k)+'☆'.repeat(3-k);s.classList.toggle('got',k>0);s.setAttribute('aria-label',`${k} of 3 stars`);});
+  $('starTotal').textContent=`★ ${n} / ${Object.keys(CHAL).length*3} stars`;}
+const toWorld=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H];};
+cv.addEventListener('pointerdown',e=>{if(mode!=='play'||!inst)return;const[x,y]=toWorld(e);pdown={x,y};try{cv.setPointerCapture(e.pointerId);}catch(_){}if(inst.down)inst.down(x,y,ct);});
+cv.addEventListener('pointermove',e=>{if(mode!=='play'||!inst)return;const[x,y]=toWorld(e);if(inst.move)inst.move(x,y,ct);});
+cv.addEventListener('pointerup',e=>{if(mode!=='play'||!inst)return;const[x,y]=toWorld(e);if(inst.up)inst.up(x,y,ct);if(pdown&&Math.hypot(x-pdown.x,y-pdown.y)<8&&inst.click)inst.click(x,y,ct);pdown=null;});
+$('chalBtn').onclick=()=>{if(mode==='play')exitChal();else startChal();};
+$('cardChal').onclick=startChal;$('cRestart').onclick=startChal;$('cBack').onclick=()=>exitChal();
+$('cHintBtn').onclick=()=>{$('cHint').hidden=!$('cHint').hidden;};
+$('resRetry').onclick=startChal;$('resWatch').onclick=()=>{exitChal();seek(0);setPlaying(true);};$('resNext').onclick=()=>load(cur+1,true);
+
 function setCC(v){captions=v;$('caption').classList.toggle('hide',!v);$('ccBtn').classList.toggle('on',v);store.set('sdve-cc',v?'1':'0');}
 $('ccBtn').onclick=()=>setCC(!captions);
 $('menuBtn').onclick=()=>document.body.classList.toggle('menu');
 $('scrim').onclick=()=>document.body.classList.remove('menu');
 window.addEventListener('keydown',e=>{if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT'&&e.key!==' ')return;const c=chapters[cur];
+  if(mode==='play'){if(e.key==='Escape'){if($('result').classList.contains('show'))hideResult();else exitChal();}
+    else if(e.key===']')load(cur+1,true);else if(e.key==='[')load(cur-1,true);
+    else if(!(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))&&inst&&inst.key){if(e.key===' ')e.preventDefault();inst.key(e.key,ct);}
+    return;}
+  if(e.key==='p'||e.key==='P'){startChal();return;}
   if(e.key===' '){e.preventDefault();$('playBtn').click();}
   else if(e.key==='ArrowRight'){e.preventDefault();seek(t+2);}
   else if(e.key==='ArrowLeft'){e.preventDefault();seek(t-2);}
@@ -1848,12 +2474,12 @@ function goFull(){const el=document.documentElement,req=el.requestFullscreen||el
   if(!req)return;Promise.resolve(req.call(el)).then(()=>{try{return screen.orientation.lock('landscape');}catch(e){}}).catch(()=>{});}
 if(!fsOK){$('fsBtn').style.display='none';$('rotateFs').style.display='none';}
 $('fsBtn').onclick=goFull;$('rotateFs').onclick=goFull;
-window.addEventListener('keydown',e=>{if((e.key==='f'||e.key==='F')&&fsOK&&e.target.tagName!=='INPUT')goFull();});
+window.addEventListener('keydown',e=>{if((e.key==='f'||e.key==='F')&&fsOK&&e.target.tagName!=='INPUT'&&mode!=='play')goFull();});
 // pause while the portrait prompt covers the stage; resume when turned back
 const portrait=window.matchMedia('(orientation:portrait) and (pointer:coarse) and (max-width:600px)');let resumeOnTurn=false;
 function onOrient(){if(portrait.matches){resumeOnTurn=playing;if(playing)setPlaying(false);}else if(resumeOnTurn){resumeOnTurn=false;last=null;setPlaying(true);}resize();}
 if(portrait.addEventListener)portrait.addEventListener('change',onOrient);else if(portrait.addListener)portrait.addListener(onOrient);
-setCC(captions);updProg();
+setCC(captions);updProg();updStars();
 const start=Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
 load(start,true);resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();
