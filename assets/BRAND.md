@@ -6,17 +6,19 @@ The mark combines the project's initial **P** with a routing path. Two rounded p
 
 | File | Size | Use |
 | --- | --- | --- |
-| `logo.png` | 1254 × 1254 | Original transparent PNG; README and larger placements |
-| `logo-96.png` | 96 × 96 | Sidebar mark; displayed at 44 × 44 for sharp rendering |
+| `logo.png` | 1254 × 1254 | Master transparent PNG; source for every other size |
+| `logo-256.png` | 256 × 256 | README header, shown at 128 × 128 so it stays sharp on high-DPI screens |
+| `logo-96.png` | 96 × 96 | Sidebar mark; shown at 44 × 44 |
 | `favicon-32.png` | 32 × 32 | Browser tab icon |
+| `social-preview.png` | 1280 × 640 | Repository social preview (Settings → General → Social preview) |
 
-All three files preserve transparency. Keep the square aspect ratio and the padding included in the artwork. Use on the course's navy background (`#0a0e16`) or a plain light background; avoid placing it over busy imagery. Pair the mark with live text, **Packets in Motion**, rather than baking lettering into the image.
+Every logo file keeps its transparency. The visible mark fills about two thirds of the square canvas (roughly 18% padding left, 16% right, 9% top, 7% bottom). Keep the square aspect ratio and that padding. Use on the course's navy background (`#0a0e16`) or a plain light background; avoid placing it over busy imagery. Pair the mark with live text, **Packets in Motion**, rather than baking lettering into the image.
 
-`index.html` embeds the two small exports as `data:image/png;base64` URLs so the course still works as a single offline file. If you replace either export, update its embedded copy too. The sidebar image has empty alternative text because the adjacent project name supplies its accessible label. The README image has descriptive alternative text.
+`index.html` does not load `logo-96.png` or `favicon-32.png` from disk. It embeds its own copies as `data:image/png;base64` URLs so the course still works as a single offline file. Those embedded copies are kept in sync by hand: if you change either export, re-encode it and replace the matching data URL in `index.html`. The sidebar image has empty alternative text because the adjacent project name supplies its accessible label. The README image has descriptive alternative text.
 
 ## Creation
 
-Generated with the built-in imagegen tool. The original is preserved in `logo.png`; the small exports were resized with high-quality bicubic sampling and alpha preserved.
+Generated with the built-in imagegen tool. The original is preserved in `logo.png`; the smaller exports are downscaled from it with Lanczos sampling. Near-transparent stray pixels (opacity ≤ 16%) left by generation were removed from the master before exporting.
 
 Final generation prompt:
 
