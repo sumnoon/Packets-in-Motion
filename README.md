@@ -8,6 +8,8 @@
 
 An animated, interactive course that takes you from "how do two computers talk?" to consensus, distributed transactions and a full URL-shortener design. Every concept is taught through motion: glowing requests leave light trails between servers, caches fill up, servers fail and traffic reroutes. Then you solve a hands-on challenge for each lesson.
 
+![Packets in Motion: system design, explained by watching it happen](assets/social-preview.png)
+
 ## Run it
 
 It's a single self-contained HTML file with no dependencies, no build step and no network requests.
