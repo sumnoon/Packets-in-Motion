@@ -603,6 +603,50 @@ draw(t){
   }
 }});
 
+/* ---------------- 2b. AUTOSCALING ---------------- */
+(function(){
+const GX=90,GY=70,GW=820,GH=110,DUR=36;
+const demand=t=>100+380*Math.exp(-Math.pow((t-19)/6.5,2));           // requests/s
+// launch / remove schedule the autoscaler produces for this traffic curve
+const SV=[{on:0},{on:0},{on:10.4},{on:13},{on:15.5},{on:17.6}];SV[5].off=26;SV[4].off=29.2;SV[3].off=32.4;
+const BOOT=2,SX=k=>560+(k%3)*150,SY=k=>k<3?300:420;
+const ready=(s,t)=>t>=s.on+(s.on?BOOT:0)&&!(s.off&&t>=s.off);
+const nReady=t=>SV.filter(s=>ready(s,t)).length;
+ch({id:'autoscaling',group:'Foundations',title:'Autoscaling: Add Servers When You Need Them',dur:DUR,
+beats:[
+[0,'Traffic has a daily rhythm','A few users at night, a crowd at lunch, a peak in the evening. Paying for enough servers to handle the peak all day wastes money.'],
+[5,'Watch one number','An autoscaler keeps an eye on the group\'s average CPU and checks it every few seconds against a target: here, 70%.'],
+[10,'Above target → add servers','When average CPU stays above 70%, it launches another server. The load spreads out and CPU falls back.'],
+[17,'New servers need time to warm up','A fresh server takes a while to boot and warm up. Until it is ready, the others stay overloaded, so scale out early.'],
+[23,'Below target → remove servers','As traffic falls and CPU drops under 40%, servers are drained and removed. You pay for what you actually use.'],
+[29,'Cooldown stops flapping','After every change, the autoscaler waits a while before deciding again. Without that pause it could add and remove servers in a frantic loop.']],
+use:['Traffic that rises and falls: daily cycles, launches, sales','Stateless servers that can start and stop at any time','Cloud platforms where you pay per server-minute'],
+cons:['New servers take time to boot, so sudden spikes still hurt','Bad thresholds cause flapping or slow reactions','Needs stateless servers and health checks to work well'],
+draw(t){
+  // traffic vs capacity chart
+  const ca=A(t,.2);draw(0,0,ca,()=>{rr(GX-10,GY-30,GW+20,GH+50,12);g.fillStyle=hexA(C.panel,.8);g.fill();g.strokeStyle=C.line;g.lineWidth=1.2;g.stroke();});
+  if(ca.a>0){tx('requests/s',GX,GY-14,{z:11.5,c:C.dim,al:'left',a:ca.a});tx('— capacity (ready servers × 100)',GX+110,GY-14,{z:11.5,c:C.green,al:'left',a:ca.a});
+    const X=s=>GX+s/DUR*GW,Y=v=>GY+GH-v/600*GH;g.save();g.globalAlpha=ca.a;
+    g.beginPath();for(let s=0;s<=DUR;s+=.25){const x=X(s),y=Y(nReady(s)*100);s?g.lineTo(x,y):g.moveTo(x,y);}g.strokeStyle=hexA(C.green,.8);g.lineWidth=2;g.stroke();
+    g.beginPath();for(let s=0;s<=DUR;s+=.25){const x=X(s),y=Y(demand(s));s?g.lineTo(x,y):g.moveTo(x,y);}g.strokeStyle=C.blue;g.lineWidth=2.5;g.stroke();
+    g.fillStyle=hexA(C.bg,.55);g.fillRect(X(t),GY-4,GX+GW-X(t),GH+8);g.strokeStyle=C.accent;g.lineWidth=1.5;g.beginPath();g.moveTo(X(t),GY-6);g.lineTo(X(t),GY+GH+6);g.stroke();g.restore();}
+  // autoscaler, balancer, servers
+  const n=nReady(t),cpu=demand(t)/(Math.max(n,1)*100),cool=[10.4,13,15.5,17.6,26,29.2,32.4].some(c=>t>c&&t<c+(t>25?2.8:.8));
+  box(170,340,{label:'Autoscaler',sub:`target 70% CPU`,w:150,h:58,c:C.accent,glow:cool,...A(t,4.6)});
+  if(t>5)pill(`avg CPU ${Math.round(cpu*100)}%`,170,410,{c:cpu>.7?C.red:cpu<.4?C.amber:C.green,z:13,a:V(t,5.2)});
+  if(t>29&&cool)pill('cooldown…',170,275,{c:C.dim,z:12,a:V(t,29.2)});
+  box(380,360,{label:'Load balancer',w:130,h:50,...A(t,.4)});
+  SV.forEach((s,k)=>{const shown=t>=s.on-.01&&!(s.off&&t>s.off+.8);if(!shown)return;const boot=s.on&&t<s.on+BOOT,gone=s.off&&t>=s.off;
+    const a=gone?1-clamp((t-s.off)/.8):V(t,s.on||.5);
+    server(SX(k),SY(k),{label:`Server ${k+1}`,sub:boot?'booting…':gone?'draining':'',w:112,h:54,a,s:A(t,s.on||.5).s,st:boot?'off':gone?'off':cpu>1?'fail':cpu>.7?'hot':'ok',down:'OVERLOADED',load:boot||gone?null:Math.min(cpu,1)});
+    if(boot)spin(t,SX(k)+40,SY(k)-40,{c:C.amber});
+    if(ready(s,t)&&t>1)ln([[445,360],[SX(k)-56,SY(k)]],{a:a*.35});});
+  each(t,.8,DUR,.9-.5*clamp(demand(t)/480),.9,(i,s0)=>{const on=SV.map((s,k)=>k).filter(k=>ready(SV[k],s0));if(!on.length)return;const k=on[i%on.length];
+    pk(t,s0,.8,[[30,360],[315,360],[445,360],[SX(k)-56,SY(k)]],cpu>1?C.amber:C.blue,{r:4});});
+  const ev=[[10.4,'CPU 82% > 70% → launch server 3'],[13,'still hot → launch server 4'],[15.5,'overloaded while booting → launch 5'],[17.6,'launch 6'],[26,'CPU 36% < 40% → remove one'],[29.2,'after cooldown → remove another'],[32.4,'and another']];
+  ev.forEach(([at,s])=>{if(t>at&&t<at+2.6)pill(s,W/2+60,212,{c:at>25?C.amber:C.accent,z:12.5,a:V(t,at,at+2.4)});});
+}});})();
+
 /* ---------------- 3. LOAD BALANCERS ---------------- */
 (function(){
   const US=[[80,150],[80,243],[80,337],[80,430]],LB=[420,290],SV=[[790,160],[790,290],[790,420]];
@@ -686,6 +730,47 @@ draw(t){
     pill(`keys moved: ${moved} of 9`,840,440,{c:C.amber,a:V(t,36.5),z:14});
     pill('with hash % N: ~6 of 9 would move',840,478,{c:C.red,a:V(t,38.2),z:12});
   }
+}});})();
+
+/* ---------------- 3b. SESSIONS ---------------- */
+(function(){
+const U=[90,300],LB=[290,300],S={A:[560,160],B:[560,300],C:[560,430]},RD=[830,300];
+const to=k=>[[U[0]+20,U[1]],LB,[S[k][0]-60,S[k][1]]],back=k=>to(k).slice().reverse();
+const look=k=>[[S[k][0]+60,S[k][1]],[RD[0]-48,RD[1]]];
+ch({id:'sessions',group:'Traffic',title:'Sessions: Sticky vs Shared Storage',dur:34,
+beats:[
+[0,'Logged in… but on which server?','You log in, and Server A remembers you in its own memory. Your next click goes through the load balancer.'],
+[5,'Round robin sends you elsewhere','The next request lands on Server B, which has never heard of you: "please log in again".'],
+[10,'Sticky sessions: always the same server','The load balancer pins you to Server A with a cookie. That works, until A dies and takes every session it held with it.'],
+[18,'Shared session storage','Instead, servers keep no user state. Sessions live in a shared store such as Redis, which every server can read.'],
+[24,'Any server can serve you','Your requests can land on any server. Each one looks your session up by its id and carries on.'],
+[29,'A server dies, and nobody notices','Server A crashes. Its users simply land on B or C, and their sessions are still in the store.']],
+use:['Any login or shopping cart behind a load balancer','Autoscaling groups, where servers come and go','Deploys that restart servers without logging everyone out'],
+cons:['The session store becomes critical: replicate it','Every request adds a lookup (fast, but not free)','Sticky sessions spread load unevenly and lose sessions on failure'],
+draw(t){
+  const aDead=(t>=15&&t<18)||t>=29.5;
+  user(U[0],U[1],{label:'you',r:17,...A(t,.2)});box(LB[0],LB[1],{label:'Load balancer',sub:t>=10&&t<18?'sticky: A':'round robin',w:140,h:54,c:t>=10&&t<18?C.amber:C.edge,...A(t,.3)});
+  Object.entries(S).forEach(([k,p],i)=>{server(p[0],p[1],{label:`Server ${k}`,w:118,h:54,st:k==='A'&&aDead?'fail':'ok',...A(t,.4+i*.1)});ln([LB,[p[0]-60,p[1]]],{a:V(t,.6)*.35});});
+  const ra=A(t,18.2);db(RD[0],RD[1],{label:'Session store',sub:'Redis',w:120,h:86,col:C.accent,st:'acc',...ra});
+  if(ra.a>0)Object.keys(S).forEach(k=>ln(look(k),{a:ra.a*.3,dash:[4,6]}));
+  // cookie badge
+  if(t>2.2)pill(t>=18?'cookie: session=7f3a':t>=10?'cookie: server=A':'cookie: session=7f3a',U[0]+30,U[1]+56,{c:C.amber,z:11.5,a:V(t,2.2)});
+  // 1. log in to A
+  pk(t,.8,1.1,to('A'),C.blue,{label:'POST /login'});if(t>1.9&&t<10)pill('in memory: session 7f3a',S.A[0]+90,S.A[1]-44,{c:C.green,z:11.5,a:V(t,1.9,9.6)});
+  pk(t,2.2,1,back('A'),C.green,{label:'welcome!'});
+  // 2. round robin → B, which does not know you
+  pk(t,5.4,1.1,to('B'),C.blue,{label:'GET /cart'});if(t>6.5&&t<10)pill('who are you?',S.B[0]+90,S.B[1]-44,{c:C.red,z:12,a:V(t,6.5,9.6)});
+  pk(t,7,1,back('B'),C.red,{label:'401: log in again'});
+  // 3. sticky sessions
+  [10.6,12.6].forEach(s=>{pk(t,s,1,to('A'),C.blue,{r:5});pk(t,s+1.1,.9,back('A'),C.green,{r:5});});
+  if(t>15&&t<18)pill('Server A died: its sessions are gone',S.A[0],S.A[1]-50,{c:C.red,z:12,a:V(t,15.1,17.8)});
+  pk(t,15.6,1,to('B'),C.blue,{r:5});pk(t,16.7,.9,back('B'),C.red,{label:'log in again'});
+  // 4. shared store
+  pk(t,18.8,1,to('A'),C.blue,{label:'POST /login',r:5});pk(t,19.9,.7,look('A'),C.amber,{label:'save 7f3a'});pk(t,20.8,.9,back('A'),C.green,{r:5});
+  if(t>20.6)pill('7f3a → {user: you, cart: 2 items}',RD[0],RD[1]+76,{c:C.accent,z:11.5,a:V(t,20.6)});
+  [[24.4,'B'],[26.6,'C'],[30.4,'C']].forEach(([s,k])=>{pk(t,s,1,to(k),C.blue,{r:5});pk(t,s+1,.5,look(k),C.amber,{r:4});pk(t,s+1.5,.5,rev(look(k)),C.green,{r:4});pk(t,s+2,.9,back(k),C.green,{r:5});});
+  if(t>25.5&&t<29)pill('any server can find your session',RD[0],RD[1]-78,{c:C.green,z:12,a:V(t,25.5,28.8)});
+  if(t>32.3)pill('still logged in ✓',U[0]+10,U[1]-56,{c:C.green,z:12.5,a:V(t,32.3)});
 }});})();
 
 /* ---------------- 4. REVERSE PROXIES & API GATEWAYS ---------------- */
@@ -1200,6 +1285,88 @@ cons:['Stale data: invalidation is famously one of the hard problems','Cold cach
   }
 }});})();
 
+/* ---------------- 11b. CACHE EXPIRY & INVALIDATION ---------------- */
+(function(){
+const AP=[170,330],CA=[500,170],DB=[820,330],AD=[820,110];
+const toC=[[AP[0]+56,AP[1]-24],[CA[0]-90,CA[1]]],toD=[[AP[0]+56,AP[1]],[DB[0]-56,DB[1]]],fill=[[DB[0]-40,DB[1]-44],[CA[0]+90,CA[1]]];
+const price=t=>t<13.5?20:t<19?25:t<27?30:35;
+// the cached copy: [value, filledAt, ttl] or null
+function entry(t){if(t<3.8)return null;if(t<11)return[20,3.8,7.2];if(t<13.6)return null;if(t<19.2)return[20,13.6,8];if(t<23.2)return null;if(t<27.2)return[30,23.2,8];if(t<29)return null;if(t<36.2)return[30,29,7.2];if(t<38.8)return null;return[35,38.8,8];}
+ch({id:'cache-invalidation',group:'Data',title:'Cache Expiry (TTL) & Invalidation',dur:40,
+beats:[
+[0,'A cache is a copy','The app caches a product\'s price so it does not ask the database every time. But a copy can fall out of date.'],
+[5,'TTL: copies expire','Each cached item gets a time to live, here 8 seconds. When it expires, the next read goes to the database and refreshes the copy.'],
+[11.5,'Stale until it expires','The price changes to $25 in the database, but the cache keeps serving $20 until the TTL runs out. Short TTL = fresher; long TTL = fewer database reads.'],
+[18.5,'Invalidate on write','Better: when the price is written, delete the cached copy at the same moment. The next read fetches the new price.'],
+[25,'The race: a slow read refills old data','A slow read fetched $30 just before the write to $35, then stores it just after the delete. The cache is stale again.'],
+[32,'Belt and braces','Delete on write, and keep a TTL as a safety net. Any stale copy that sneaks in still expires, and the next read gets $35.']],
+use:['Any cache in front of data that changes','Short TTLs for prices and stock, long TTLs for rarely changing data','Delete-on-write when correctness matters'],
+cons:['A TTL alone always serves some stale reads','Invalidation needs every writer to remember to delete','Races can still leave stale data: keep a TTL anyway'],
+draw(t){
+  server(AP[0],AP[1],{label:'App',w:112,...A(t,.2)});db(DB[0],DB[1],{label:'Database',sub:`price $${price(t)}`,w:120,h:90,st:t>13.4&&t<14.4||t>19&&t<20||t>27&&t<28?'good':'ok',...A(t,.4)});
+  ln(toD,{a:V(t,.5)*.3});ln(toC,{a:V(t,.5)*.3});
+  const e=entry(t),ca=A(t,.3);draw(CA[0],CA[1],ca,()=>{rr(-90,-50,180,100,14);g.fillStyle=C.panel;g.fill();g.strokeStyle=e&&e[0]!==price(t)?C.red:C.amber;g.lineWidth=2;g.stroke();});
+  if(ca.a>0){tx('Cache',CA[0],CA[1]-66,{z:13,c:C.dim});
+    if(e){const left=clamp(1-(t-e[1])/e[2]),stale=e[0]!==price(t);tx(`price: $${e[0]}`,CA[0],CA[1]-8,{z:20,wt:800,c:stale?C.red:C.text,f:MONO});
+      g.save();g.strokeStyle=C.line;g.lineWidth=5;g.beginPath();g.arc(CA[0]+62,CA[1]+26,12,0,7);g.stroke();g.strokeStyle=left<.25?C.red:C.amber;g.beginPath();g.arc(CA[0]+62,CA[1]+26,12,-Math.PI/2,-Math.PI/2+6.283*left);g.stroke();g.restore();
+      tx(`TTL ${Math.ceil(left*e[2])}s`,CA[0]-10,CA[1]+26,{z:12,c:C.dim,f:MONO});if(stale)pill('STALE',CA[0],CA[1]+72,{c:C.red,z:12});}
+    else tx('(empty)',CA[0],CA[1],{z:15,c:C.faint});}
+  // reads: [time, hit?]
+  const read=(s,hit,v)=>{if(hit){pk(t,s,.6,toC,C.blue,{r:4.5});pk(t,s+.6,.6,rev(toC),v!==price(s+.6)?C.red:C.green,{r:4.5,label:`$${v}`});}
+    else{pk(t,s,.6,toC,C.blue,{r:4.5});pk(t,s+.6,.9,toD,C.amber,{r:4.5,label:'miss → DB'});pk(t,s+1.5,.8,fill,C.green,{r:4.5,label:`fill $${v}`});}};
+  read(1.5,false,20);read(6,true,20);read(8.4,true,20);read(11.3,false,20);read(15,true,20);read(16.8,true,20);read(20.9,false,30);read(33,true,30);read(36.5,false,35);
+  if(t>10.8&&t<11.8)pill('expired',CA[0],CA[1]+72,{c:C.amber,z:12});
+  // writes
+  const wr=(s,v,del)=>{pk(t,s,.9,[[AD[0]-60,AD[1]],[DB[0],DB[1]-46]],C.accent,{label:`SET price = $${v}`});if(del)pk(t,s+.2,.8,[[AD[0]-60,AD[1]-10],[CA[0]+90,CA[1]-20]],C.red,{label:'DELETE cache'});};
+  box(AD[0],AD[1],{label:'Admin',sub:'edits prices',w:120,h:48,...A(t,11.6)});wr(12.6,25,false);wr(18.2,30,true);wr(26.2,35,true);
+  // the slow reader
+  const sr=[AP[0]+10,AP[1]+90];if(t>25&&t<30.5){dot(sr[0],sr[1],C.amber,5,V(t,25,30.3));tx('slow read',sr[0],sr[1]+20,{z:11.5,c:C.amber,a:V(t,25,30.3)});}
+  pk(t,25.4,.8,[sr,[DB[0]-56,DB[1]+30]],C.amber,{r:4,label:'reads $30'});pk(t,28.1,.9,[[DB[0]-56,DB[1]+10],[CA[0]+70,CA[1]+46]],C.amber,{r:4,label:'stores $30 (late!)'});
+  if(t>31.5&&t<36.2)pill('the TTL will clean this up',CA[0],CA[1]-100,{c:C.accent,z:12,a:V(t,32.5,36)});
+  if(t>38.9)pill('fresh again: $35 ✓',CA[0],CA[1]-100,{c:C.green,z:12.5,a:V(t,36.4)});
+}});})();
+
+/* ---------------- 11c. HOT KEYS & REQUEST COALESCING ---------------- */
+(function(){
+const UX=80,UY=k=>110+k*48,AP=[330,300],CA=[590,160],DB=[840,360];
+const miss=[[AP[0]+56,AP[1]+10],[DB[0]-56,DB[1]]];
+ch({id:'hot-keys',group:'Data',title:'Hot Keys & Request Coalescing',dur:34,
+beats:[
+[0,'One key, a million readers','A celebrity posts. Everyone asks for the same key at once: post:42. The cache serves it easily…'],
+[5,'…until it expires','The cached copy of post:42 expires, and in that instant thousands of requests miss the cache together.'],
+[8.5,'Cache stampede','Every miss goes to the database for the same row. It drowns in identical queries, gets slow, and everything times out.'],
+[15,'Coalescing: one fetch, many waiters','Rewind. This time, the first miss fetches from the database and every other request for post:42 waits for that one answer.'],
+[21.5,'One answer for everyone','One query comes back, the cache refills, and all the waiting requests are answered together. The database barely notices.'],
+[27.5,'Extra care for the hottest keys','Refresh very hot keys before they expire, and keep copies on several cache nodes, so no single node takes all the traffic.']],
+use:['Viral posts, flash sales, live scores: a few keys get most traffic','Any cache with expiring entries under heavy load','Expensive queries that many users need at once'],
+cons:['Waiters pause for the first fetch (usually a few ms)','Needs a per-key lock or single-flight map in the app','Refresh-ahead spends work on keys that might go cold'],
+draw(t){
+  for(let k=0;k<8;k++)user(UX,UY(k),{r:11,c:C.blue,...A(t,.1+k*.04)});tx('fans',UX,UY(7)+34,{z:12,c:C.dim,a:V(t,.5)});
+  server(AP[0],AP[1],{label:'App',sub:t>=15&&t<27.5?'coalescing on':'',w:118,...A(t,.3)});
+  const reps=t>=27.8?3:1;for(let r=0;r<reps;r++){const y=CA[1]+(reps>1?(r-1)*96:0),x=CA[0]+(reps>1?(r-1)*14:0);
+    const valid=(t<6||(t>=12.5&&t<16.2)||t>=22.6),refreshing=t>=30&&t<31;box(x,y,{label:reps>1?`cache ${r+1}`:'Cache',sub:valid?'post:42 ✓':'post:42 expired',c:valid?C.green:C.red,w:136,h:52,glow:refreshing,...A(t,.4)});}
+  const stamp=t>=8.5&&t<15,dbLoad=stamp?clamp((t-8.5)/1.2):t>=17&&t<22.5?.08:.02;
+  db(DB[0],DB[1],{label:'Database',sub:stamp?'overloaded':'',w:120,h:90,st:stamp?'fail':'ok',down:'SWAMPED',...A(t,.5)});
+  meter(DB[0]-60,DB[1]+56,120,8,dbLoad,dbLoad>.8?C.red:C.green);tx(`${Math.round(dbLoad*100)}% busy`,DB[0],DB[1]+78,{z:11.5,c:C.dim,f:MONO,a:V(t,.8)});
+  // steady hits
+  const hitting=t<6||(t>=12.5&&t<16.2)||t>=22.6;
+  each(t,.5,34,.12,1.1,(i,s)=>{const valid=s<6||(s>=12.5&&s<16.2)||s>=22.6;if(!valid)return;const k=i%8,c=t>=27.8?CA[1]+((i%3)-1)*96:CA[1];
+    pk(t,s,.5,[[UX+14,UY(k)],[AP[0]-56,AP[1]],[CA[0]-68,c]],C.blue,{r:3.5});pk(t,s+.5,.5,[[CA[0]-68,c],[AP[0]-56,AP[1]-10],[UX+14,UY(k)]],C.green,{r:3.5});});
+  // stampede: every miss hits the DB
+  each(t,6.2,12,.07,1,(i,s)=>{pk(t,s,.8,miss,C.red,{r:3.5});});
+  if(t>6&&t<8.5)pill('expired!',CA[0],CA[1]-50,{c:C.red,z:12.5,a:V(t,6,8.3)});
+  if(t>9&&t<15)pill('same query ×4,000',DB[0],DB[1]-66,{c:C.red,z:12,a:V(t,9,14.7)});
+  if(t>15&&t<16.4)pill('↺ rewind, now with coalescing',AP[0],AP[1]-70,{c:C.accent,z:12.5});
+  // coalescing: one fetch; everyone else queues at the app
+  pk(t,16.4,1,miss,C.amber,{label:'1 query'});pk(t,21.4,.9,rev(miss),C.green,{label:'post:42'});pk(t,22.1,.6,[[AP[0]+56,AP[1]-20],[CA[0]-68,CA[1]]],C.green,{label:'refill'});
+  const waiting=t>=16.3&&t<22.3?Math.min(4000,Math.floor((t-16.3)*700)):0;
+  if(waiting>0){for(let i=0;i<Math.min(24,Math.floor(waiting/150)+1);i++)dot(AP[0]-44+(i%8)*12,AP[1]+48+Math.floor(i/8)*12,C.amber,3.5);pill(`${waiting.toLocaleString()} waiting on 1 fetch`,AP[0],AP[1]+100,{c:C.amber,z:12});}
+  each(t,22.3,23.2,.05,1,(i,s)=>{const k=i%8;pk(t,s,.6,[[AP[0]-56,AP[1]],[UX+14,UY(k)]],C.green,{r:3.5});});
+  if(t>22.6&&t<27.5)pill('answered together ✓',AP[0],AP[1]+100,{c:C.green,z:12.5,a:V(t,22.6,27.3)});
+  if(t>28.4)pill('refresh ahead: renew before it expires',CA[0]-10,480,{c:C.accent,z:12,a:V(t,28.4)});
+  if(t>29.2)pill('copies on 3 nodes: spread the load',CA[0]-10,516,{c:C.accent,z:12,a:V(t,29.2)});
+}});})();
+
 /* ---------------- 12. CAP & CONSISTENCY ---------------- */
 (function(){
   const N1=[320,280],N2=[680,280],CA_=[130,440],CB=[870,440];
@@ -1479,6 +1646,45 @@ cons:['Redundancy costs money: roughly 2× hardware for 1× capacity','More movi
   if(t>17.6&&t<21.5)pill('Server A down → all traffic to B',X.s,500,{c:C.green,z:12.5,a:V(t,18,21.2)});
   if(t>22.1&&t<25.8)pill('replica promoted to primary',X.d,500,{c:C.accent,z:12.5,a:V(t,22.4,25.5)});
   if(t>26.3)pill('standby took over the VIP',X.lb,500,{c:C.accent,z:12.5,a:V(t,26.6)});
+}});})();
+
+/* ---------------- 16b. TIMEOUTS & DEADLINES ---------------- */
+(function(){
+const U=[90,210],WB=[330,210],PY=[650,210],TP=[330,380];
+const CH=[['Web',150],['Orders',370],['Payments',590],['Bank',810]].map(([n,x])=>({n,x,y:420}));
+ch({id:'timeouts',group:'Reliability',title:'Timeouts & Deadlines',dur:34,
+beats:[
+[0,'A call that never answers','The web server calls the payment service, which has hung. Without a timeout, the web server just waits… and waits.'],
+[5,'Waiting requests pile up','Each new request also gets stuck waiting on payments. The server runs out of workers and stops answering even simple pages.'],
+[11,'Set a timeout','Give up after 800 ms and return an error or a fallback. The worker is freed at once, and the server stays healthy.'],
+[17,'Timeouts add up across hops','Web → Orders → Payments → Bank. If every hop waits 2 s, one user can wait 8 s. Inner calls need shorter timeouts than outer ones.'],
+[24,'Pass a deadline along','Even better: the first service sets a deadline and passes it down with the request. Each hop only spends the time that is left.'],
+[30,'Fail fast, stay up','Timeouts turn a slow failure into a fast one, so one broken service cannot freeze everything that depends on it.']],
+use:['Every network call: HTTP, database, cache, queue','Chains of services, where waits add up','Anywhere a fallback beats an endless spinner'],
+cons:['Too short: healthy but slow calls fail','Too long: stuck calls hold resources','A timeout does not cancel the work on the other side unless the deadline is passed along'],
+draw(t){
+  const top=V(t,.2,17),bot=V(t,17.2);
+  if(top>0){user(U[0],U[1],{label:'users',a:top});server(WB[0],WB[1],{label:'Web',w:112,a:top});server(PY[0],PY[1],{label:'Payments',sub:'hung',w:124,st:'hot',a:top});
+    if(t<17)spin(t,PY[0],PY[1]-46,{c:C.amber,a:top});ln([[WB[0]+56,WB[1]],[PY[0]-62,PY[1]]],{a:top*.4});ln([[U[0]+20,U[1]],[WB[0]-56,WB[1]]],{a:top*.4});
+    // worker pool
+    const busy=t<5?Math.min(2,Math.floor(t/2)):t<11?Math.min(8,2+Math.floor((t-5)*1.1)):Math.max(0,1-Math.floor((t-11)*2));
+    draw(TP[0],TP[1],{a:top},()=>{rr(-150,-36,300,72,12);g.fillStyle=C.panel;g.fill();g.strokeStyle=busy>=8?C.red:C.line;g.lineWidth=2;g.stroke();});
+    tx('web server workers',TP[0],TP[1]-52,{z:12,c:C.dim,a:top});for(let i=0;i<8;i++){const b=i<busy;rr(TP[0]-138+i*35,TP[1]-16,28,32,6);g.save();g.globalAlpha=top;g.fillStyle=b?hexA(C.amber,.35):C.panel2;g.fill();g.strokeStyle=b?C.amber:C.line;g.stroke();g.restore();}
+    if(busy>=8)pill('all workers stuck → site down',TP[0],TP[1]+56,{c:C.red,z:12.5,a:top});
+    each(t,1,10.6,1.2,6,(i,s)=>{pk(t,s,.7,[[U[0]+20,U[1]],[WB[0]-56,WB[1]]],C.blue,{r:4.5,a:top});pk(t,s+.7,.8,[[WB[0]+56,WB[1]],[PY[0]-62,PY[1]]],C.blue,{r:4.5,a:top});});
+    each(t,11.2,16.4,1.3,2,(i,s)=>{pk(t,s,.6,[[U[0]+20,U[1]],[WB[0]-56,WB[1]]],C.blue,{r:4.5,a:top});pk(t,s+.6,.5,[[WB[0]+56,WB[1]],[PY[0]-62,PY[1]]],C.blue,{r:4.5,a:top});
+      pk(t,s+1.3,.6,[[WB[0]-56,WB[1]],[U[0]+20,U[1]]],C.amber,{r:4.5,a:top,label:'timeout → try later'});});
+    if(t>11)pill('timeout: 800 ms',(WB[0]+PY[0])/2,WB[1]-40,{c:C.accent,z:12.5,a:top*V(t,11)});}
+  if(bot>0){CH.forEach((c,k)=>{server(c.x,c.y,{label:c.n,w:112,h:52,a:bot,st:k===3&&t>18?'hot':'ok'});if(k)ln([[CH[k-1].x+56,c.y],[c.x-56,c.y]],{a:bot*.4});});
+    const bad=t<21;const tos=bad?['2 s','2 s','2 s']:['1.5 s','1.0 s','0.5 s'];
+    if(t<24)tos.forEach((s,k)=>pill(`waits ${s}`,(CH[k].x+CH[k+1].x)/2,CH[0].y-40,{c:bad?C.red:C.green,z:12,a:bot*V(t,17.5+k*.3)}));
+    if(t>18.5&&t<21)pill('worst case for the user: 2 + 2 + 2 + 2 = 8 s',W/2,CH[0].y+74,{c:C.red,z:13,a:V(t,18.5,20.8)});
+    if(t>21.3&&t<24)pill('outer > inner: 1.5 s ⊃ 1.0 s ⊃ 0.5 s',W/2,CH[0].y+74,{c:C.green,z:13,a:V(t,21.3,23.8)});
+    // deadline travelling down the chain
+    [[24.4,'deadline: 1.2 s left'],[25.6,'0.9 s left'],[26.8,'0.6 s left']].forEach(([s,l],k)=>pk(t,s,1,[[CH[k].x+56,CH[k].y],[CH[k+1].x-56,CH[k+1].y]],C.blue,{label:l}));
+    if(t>28&&t<30.5)pill('Bank would need 3 s: no time left → stop now',CH[3].x-60,CH[0].y+74,{c:C.amber,z:12,a:V(t,28,30.3)});
+    pk(t,28.4,2.4,[[CH[3].x-56,CH[3].y+14],[CH[0].x+56,CH[0].y+14]],C.amber,{r:5,label:'fast error, 1.2 s total'});
+    if(t>31)pill('fail fast, stay up ✓',W/2,CH[0].y+74,{c:C.green,z:13,a:V(t,31)});}
 }});})();
 
 /* ---------------- 17. HEALTH CHECKS, FAILOVER, CIRCUIT BREAKERS, RETRIES ---------------- */
@@ -2613,6 +2819,117 @@ chal('backpressure',{title:'Keep checkout alive',goal:'Traffic is 300 req/s and 
             if(c>=.99&&waitMax<=.25)return{stars:3,title:'Checkout never flinched',msg:`Shedding analytics and recommendations brought traffic under the database's 200/s, so checkout kept flowing with almost no wait (${Math.round(waitMax*1000)} ms at worst). Graceful degradation.`};
             if(c>=.95)return{stars:2,title:`${(c*100).toFixed(1)}% of checkouts, up to ${(waitMax).toFixed(1)} s wait`,msg:p.bp?'Back-pressure kept things from breaking, but the waiting just moved upstream. Drop the low-priority work.':'Close. Drop one more low-priority kind of request.'};
             return{stars:1,title:`${(c*100).toFixed(1)}% of checkouts succeeded`,msg:'The queue was full, so checkouts were refused just like everything else. Protect the important requests by shedding the unimportant ones.'};}};}});})()});
+/* ---------------- 2b. AUTOSCALING: tune the rules ---------------- */
+// Target tracking: scale out at once to reach the target; scale in one server at a
+// time, and only after the cooldown. Traffic wobbles, which is what causes flapping.
+function autoSim(p){const dem=t=>150+550*Math.exp(-Math.pow((t-10)/3.5,2))+(t>=16&&t<18.5?300:0)+45*Math.sin(t*2.7)+25*Math.sin(t*6.1);
+  let ready=p.min,boot=[],lastIn=-99,dir=0,flips=0,changes=0,tot=0,drop=0,cost=0,cpu=0,acc=0;
+  return{dem,step(dt,t){boot=boot.filter(b=>{if(t>=b){ready++;return false;}return true;});
+      const d=dem(t),cap=ready*100;cpu=d/Math.max(cap,1);tot+=d*dt;drop+=Math.max(0,d-cap)*dt;cost+=(ready+boot.length)*dt;
+      acc+=dt;if(acc>=.5){acc-=.5;
+        if(cpu*100>p.out){const add=Math.ceil(d/p.out)-ready-boot.length;if(add>0){for(let i=0;i<add;i++)boot.push(t+2);changes++;if(dir<0)flips++;dir=1;}}
+        else if(cpu*100<p.inn&&ready>p.min&&t-lastIn>=p.cd){ready--;lastIn=t;changes++;if(dir>0)flips++;dir=-1;}}},
+    get ready(){return ready;},get booting(){return boot.length;},get cpu(){return cpu;},get dropPct(){return tot?drop/tot:0;},get cost(){return cost;},get flips(){return flips;},get changes(){return changes;}};}
+chal('autoscaling',{title:'Tune the autoscaler',goal:'Traffic rises to a peak, wobbles, then a surprise spike hits. Drop under 2% of requests, spend at most 200 server-seconds, and flip between adding and removing no more than 3 times.',
+  hint:'New servers take 2 s to boot, so scale out well before you are full (around 60%). Keep a floor of servers for the surprise spike, and use a cooldown so a wobble does not trigger an add-remove-add dance.',
+  make:simGame({dur:24,defaults:{out:90,inn:20,cd:0,min:1},intro:'Set the scaling rules, then press <b>Run it</b>.',
+    controls(api,p,re){api.slider('Scale out above',50,95,5,p.out,v=>`${v}% CPU`,v=>{p.out=v;re();});api.slider('Scale in below',10,60,5,p.inn,v=>`${v}% CPU`,v=>{p.inn=v;re();});
+      api.slider('Cooldown',0,6,1,p.cd,v=>`${v} s`,v=>{p.cd=v;re();});api.slider('Minimum servers',1,4,1,p.min,v=>`${v}`,v=>{p.min=v;re();});},
+    build(p,api){const m=autoSim({...p});let T=0,acc=0;const fl=[],hist=[];
+      return{step(dt,t){T=t;m.step(dt,t);hist.push([t,m.dem(t),m.ready*100]);acc+=dt*m.dem(t)/60;const now=api.now();
+          while(acc>=1){acc--;const over=m.cpu>1&&Math.random()<1-1/m.cpu,k=Math.floor(Math.random()*Math.max(1,m.ready));fl.push({t0:now,d:.7,pts:[[60,380],[300,380],[520+(k%4)*110,k<4?330:440]],c:over?C.red:C.blue,r:3.5,drop:over?.7:0});}},
+        draw(now,running){flyers(now,fl);box(300,380,{label:'Load balancer',w:130,h:48});
+          for(let k=0;k<Math.min(8,m.ready+m.booting);k++){const bootK=k>=m.ready;server(520+(k%4)*110,k<4?330:440,{label:`S${k+1}`,sub:bootK?'booting':'',w:90,h:46,st:bootK?'off':m.cpu>1?'fail':m.cpu>.7?'hot':'ok',down:''});}
+          // mini chart of demand vs capacity
+          rr(40,40,560,150,10);g.fillStyle=hexA(C.panel,.8);g.fill();g.strokeStyle=C.line;g.stroke();tx('demand',56,58,{z:11.5,c:C.blue,al:'left'});tx('capacity',116,58,{z:11.5,c:C.green,al:'left'});
+          const X=s=>50+s/24*540,Y=v=>180-v/1100*110;[[1,C.blue],[2,C.green]].forEach(([i,c])=>{g.beginPath();hist.forEach((h,j)=>{j?g.lineTo(X(h[0]),Y(h[i])):g.moveTo(X(h[0]),Y(h[i]));});g.strokeStyle=c;g.lineWidth=2;g.stroke();});
+          if(!running&&!hist.length)tx('press Run it to see traffic arrive',320,120,{z:13,c:C.dim});},
+        hud(){return[['dropped',`${(m.dropPct*100).toFixed(1)}%`,m.dropPct<.02?C.green:C.red],['cost',`${Math.round(m.cost)} srv·s`,m.cost<=200?C.green:C.red],['flips',`${m.flips}`,m.flips<=3?C.green:C.red],['servers',`${m.ready}${m.booting?' +'+m.booting:''}`]];},
+        score(){const d=m.dropPct,c=m.cost,f=m.flips;const ok=[d<.02,c<=200,f<=3];const n=ok.filter(Boolean).length;
+          if(n===3)return{stars:3,title:'Smooth scaling',msg:`${(d*100).toFixed(1)}% dropped, ${Math.round(c)} server-seconds, ${f} flip${f===1?'':'s'}. Scaling out early covers the 2 s boot, a minimum absorbs the surprise, and a cooldown keeps it calm.`};
+          const why=[!ok[0]&&'too many requests dropped: scale out earlier (a lower threshold) or keep a higher minimum for the spike',!ok[1]&&'too expensive: scale in sooner or lower the minimum',!ok[2]&&'it flapped between adding and removing: add a cooldown, or leave more room between the two thresholds'].filter(Boolean).join('; ');
+          return{stars:ok[0]?2:1,title:ok[0]?`${n} of 3 goals`:`${(d*100).toFixed(1)}% of requests dropped`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
+
+/* ---------------- 3b. SESSIONS: keep them logged in ---------------- */
+chal('sessions',{title:'Keep everyone logged in',goal:'30 users click around. At 5 s Server A dies; at 9 s the session store\'s machine dies. Finish with zero forced re-logins.',
+  hint:'Memory on each server loses users to round robin; sticky sessions lose everyone on the dead server. A shared store fixes both, but the store must survive too.',
+  make:simGame({dur:13,defaults:{mode:'mem',rep:false},intro:'Choose where sessions live, then press <b>Run it</b>.',
+    controls(api,p,re){api.seg('Sessions live in',[['mem','server memory'],['sticky','memory + sticky cookie'],['shared','shared store (Redis)']],p.mode,v=>{p.mode=v;re();});api.toggle('Store has a replica',p.rep,v=>{p.rep=v;re();});},
+    build(p,api){const SV=['A','B','C'],users=Array.from({length:30},(_,i)=>({home:i%3,where:new Set([i%3]),n:0}));let relog=0,aDead=false,sDead=false,acc=0,rr_=0,T=0;const fl=[];const SY=k=>150+k*140;
+      return{step(dt,t){T=t;if(!aDead&&t>=5){aDead=true;FX.burst(560,SY(0),C.red,24);}if(!sDead&&t>=9&&p.mode==='shared'){sDead=true;FX.burst(840,290,C.red,24);if(!p.rep){relog+=30;FX.text(840,230,'all sessions lost',C.red);}else FX.text(840,230,'replica took over',C.green);}
+          acc+=dt*6;const now=api.now();while(acc>=1){acc--;const i=Math.floor(Math.random()*30),u=users[i];let k;
+            if(p.mode==='sticky'){k=u.home;if(aDead&&k===0){k=1+(i%2);if(!u.moved){u.moved=true;relog++;fl.push({t0:now,d:.6,pts:[[70,110+i*11],[300,290],[560-60,SY(k)]],c:C.red,r:3.5,label:'log in again'});continue;}}}
+            else{do{k=rr_++%3;}while(aDead&&k===0);}
+            let bad=false;if(p.mode==='mem'){if(!u.where.has(k)||(k===0&&aDead)){bad=true;relog++;u.where.add(k);}}
+            fl.push({t0:now,d:.6,pts:[[70,110+i*11],[300,290],[560-60,SY(k)]],c:bad?C.red:C.blue,r:3.5});if(p.mode==='shared')fl.push({t0:now+.6,d:.4,pts:[[620,SY(k)],[790,290]],c:C.amber,r:3});}},
+        draw(now){flyers(now,fl);for(let i=0;i<30;i++)dot(70,110+i*11,C.blue,3.2);tx('30 users',70,460,{z:12,c:C.dim});box(300,290,{label:'Load balancer',sub:p.mode==='sticky'?'sticky':'round robin',w:140,h:52});
+          SV.forEach((n,k)=>server(560,SY(k),{label:`Server ${n}`,sub:p.mode==='shared'?'stateless':'sessions in RAM',w:130,h:54,st:k===0&&aDead?'fail':'ok'}));
+          if(p.mode==='shared'){db(840,290,{label:'Session store',sub:sDead?(p.rep?'replica now':'DOWN'):'Redis',w:120,h:86,st:sDead&&!p.rep?'fail':'ok'});if(p.rep)db(840,420,{label:'Replica',w:90,h:64,st:sDead?'good':'ok'});}},
+        hud(){return[['forced re-logins',`${relog}`,relog===0?C.green:C.red]];},
+        score(){if(relog===0)return{stars:3,title:'Nobody noticed a thing',msg:'Stateless servers plus a replicated session store: a server died and so did the store\'s machine, and every user stayed logged in.'};
+          if(relog<=12)return{stars:2,title:`${relog} users logged out`,msg:p.mode==='sticky'?'Sticky sessions kept most users happy, but everyone pinned to Server A lost their session when it died.':'Close. Make the session store itself survive a failure.'};
+          return{stars:1,title:`${relog} forced re-logins`,msg:p.mode==='mem'?'With sessions in each server\'s memory, round robin keeps sending users to servers that do not know them.':'The session store was a single point of failure: when it died, every session went with it. Give it a replica.'};}};}})});
+
+/* ---------------- 11b. CACHE INVALIDATION: fresh and cheap ---------------- */
+function cacheNums(p){const ttl=p.ttl>60?Infinity:p.ttl,eff=Math.min(ttl,60);const db=(ttl===Infinity?0:1000/ttl)+(p.del?5:0);const stale=p.del?.001*eff:.005*eff/2;return{db,stale};}
+chal('cache-invalidation',{title:'Fresh and cheap',goal:'1,000 products, 500 reads/s, 5 price changes/s. Keep stale reads at or under 1% while the database handles at most 200 reads/s.',
+  hint:'A TTL alone cannot win: short TTLs flood the database, long ones serve stale prices. Delete on write keeps it fresh; a moderate TTL mops up the rare race.',
+  make:simGame({dur:8,defaults:{ttl:30,del:false},intro:'Pick a TTL and whether writes delete the cached copy, then press <b>Run it</b>.',
+    controls(api,p,re){api.slider('TTL',1,61,1,p.ttl,v=>v>60?'∞ (never)':`${v} s`,v=>{p.ttl=v;re();});api.toggle('Delete cache on write',p.del,v=>{p.del=v;re();});},
+    build(p,api){const N=cacheNums(p);let acc=0,T=0;const fl=[];
+      return{step(dt,t){T=t;acc+=dt*30;const now=api.now();while(acc>=1){acc--;const miss=Math.random()<N.db/500,stale=!miss&&Math.random()<N.stale*6;
+          fl.push({t0:now,d:.5,pts:[[150,300],[480,200]],c:C.blue,r:3.5});fl.push({t0:now+.5,d:miss?1:.5,pts:miss?[[480,200],[820,330],[150,300]]:[[480,200],[150,300]],c:stale?C.red:miss?C.amber:C.green,r:3.5});}
+          if(Math.random()<dt*2&&p.del)fl.push({t0:api.now(),d:.6,pts:[[820,110],[480,200]],c:C.red,r:3.5,label:'delete'});},
+        draw(now){flyers(now,fl);server(150,300,{label:'App',w:110});box(480,200,{label:'Cache',sub:p.ttl>60?'no TTL':`TTL ${p.ttl} s`,c:C.amber,w:150,h:56});db(820,330,{label:'Database',sub:'200 reads/s max',w:130,h:90,st:N.db>200?'fail':'ok',down:'OVERLOADED'});
+          box(820,110,{label:'Writers',sub:'5 changes/s',c:C.accent,w:130,h:48});},
+        hud(){return[['stale reads',`${(N.stale*100).toFixed(2)}%`,N.stale<=.01?C.green:C.red],['DB reads',`${Math.round(N.db)}/s`,N.db<=200?C.green:C.red]];},
+        score(){const a=N.stale<=.01,b=N.db<=200;if(a&&b)return{stars:3,title:'Fresh and cheap',msg:`${(N.stale*100).toFixed(2)}% stale, ${Math.round(N.db)} DB reads/s. Deleting on write keeps prices current; the TTL is just a safety net for rare races.`};
+          if(a||b)return{stars:2,title:a?'Fresh, but the database is drowning':'Cheap, but stale',msg:a?'That TTL is so short the database refills everything constantly. Lengthen it.':p.del?'Without an expiry, a stale copy from a race can live forever. Add a moderate TTL.':'A TTL alone leaves old prices around. Delete the cached copy when the price changes.'};
+          return{stars:1,title:'Stale and expensive',msg:'Turn on delete-on-write, then find a TTL long enough to spare the database.'};}};}})});
+
+/* ---------------- 11c. HOT KEYS: survive the celebrity post ---------------- */
+chal('hot-keys',{title:'Survive the celebrity post',goal:'5,000 requests/s for one key. Each cache node handles 2,000/s and the key expires every 5 s. Keep errors under 1% and never send the database more than 10 queries at once.',
+  hint:'One node cannot hold the crowd: add copies. Expiry turns the crowd into a stampede: coalesce the misses, or refresh the key before it expires.',
+  make:simGame({dur:20,defaults:{nodes:1,coal:false,ref:false},intro:'Configure the cache for post:42, then press <b>Run it</b>.',
+    controls(api,p,re){api.slider('Cache nodes with a copy',1,3,1,p.nodes,v=>`${v} × 2,000/s`,v=>{p.nodes=v;re();});api.toggle('Coalesce misses',p.coal,v=>{p.coal=v;re();});api.toggle('Refresh before expiry',p.ref,v=>{p.ref=v;re();});},
+    build(p,api){let valid=true,nextExp=2,refillAt=0,q=0,qPeak=0,err=0,tot=0,acc=0;const fl=[];const RATE=5000;
+      return{step(dt,t){tot+=RATE*dt;
+          if(valid&&!p.ref&&t>=nextExp){valid=false;refillAt=t+.3;nextExp=t+5;}
+          if(valid)err+=Math.max(0,RATE-2000*p.nodes)*dt;                 // more traffic than the cache nodes can serve
+          else{if(p.coal)q=Math.max(q,1);else{q+=RATE*dt;if(q>300)err+=RATE*dt;}if(t>=refillAt)valid=true;}   // misses; beyond 1 s of DB work they time out
+          if(!p.coal)q=Math.max(0,q-300*dt);else if(valid)q=0;             // the database drains 300 queries/s
+          qPeak=Math.max(qPeak,q);
+          acc+=dt*40;const now=api.now();while(acc>=1){acc--;const k=Math.floor(Math.random()*p.nodes),over=valid&&Math.random()<Math.max(0,1-2000*p.nodes/RATE);
+            if(valid)fl.push({t0:now,d:.5,pts:[[80,120+Math.random()*340],[330,290],[590,170+(k-(p.nodes-1)/2)*96]],c:over?C.red:C.blue,r:3.5,drop:over?.8:0});
+            else fl.push({t0:now,d:.7,pts:[[80,120+Math.random()*340],[330,290],p.coal?[330,330]:[830,360]],c:p.coal?C.amber:C.red,r:3.5});}},
+        draw(now){flyers(now,fl);for(let k=0;k<8;k++)user(80,120+k*48,{r:10,c:C.blue});server(330,290,{label:'App',sub:p.coal?'coalescing':'',w:118});
+          for(let k=0;k<p.nodes;k++)box(590,170+(k-(p.nodes-1)/2)*96,{label:`cache ${k+1}`,sub:valid?'post:42 ✓':'expired',c:valid?C.green:C.red,w:130,h:48});
+          db(830,360,{label:'Database',sub:`${Math.round(q)} queued`,w:120,h:88,st:q>10?'fail':'ok',down:'STAMPEDE'});},
+        hud(){const e=tot?err/tot:0;return[['errors',`${(e*100).toFixed(1)}%`,e<.01?C.green:C.red],['DB queue peak',`${Math.round(qPeak)}`,qPeak<=10?C.green:C.red]];},
+        score(){const e=err/tot,a=e<.01,b=qPeak<=10;if(a&&b)return{stars:3,title:'The post survived',msg:`Copies on ${p.nodes} nodes carried the crowd, and ${p.coal&&p.ref?'coalescing plus refresh-ahead':p.coal?'coalescing':'refreshing ahead'} meant the database saw at most ${Math.round(qPeak)} quer${qPeak===1?'y':'ies'} at once.`};
+          if(a||b)return{stars:2,title:a?'Errors fine, database stampeded':'Database safe, cache overloaded',msg:a?`Every expiry sent ~${Math.round(qPeak).toLocaleString()} identical queries to the database. Coalesce them, or refresh before expiry.`:`${p.nodes} node${p.nodes>1?'s':''} can serve ${2000*p.nodes}/s, but the key gets 5,000/s. Put copies on more nodes.`};
+          return{stars:1,title:p.nodes<3?'Melted twice over':'Stampede on every expiry',msg:p.nodes<3?'The cache nodes could not keep up, and every expiry stampeded the database. Spread the key across more nodes and coalesce the misses.':'The cache nodes held the crowd, but each expiry sent thousands of identical queries to the database, which timed out. Coalesce the misses, or refresh before expiry.'};}};}})});
+
+/* ---------------- 16b. TIMEOUTS: set the budget ---------------- */
+function timeoutRun(p){const out=[];for(let i=0;i<40;i++){const slow=[2,5,8].includes(i%10),L=slow?3:.2;
+    const r3=L<=p.t3?L+.1:p.t3+.1,ok3=L<=p.t3,r2=r3<=p.t2?r3+.1:p.t2+.1,ok2=ok3&&r3<=p.t2,r1=r2<=p.t1?r2+.1:p.t1+.1,ok1=ok2&&r2<=p.t1;
+    const orphan=(p.t3>=p.t2||p.t2>=p.t1)&&slow;out.push({slow,wait:r1+.1,ok:ok1,orphan});}
+  return{reqs:out,maxWait:Math.max(...out.map(r=>r.wait)),fastOk:out.filter(r=>!r.slow&&r.ok).length/out.filter(r=>!r.slow).length,orphans:out.filter(r=>r.orphan).length};}
+chal('timeouts',{title:'Set the timeout budget',goal:'Every user must get an answer (success or a quick error) within 2 s. Normal calls to the bank take 0.2 s; 3 in 10 hang for 3 s. Healthy calls must all succeed, and no service may keep waiting after its caller has given up.',
+  hint:'Each hop adds 0.1 s. The outermost timeout must fit inside 2 s, and each inner one must be shorter than the one outside it, but long enough for a healthy 0.2 s call.',
+  make:simGame({dur:10,defaults:{t1:3,t2:3,t3:3},intro:'Set how long each service waits for the next, then press <b>Run it</b>.',
+    controls(api,p,re){[['t1','Web waits for Orders'],['t2','Orders waits for Payments'],['t3','Payments waits for Bank']].forEach(([k,l])=>api.slider(l,.1,4,.1,p[k],v=>`${v.toFixed(1)} s`,v=>{p[k]=+v.toFixed(1);re();}));},
+    build(p,api){const R=timeoutRun(p);let i=0,acc=0;const fl=[];const X=[120,340,560,780,930];
+      return{step(dt,t){acc+=dt*4;const now=api.now();while(acc>=1&&i<R.reqs.length){acc--;const r=R.reqs[i++];const reach=r.slow?(p.t3>=3?4:3):4;
+          fl.push({t0:now,d:.9,pts:X.slice(0,reach+1).map(x=>[x,300]),c:C.blue,r:4});fl.push({t0:now+.9+Math.min(r.wait,3)*.4,d:.9,pts:X.slice(0,4).reverse().map(x=>[x,330]),c:r.ok?C.green:r.wait<=2?C.amber:C.red,r:4,label:r.wait>2?`${r.wait.toFixed(1)} s`:null});}},
+        draw(now){flyers(now,fl);user(X[0],300,{label:'users'});[['Web','t1'],['Orders','t2'],['Payments','t3']].forEach(([n,k],j)=>{server(X[j+1],300,{label:n,sub:`waits ${p[k].toFixed(1)} s`,w:120,h:56,st:j<2&&p[k]<=p[['t2','t3'][j]]?'hot':'ok'});});
+          server(X[4],300,{label:'Bank',sub:'0.2 s · or hangs 3 s',w:120,h:56});
+          [['t1','t2'],['t2','t3']].forEach(([a,b],j)=>{if(p[a]<=p[b])pill('inner ≥ outer: orphaned work',X[j+2]+110,380,{c:C.red,z:11.5});});},
+        hud(){return[['slowest answer',`${R.maxWait.toFixed(1)} s`,R.maxWait<=2?C.green:C.red],['healthy calls ok',`${Math.round(R.fastOk*100)}%`,R.fastOk>=1?C.green:C.red],['orphaned',`${R.orphans}`,R.orphans===0?C.green:C.red]];},
+        score(){const a=R.maxWait<=2,b=R.fastOk>=1,c=R.orphans===0;if(a&&b&&c)return{stars:3,title:'Fast failures, no waste',msg:`Slowest answer ${R.maxWait.toFixed(1)} s. Each timeout sits inside the one around it, so a hung bank fails quickly and nobody keeps working for a caller who has already left.`};
+          if(a&&b)return{stars:2,title:'Within budget, but wasteful',msg:'An inner service waits longer than its caller does, so it keeps working after the caller has given up. Make each inner timeout shorter.'};
+          return{stars:1,title:a?'Healthy calls are failing':`Users waited ${R.maxWait.toFixed(1)} s`,msg:a?'A timeout is shorter than a healthy call needs. Leave room for 0.2 s plus 0.1 s per hop.':'The outer timeout lets users wait past 2 s. Every hop must fit inside the budget.'};}};}})});
+
 </script>
 <script>
 /* ============================================================
