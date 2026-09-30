@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>System Design, Visually Explained</title>
+<title>Packets in Motion · System Design</title>
 <style>
 :root{--bg:#0a0e16;--side:#0c111b;--panel:#121a29;--line:#222d44;--text:#e7ecf5;--dim:#8b96ab;--accent:#a78bfa;--blue:#4ea1ff;--green:#34d399;--red:#f87171;--amber:#fbbf24}
 *{box-sizing:border-box}
@@ -399,6 +399,66 @@ const chapters=[];
 function ch(o){o.index=chapters.length;chapters.push(o);}
 </script>
 <script>
+/* ---------------- 0. START HERE: PACKETS, IP ADDRESSES & PORTS ---------------- */
+(function(){
+const LP=[110,300],SV=[880,300],PH=[240,300];
+const R={a:[330,190],b:[330,410],c:[520,140],d:[520,300],e:[520,460],f:[710,215],g:[710,385]};
+const EDGES=[['a','c'],['a','d'],['b','d'],['b','e'],['c','f'],['d','f'],['d','g'],['e','g']];
+const via=(...k)=>[[LP[0]+22,LP[1]],...k.map(q=>R[q]),[SV[0]-62,SV[1]]];
+// four packets, different roads; #3 is lost at router d and resent later
+const SENT=[{n:1,path:via('a','c','f'),t0:12.6,d:3.3},{n:2,path:via('b','e','g'),t0:13.1,d:2.7},{n:4,path:via('b','d','f'),t0:14.1,d:3.1}];
+const arr=n=>n===3?27.9:(p=>p.t0+p.d)(SENT.find(p=>p.n===n));
+const SLOT=k=>[790+k*46,165];
+ch({id:'packets',group:'Start Here',title:'How Computers Talk: Packets, IP Addresses & Ports',dur:34,
+beats:[
+[0,'Two computers, one message','Your laptop wants to send a photo to a server far away. The internet only moves small pieces, so the photo is split into packets.'],
+[6,'Every packet carries an address','Each packet is labelled with the destination IP address (like a street address) and a port number (which door to knock on).'],
+[12,'Routers pass packets hop by hop','No single wire connects you to the server. Each router reads the address and hands the packet to a neighbour that is closer.'],
+[18,'Packets take different roads','Pieces of the same photo may travel different paths and arrive out of order. One of them got lost on the way.'],
+[23.5,'Put the pieces back together','Each packet is numbered, so the server puts them in order, notices #3 is missing and asks for it again.'],
+[29,'Ports: one address, many doors','One server runs many programs. Port 443 is the web server, 5432 the database, 22 remote login. The port picks the program.']],
+use:['Every networked app: websites, games, chat, video calls','Debugging: "host unreachable" is a wrong address, "connection refused" often a wrong port','The foundation for every other chapter in this course'],
+cons:['Packets can be lost, delayed or duplicated, so a protocol (TCP) has to fix that','Every router hop adds a little delay','Anyone along the path can read unencrypted packets, so use TLS (https)'],
+draw(t){
+  const ra=A(t,11.4);
+  EDGES.forEach(([a,b])=>ln([R[a],R[b]],{a:ra.a*.6}));[['a',LP],['b',LP],['f',SV],['g',SV]].forEach(([k,p])=>ln([R[k],p],{a:ra.a*.6}));
+  Object.values(R).forEach(p=>box(p[0],p[1],{label:'Router',w:76,h:38,z:12.5,c:C.edge,...ra}));
+  user(LP[0],LP[1],{label:'your laptop',r:18,...A(t,.2)});
+  server(SV[0],SV[1],{label:'Server',sub:'93.184.216.34',w:124,...A(t,.4)});
+  // the photo, then its four pieces
+  const sp=P(t,2.2,4.2);
+  if(sp<1)draw(PH[0],PH[1],{a:V(t,.8)*(1-sp)},()=>{rr(-60,-34,120,68,10);g.fillStyle=C.panel2;g.fill();g.strokeStyle=C.edge;g.lineWidth=2;g.stroke();tx('photo.jpg',0,-6,{z:14,wt:700});tx('4 MB',0,14,{z:11.5,c:C.dim,f:MONO});});
+  if(sp>0)for(let k=0;k<4;k++){const n=k+1,s=SENT.find(q=>q.n===n),gone=n===3?t>13.6:s&&t>s.t0;if(gone)continue;
+    const y=lerp(PH[1],206+k*62,sp);draw(PH[0],y,{a:sp},()=>{rr(-42,-22,84,44,8);g.fillStyle=C.panel2;g.fill();g.strokeStyle=hexA(C.blue,.8);g.lineWidth=1.8;g.stroke();tx(`#${n}`,0,1,{z:15,wt:800,c:C.blue});});}
+  if(t>4.4&&t<11)pill('split into 4 packets',PH[0],470,{c:C.blue,z:12.5,a:V(t,4.4,10.6)});
+  // what a packet carries
+  const la=A(t,6.3,11.3);draw(560,300,la,()=>{rr(-175,-86,350,172,14);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.blue;g.lineWidth=2;g.stroke();
+    [['to',  '93.184.216.34','IP address: which computer'],['port','443','which program (door)'],['from','10.0.0.7','so replies can find you'],['piece','#1 of 4','so pieces can be re-ordered']]
+      .forEach(([k,v,s],i)=>{tx(k,-155,-54+i*36,{z:12,c:C.dim,al:'left'});tx(v,-95,-54+i*36,{z:15,wt:750,f:MONO,al:'left',c:C.blue});tx(s,155,-54+i*36,{z:11.5,c:C.dim,al:'right'});});});
+  // travel
+  SENT.forEach(s=>pk(t,s.t0,s.d,s.path,C.blue,{label:`#${s.n}`,r:6}));
+  const lostPath=via('a','d');pk(t,13.6,1.6,lostPath,C.blue,{label:'#3',r:6});drop(t,15.2,R.d[0],R.d[1],{label:'lost!'});
+  if(t>15.2&&t<18.5)pill('packet #3 lost',R.d[0],R.d[1]+50,{c:C.red,z:12,a:V(t,15.3,18.2)});
+  if(t>17.5&&t<23.5){const order=[1,2,4].sort((a,b)=>arr(a)-arr(b)).map(n=>'#'+n).join('  ');pill(`arrived: ${order}  (out of order)`,SV[0]-40,SV[1]+70,{c:C.amber,z:12,a:V(t,17.6,23.2)});}
+  // reassembly strip
+  const sa=V(t,16);if(sa>0){tx('reassembled',SLOT(0)[0]-30,SLOT(0)[1]-34,{z:11.5,c:C.dim,al:'left',a:sa});
+    for(let k=0;k<4;k++){const n=k+1,[x,y]=SLOT(k);
+      const filled=n===3?t>=arr(3):t>=23.5+k*.2&&t>=arr(n);
+      g.save();g.globalAlpha=sa;rr(x-19,y-19,38,38,7);g.fillStyle=filled?hexA(C.green,.25):C.panel;g.fill();
+      if(!filled&&n===3&&t>24){g.setLineDash([4,4]);g.strokeStyle=Math.floor(t*3)%2?C.red:hexA(C.red,.4);}else g.strokeStyle=filled?C.green:C.line;g.lineWidth=1.6;g.stroke();g.setLineDash([]);g.restore();
+      tx(`#${n}`,x,y+1,{z:13,wt:800,c:filled?C.green:C.dim,a:sa});}}
+  if(t>24&&t<28)pill('missing #3 → please resend',SV[0]-20,SV[1]-78,{c:C.amber,z:12,a:V(t,24.2,27.7)});
+  pk(t,24.4,1.1,[[SV[0]-62,SV[1]],R.g,R.e],C.amber,{r:4,label:'resend #3?'});
+  pk(t,25.5,2.4,via('b','e','g'),C.blue,{label:'#3 again',r:6});
+  if(t>28.2)pill('photo.jpg complete ✓',SV[0]-20,SV[1]-78,{c:C.green,z:12.5,a:V(t,28.2)});
+  // ports
+  const pa=A(t,29.2);if(pa.a>0){[[':443','web server',C.blue],[':5432','database',C.dim],[':22','remote login',C.dim]].forEach(([p,n,c],k)=>{const y=392+k*42;
+      pill(`${p}  ${n}`,SV[0],y,{c:k===0&&t>31.6?C.green:c,z:12.5,a:pa.a,f:MONO});});
+    ln([[SV[0],SV[1]+32],[SV[0],374]],{a:pa.a*.5,dash:[3,5]});}
+  pk(t,29.8,1.8,via('b','e','g'),C.blue,{label:'→ :443',r:6});
+  if(t>31.6)pill('same address, port 443 → the web server answers',500,520,{c:C.green,z:12.5,a:V(t,31.7)});
+}});})();
+
 /* ---------------- 1. CLIENT–SERVER & TYPING A URL ---------------- */
 ch({id:'client-server',group:'Foundations',title:'Client–Server & What Happens When You Type a URL',dur:31,
 beats:[
@@ -1719,6 +1779,176 @@ cons:['Storage and tooling cost grows fast (log volume especially), so sample an
   if(t>32){[['Metrics → something is wrong (and when)',C.amber],['Traces → where it\'s slow',C.accent],['Logs → why it happened',C.text]].forEach(([s,c],k)=>pill(s,500,300+k*52,{c,z:14.5,a:V(t,32.2+k*.5)}));}
 }});})();
 
+/* ---------------- A1. CONSENSUS: LEADER ELECTION WITH RAFT ---------------- */
+(function(){
+const CX=500,CY=305,RAD=185,N=['A','B','C','D','E'];
+const POS=N.map((n,k)=>{const a=(-90+k*72)*Math.PI/180;return[CX+RAD*Math.cos(a),CY+RAD*.92*Math.sin(a)];});
+const TO={B:5.2,C:4.0,D:4.8,E:5.6};             // randomized election timeouts (s)
+const HB1=[5.5,6.5,7.5,8.5,9.5], HB2=[20.6,21.6,22.6,23.6,24.6,25.6,26.6,27.6,28.6,29.6,30.6];
+const seg=(a,b)=>{const[x0,y0]=POS[a],[x1,y1]=POS[b],d=Math.hypot(x1-x0,y1-y0),u=[(x1-x0)/d,(y1-y0)/d];return[[x0+u[0]*52,y0+u[1]*34],[x1-u[0]*52,y1-u[1]*34]];};
+ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:38,
+beats:[
+[0,'Five nodes must agree','A replicated database needs exactly one leader to order the writes. With five nodes, how do they agree who leads, even when some crash?'],
+[5,'The leader sends heartbeats','Leader A pings every follower a few times a second: "still alive". Each ping resets that follower\'s election timer.'],
+[10,'The leader crashes','The heartbeats stop and the timers run down. Each timer has a random length, so one node almost always runs out first.'],
+[14.2,'A candidate asks for votes','C\'s timer ran out first. It starts term 2, votes for itself and asks everyone: "vote for me?" Each node votes once per term.'],
+[19.5,'A majority wins','C has 3 of 5 votes, a majority, so it becomes leader of term 2. Two majorities always overlap, so there can never be two leaders.'],
+[25,'Writes need a majority too','A write only counts once a majority has stored it. After that it survives any minority of crashes.'],
+[31,'No majority, no writes','With B and E also gone, only 2 of 5 nodes are left. They cannot form a majority, so they refuse writes rather than risk disagreeing.']],
+use:['Coordination services that store config and locks (etcd, ZooKeeper, Consul)','Choosing the leader of a database or queue cluster (CockroachDB, Kafka KRaft)','Anywhere two leaders at once would corrupt data'],
+cons:['Needs a majority: 5 nodes survive 2 failures, 3 nodes survive 1','Every write waits for a majority round trip','Elections briefly pause writes, and it is subtle to operate'],
+draw(t){
+  const dead=k=>(k===0&&t>=10)||((k===1||k===4)&&t>=31);
+  const lead=t<10?0:t>=19.5?2:-1,cand=t>=14.2&&t<19.5?2:-1,term=t<14.2?1:2;
+  for(let i=0;i<5;i++)for(let j=i+1;j<5;j++)ln(seg(i,j),{a:V(t,.4)*.25});
+  POS.forEach(([x,y],k)=>{const st=dead(k)?'fail':k===lead?'acc':k===cand?'hot':'ok';
+    server(x,y,{label:`Node ${N[k]}`,sub:dead(k)?'':k===lead?`leader · term ${term}`:k===cand?`candidate · term 2`:'follower',w:108,h:56,st,down:'DOWN',...A(t,.2+k*.1)});
+    if(k===lead&&!dead(k)&&t>1){g.save();g.globalAlpha=.35+.25*Math.sin(t*4);g.strokeStyle=C.accent;g.lineWidth=2;rr(x-62,y-36,124,72,14);g.stroke();g.restore();}});
+  // heartbeats from the current leader
+  HB1.forEach(h=>[1,2,3,4].forEach(k=>pk(t,h,.5,seg(0,k),C.accent,{r:3.5})));
+  HB2.forEach(h=>[0,1,3,4].forEach(k=>{if(!(h>=31&&(k===1||k===4))&&k!==0)pk(t,h,.5,seg(2,k),C.accent,{r:3.5});}));
+  if(t>5.6&&t<10)pill('♥ heartbeat',CX,CY,{c:C.accent,z:12,a:V(t,5.6,9.6)});
+  // election timers (followers, while there is no live leader)
+  if(t>5&&t<19.5)[1,2,3,4].forEach(k=>{const n=N[k],last=t<10?HB1.filter(h=>h+.5<=t).pop()+.5||5:10,left=clamp(1-(t-last)/TO[n]);
+    const[x,y]=POS[k];g.save();g.globalAlpha=V(t,5,19.2);g.strokeStyle=C.line;g.lineWidth=4;g.beginPath();g.arc(x+64,y-30,11,0,7);g.stroke();
+    g.strokeStyle=left<.25?C.red:C.amber;g.beginPath();g.arc(x+64,y-30,11,-Math.PI/2,-Math.PI/2+6.283*left);g.stroke();g.restore();});
+  if(t>10.3&&t<14.2)pill('timers running down…',CX,CY,{c:C.amber,z:12.5,a:V(t,10.3,14)});
+  // votes
+  [1,3,4,0].forEach((k,i)=>pk(t,14.6+i*.1,.8,seg(2,k),C.blue,{r:4.5,label:i===0?'vote for me?':null}));
+  const yes=[[1,15.6],[3,15.7],[4,16.4]];yes.forEach(([k,s])=>pk(t,s,.8,seg(k,2),C.green,{r:4.5,label:'yes ✓'}));
+  const votes=1+yes.filter(([k,s])=>t>=s+.8).length;
+  if(t>14.4&&t<25)pill(`votes ${votes} / 5${votes>=3?'  → majority!':''}`,POS[2][0],POS[2][1]+60,{c:votes>=3?C.green:C.blue,z:12.5,a:V(t,14.4,24.6)});
+  // a committed write
+  const CL=[CX,CY];pk(t,25.3,.8,[[CX-120,CY+10],[POS[2][0]-40,POS[2][1]-26]],C.blue,{label:'SET x = 5'});
+  [1,3,4].forEach((k,i)=>pk(t,26.3+i*.05,.8,seg(2,k),C.blue,{r:4}));[[1,27.3],[3,27.4]].forEach(([k,s])=>pk(t,s,.8,seg(k,2),C.green,{r:4}));
+  if(t>28.2&&t<31)pill('stored on 3 of 5 → committed ✓',CX,CY,{c:C.green,z:12.5,a:V(t,28.2,30.8)});
+  // losing the majority
+  pk(t,32.2,.8,[[CX-120,CY+10],[POS[2][0]-40,POS[2][1]-26]],C.blue,{label:'SET y = 7'});
+  [1,4].forEach(k=>pk(t,33.1,.9,seg(2,k),C.blue,{r:4}));
+  if(t>34.1)pill('only 2 of 5 reachable → write refused (safe)',CX,CY,{c:C.red,z:12.5,a:V(t,34.1)});
+}});})();
+
+/* ---------------- A2. DISTRIBUTED TRANSACTIONS: 2PC & SAGAS ---------------- */
+(function(){
+const SV=[['Flights',[760,140]],['Hotels',[760,295]],['Cars',[760,450]]],CO=[380,295];
+const to=k=>[[CO[0]+80,CO[1]],[SV[k][1][0]-72,SV[k][1][1]]],back=k=>to(k).slice().reverse();
+const step=(a,b)=>[[SV[a][1][0],SV[a][1][1]+(b>a?30:-30)],[SV[b][1][0],SV[b][1][1]+(b>a?-30:30)]];
+ch({id:'transactions',group:'Advanced',title:'Distributed Transactions: Two-Phase Commit & Sagas',dur:40,
+beats:[
+[0,'One trip, three services','Booking a trip touches Flights, Hotels and Cars, each with its own database. Either all three bookings happen, or none should.'],
+[5,'Two-phase commit: prepare','A coordinator asks each service "can you commit?". Each one locks its rows, gets ready, and votes yes.'],
+[11,'…then commit','Everyone voted yes, so the coordinator says COMMIT and all three finish together. It is atomic, but locks were held the whole time.'],
+[16,'If the coordinator dies mid-way','The services voted yes and are now stuck waiting with their locks held, unsure whether to commit or abort. 2PC can block.'],
+[21,'A saga: a chain of local steps','Instead, each service commits its own step at once and then triggers the next one. There are no global locks.'],
+[27,'A step fails → compensate','The car booking fails. The saga runs compensating steps in reverse: cancel the hotel, then refund the flight.'],
+[34,'Consistent in the end, never stuck','For a moment the flight really was booked. When the saga finishes, everything is undone cleanly and nobody is left holding a lock.']],
+use:['2PC: a few databases that must commit atomically, close together','Sagas: long business flows across microservices (orders, trips, payments)','Sagas whenever services must stay available and independent'],
+cons:['2PC holds locks across the network and blocks if the coordinator fails','Sagas expose in-between states and need a compensating action for every step','Compensations must be retried safely, so they have to be idempotent'],
+draw(t){
+  const co=A(t,.5,20.6);box(CO[0],CO[1],{label:'Coordinator',sub:'2-phase commit',w:150,h:58,st:t>=18&&t<20.6?'fail':undefined,...co});
+  user(140,295,{label:'traveller',...A(t,.2)});
+  SV.forEach(([n,[x,y]],k)=>{const fail=k===2&&t>=26.6&&t<34.5;server(x,y,{label:n,sub:'own database',w:124,h:56,st:fail?'fail':'ok',down:'FAILED',...A(t,.4+k*.1)});
+    if(t<21)ln(to(k),{a:co.a*.45});});
+  // 2PC round 1
+  [0,1,2].forEach(k=>pk(t,5.4,1,to(k),C.blue,{r:4.5,label:k===0?'prepare?':null}));
+  const locked=(t>6.4&&t<12.6)||(t>17.3&&t<21);
+  if(locked)SV.forEach(([n,[x,y]])=>pill('🔒 locked',x+96,y,{c:C.amber,z:11.5,al:'left',a:t>17.3?.6+.4*Math.sin(t*6):1}));
+  [0,1,2].forEach(k=>pk(t,7.2+k*.15,1,back(k),C.green,{r:4.5,label:k===1?'yes':null}));
+  [0,1,2].forEach(k=>pk(t,11.3,1,to(k),C.accent,{r:5,label:k===0?'COMMIT':null}));
+  if(t>12.6&&t<16)pill('all three booked atomically ✓',CO[0],CO[1]+70,{c:C.green,z:12.5,a:V(t,12.6,15.7)});
+  // 2PC round 2: coordinator dies
+  [0,1,2].forEach(k=>pk(t,16.2,1,to(k),C.blue,{r:4.5}));[0,1,2].forEach(k=>pk(t,17.3,.7,back(k),C.green,{r:4.5}));
+  if(t>18.2&&t<21)pill('voted yes… now what? (blocked)',CO[0],CO[1]+70,{c:C.red,z:12.5,a:V(t,18.2,20.8)});
+  // saga
+  const sa=A(t,21);if(sa.a>0){for(let k=0;k<2;k++)ln(step(k,k+1),{a:sa.a*.5,dash:[5,6]});pill('saga',CO[0],CO[1],{c:C.accent,z:13,a:sa.a});}
+  pk(t,21.5,1.2,[[180,295],[SV[0][1][0]-72,SV[0][1][1]]],C.blue,{label:'book flight'});
+  if(t>22.7)pill(t<31.2?'booked ✓':'refunded ↺',SV[0][1][0]-100,SV[0][1][1]-48,{c:t<31.2?C.green:C.amber,z:12});
+  pk(t,23.1,1.2,step(0,1),C.blue,{label:'book hotel'});if(t>24.3)pill(t<29.2?'booked ✓':'cancelled ↺',SV[1][1][0]-100,SV[1][1][1]-48,{c:t<29.2?C.green:C.amber,z:12});
+  pk(t,24.9,1.2,step(1,2),C.blue,{label:'book car'});if(t>26.6&&t<34.5)pill('no cars left ✕',SV[2][1][0]-100,SV[2][1][1]-48,{c:C.red,z:12});
+  pk(t,27.9,1.2,step(2,1),C.amber,{label:'cancel hotel'});pk(t,29.8,1.2,step(1,0),C.amber,{label:'refund flight'});
+  pk(t,31.6,1.3,[[SV[0][1][0]-72,SV[0][1][1]],[180,295]],C.amber,{label:'sorry: trip cancelled'});
+  // timeline of states
+  const ta=V(t,34);if(ta>0){const st=[['flight booked',C.green],['hotel booked',C.green],['car failed',C.red],['hotel cancelled',C.amber],['flight refunded',C.amber]];
+    st.forEach(([s,c],k)=>{pill(s,130+k*185,522,{c,z:12,a:ta*V(t,34+k*.25)});if(k)tx('→',130+k*185-94,522,{z:14,c:C.dim,a:ta});});}
+}});})();
+
+/* ---------------- A3. UNIQUE IDS AT SCALE: SNOWFLAKE ---------------- */
+(function(){
+const SV=[[150,170],[150,300],[150,430]],DBP=[540,300];
+const BAR={x:300,y:112,w:620};const F=[['timestamp (ms)',41,C.accent],['machine',10,C.amber],['sequence',12,C.green]];
+const UU=['f47ac10b-58cc…','0b9e3a12-77d2…','c2e1d4a9-10fe…','7a03b5c8-9e44…','3d99ef01-b2a7…','9e5c7722-4f1b…'];
+ch({id:'unique-ids',group:'Advanced',title:'Unique IDs at Scale: Snowflake IDs',dur:34,
+beats:[
+[0,'Every row needs a unique ID','Orders, posts, messages: each one needs an ID nobody else will ever get, even with hundreds of servers creating them at the same moment.'],
+[5,'Auto-increment: one counter','One database hands out 1, 2, 3… Simple and ordered, but every server has to ask it, so it becomes a bottleneck and a single point of failure.'],
+[11,'UUIDs: random, no coordination','Each server makes up a random 128-bit ID. No asking anyone, but the IDs are long and random, so they do not sort by time and they index poorly.'],
+[17,'Snowflake: build the ID from parts','A 64-bit number made of three parts: the current time in milliseconds, the machine\'s number, and a counter within that millisecond.'],
+[24,'Unique without asking anyone','Machine numbers never clash, and the counter separates IDs made in the same millisecond. Two servers can never produce the same ID.'],
+[29,'Sorted by time for free','Time is the first part, so newer IDs are bigger numbers. Sorting by ID is almost the same as sorting by creation time.']],
+use:['High-volume IDs across many servers (Twitter/X, Discord, Instagram)','When IDs should roughly sort by creation time (feeds, timelines)','Anywhere a central counter would become a bottleneck'],
+cons:['Depends on clocks: a clock jumping backwards can create duplicates unless guarded','Machine numbers must be assigned uniquely','IDs reveal when they were created and hint at your volume'],
+draw(t){
+  SV.forEach(([x,y],k)=>server(x,y,{label:`Server ${k+1}`,sub:t>=17?`machine ${k+1}`:'',w:116,h:52,...A(t,.2+k*.1)}));
+  // auto-increment
+  const da=A(t,5.2,11);db(DBP[0],DBP[1],{label:'ID counter',sub:'next = 1045',w:110,h:90,...da});
+  let n=0;each(t,5.6,10.2,.25,1.4,(i,s)=>{const k=i%3,p=[[SV[k][0]+58,SV[k][1]],[DBP[0]-56,DBP[1]]];pk(t,s,.6,p,C.blue,{r:4});pk(t,s+.8,.6,rev(p),C.green,{r:4,label:t<s+1.4?`${1041+i}`:null});});
+  if(t>8.4&&t<11)pill('everyone waits on one box',DBP[0],DBP[1]+80,{c:C.red,z:12.5,a:V(t,8.4,10.8)});
+  if(t>7.5&&t<11)spin(t,DBP[0],DBP[1]-66,{c:C.amber,a:V(t,7.5,10.8)});
+  // uuids
+  const ua=V(t,11.2,17);if(ua>0){UU.forEach((u,k)=>{const x=560+(k%2)*230,y=190+Math.floor(k/2)*70,on=t>11.5+k*.5;pill(u,x,y,{c:C.dim,z:12,f:MONO,a:ua*(on?1:0)});});
+    if(t>14.3)pill('random order: newest is not last',675,440,{c:C.amber,z:12.5,a:ua*V(t,14.3)});}
+  // snowflake layout
+  const sa=A(t,17.3);if(sa.a>0){let x=BAR.x;F.forEach(([n,b,c],k)=>{const w=BAR.w*b/63;draw(0,0,{a:sa.a*V(t,17.5+k*.5)},()=>{rr(x,BAR.y-20,w-4,40,8);g.fillStyle=hexA(c,.18);g.fill();g.strokeStyle=c;g.lineWidth=1.8;g.stroke();});
+      tx(`${n} · ${b} bits`,x+w/2,BAR.y+1,{z:12.5,wt:700,c,a:sa.a*V(t,17.5+k*.5)});x+=w;});tx('64-bit ID',BAR.x-12,BAR.y,{z:12,c:C.dim,al:'right',a:sa.a});}
+  // each server builds IDs locally
+  const IDS=[[0,20,'1727712000123','01','0000'],[1,20.6,'1727712000123','02','0000'],[2,21.2,'1727712000124','03','0000'],[0,21.8,'1727712000124','01','0001']];
+  IDS.forEach(([k,s,ts,m,q],i)=>{if(t<s)return;const y=240+i*56,a=V(t,s);tx('→',SV[k][0]+80,SV[k][1],{z:16,c:C.dim,a:a*(t<s+1.2?1:0)});
+    pill(ts,420,y,{c:C.accent,z:12,f:MONO,a});pill(m,560,y,{c:C.amber,z:12,f:MONO,a});pill(q,640,y,{c:C.green,z:12,f:MONO,a});tx(`from server ${k+1}`,700,y,{z:11.5,c:C.dim,al:'left',a});});
+  if(t>24.2&&t<29)pill('same millisecond, different machine → different IDs',540,470,{c:C.green,z:12.5,a:V(t,24.2,28.8)});
+  if(t>29.2)pill('bigger number = created later → sorts by time ✓',540,470,{c:C.green,z:12.5,a:V(t,29.2)});
+  if(t>29.2){g.save();g.globalAlpha=V(t,29.4);ln([[790,240],[790,410]],{c:C.green,w:2,arrow:true});tx('newer',812,410,{z:11.5,c:C.green,al:'left'});g.restore();}
+}});})();
+
+/* ---------------- A4. BACK-PRESSURE & LOAD SHEDDING ---------------- */
+(function(){
+const PR=[150,290],QU=[470,290],DB=[810,290];
+ch({id:'backpressure',group:'Advanced',title:'Back-Pressure & Load Shedding',dur:36,
+beats:[
+[0,'A fast producer, a slow consumer','The API receives 300 requests/s, but the database can only handle 200/s. The extra 100 every second has to go somewhere.'],
+[5,'An unbounded queue delays the crash','Requests pile up in memory. Everyone waits longer and longer, until memory runs out and the whole service falls over.'],
+[12,'Bound the queue','Give the buffer a limit. When it is full, new requests are refused at once with "try again later" instead of waiting forever.'],
+[18,'Back-pressure: slow the sender','The consumer signals "I\'m full" and the producer slows to 200/s, the speed the database can actually handle. Everything flows steadily.'],
+[25,'Load shedding: drop the least important','Overloaded anyway? Drop low-priority work (analytics, recommendations) so the important requests (checkout) always get through.'],
+[31,'Degrade gracefully','Customers can still pay; they just see fewer recommendations for a while. A partial service beats a total outage.']],
+use:['Any pipeline where one stage is slower than the one feeding it','Protecting the critical path (login, checkout) during spikes','Streaming systems: Kafka consumers, reactive streams, TCP itself'],
+cons:['Refused and shed requests are real failures that some users will notice','You must decide priorities before the incident, not during it','Back-pressure has to reach all the way to the source to help'],
+draw(t){
+  const bp=t>=18.6,shed=t>=25.3,crash=t>=11&&t<12;
+  server(PR[0],PR[1],{label:'API',sub:bp&&!shed?'200 req/s':'300 req/s',w:120,st:t<12||shed?'hot':'ok',...A(t,.2)});
+  db(DB[0],DB[1],{label:'Database',sub:'200/s max',w:110,h:90,...A(t,.4)});
+  // queue body
+  const lvl=t<5?Math.min(4,t*.8):t<11?Math.min(60,4+(t-5)*9):t<12?0:t<18.6?8:3;
+  const qw=t<11?Math.min(260,120+lvl*2.2):150;
+  draw(QU[0],QU[1],A(t,.3),()=>{rr(-qw/2,-44,qw,88,12);g.fillStyle=crash?'#2a141a':C.panel;g.fill();g.strokeStyle=crash?C.red:t>=12&&t<18.6?C.amber:C.edge;g.lineWidth=2;g.stroke();
+    const show=Math.min(lvl,t<11?60:8);for(let i=0;i<show;i++){const cx=-qw/2+14+(i%Math.floor((qw-20)/12))*12,cy=26-Math.floor(i/Math.floor((qw-20)/12))*12;dot(cx,cy,C.amber,4);}});
+  tx(t<12?'queue (no limit)':'queue (limit 8)',QU[0],QU[1]-60,{z:12.5,c:C.dim,a:V(t,.5)});
+  if(t>=5&&t<11)pill(`waiting: ${(lvl/200*1000*6).toFixed(0)} ms and rising`,QU[0],QU[1]+74,{c:C.red,z:12,a:V(t,6,10.8)});
+  if(crash)pill('OUT OF MEMORY',QU[0],QU[1]-92,{c:C.red,z:13});
+  // arrivals: 300/s (or 200/s under back-pressure); drawn at 1:30 scale
+  const into=[[PR[0]+60,PR[1]],[QU[0]-qw/2,QU[1]]],out=[[QU[0]+qw/2,QU[1]],[DB[0]-56,DB[1]]];
+  each(t,.6,35,bp&&!shed?.15:.1,.8,(i,s)=>{const kind=shed?(i%4===0?'checkout':i%4===1?'search':i%4===2?'recs':'analytics'):null;
+    const refused=t>=12&&s<18.6&&i%3===0,drop=shed&&(kind==='recs'||kind==='analytics');
+    pk(t,s,.6,drop?[into[0],[into[0][0]+120,into[0][1]]]:into,drop||refused?C.red:C.blue,{r:4,label:shed&&i%4===0&&i%12===0?'checkout':null});});
+  each(t,.9,35,.15,.8,(i,s)=>{if(s>11&&s<12)return;pk(t,s,.6,out,C.green,{r:4});});
+  if(t>12.4&&t<18.6)pill('full → 429 "try again later"',PR[0]+110,PR[1]-70,{c:C.amber,z:12,a:V(t,12.4,18.3)});
+  pk(t,18.6,.9,[[QU[0]-60,QU[1]-50],[PR[0]+40,PR[1]-40]],C.amber,{label:'slow down!'});
+  if(t>19.6&&t<25)pill('producer matches 200/s → steady flow',QU[0],QU[1]+74,{c:C.green,z:12.5,a:V(t,19.6,24.8)});
+  // shedding
+  if(shed){const sa=V(t,25.3);box(PR[0]+130,PR[1]-110,{label:'Shedder',sub:'drop low priority',c:C.amber,w:150,h:50,a:sa});
+    [['checkout','kept',C.green],['search','kept',C.green],['recommendations','dropped',C.red],['analytics','dropped',C.red]].forEach(([n,s,c],k)=>pill(`${n}: ${s}`,PR[0]+60,PR[1]+90+k*32,{c,z:12,al:'left',a:sa*V(t,25.6+k*.3)}));}
+  if(t>31.2){pill('checkout ✓ always works',DB[0],DB[1]+90,{c:C.green,z:12.5,a:V(t,31.2)});pill('"recommendations paused"',DB[0],DB[1]+124,{c:C.dim,z:12,a:V(t,31.6)});}
+}});})();
+
 /* ---------------- 22. CAPSTONE: URL SHORTENER ---------------- */
 (function(){
   const AL='0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
@@ -2281,7 +2511,7 @@ chal('observability',{title:'Find the culprit',goal:'Checkout is slow for some u
         if(view==='l'){[['WARN','payments','card network slow, retry 1 of 3 (succeeded)'],['INFO','cart','checkout ok in 1.9 s'],['WARN','pricing','slow query 1.8 s: SELECT * FROM prices WHERE sku IN (…)'],['INFO','inventory','reserve ok in 38 ms'],['INFO','gateway','POST /checkout 200 in 2.1 s']]
             .forEach(([lv,svc,m],k)=>{tx(lv,60,y0+30+k*34,{z:12.5,wt:800,c:lv==='WARN'?C.amber:C.dim,al:'left',f:MONO});tx(svc,120,y0+30+k*34,{z:12.5,c:C.accent,al:'left',f:MONO});tx(m,220,y0+30+k*34,{z:12.5,c:C.text,al:'left',f:MONO});});}
         if(view==='t'){[['gateway',0,2.1],['cart',.05,2.0],['inventory',.1,.04],['pricing',.15,1.9],['pricing-db query',.2,1.8]].forEach(([n,s,d],k)=>{const x=220+s*300,w=d*300;tx(n,60,y0+34+k*32,{z:12.5,c:C.dim,al:'left',f:MONO});
-            rr(x,y0+24+k*32,Math.max(4,w),18,5);g.fillStyle=hexA(d>1.5?C.red:C.blue,.75);g.fill();tx(`${d>=1?d.toFixed(1)+' s':Math.round(d*1000)+' ms'}`,x+w+8,y0+34+k*32,{z:11.5,c:C.dim,al:'left',f:MONO});});}},
+            rr(x,y0+24+k*32,Math.max(4,w),18,5);g.fillStyle=hexA(n==='pricing-db query'?C.red:C.blue,.75);g.fill();tx(`${d>=1?d.toFixed(1)+' s':Math.round(d*1000)+' ms'}`,x+w+8,y0+34+k*32,{z:11.5,c:C.dim,al:'left',f:MONO});});}},
       click(x,y,now){if(done)return;const n=N.find(q=>Math.abs(x-q.x)<60&&Math.abs(y-q.y)<40);if(!n)return;
         if(n.id==='pdb'||n.id==='price'){done=true;FX.burst(n.x,n.y,C.green,40,240);const st=Math.max(1,(used.size<=2?3:2)-wrong);
           api.win(st,'Found it: a slow pricing query',`Metrics showed where it hurt (Gateway, Cart, Pricing). The trace showed the time sinking into one database query. The Payments warning was a red herring: it retried and succeeded.${wrong?' Wrong guesses cost a star.':''}`);}
@@ -2320,6 +2550,66 @@ chal('capstone',{title:'Launch the shortener',goal:'Build it, then survive the l
             if(s>=.95)return{stars:2,title:`${(s*100).toFixed(1)}% served`,msg:[p95>80?'Latency spiked: something was running hot.':'',cost>18?'Over budget.':'','Check which phase hurt most and add the one block that fixes it.'].filter(Boolean).join(' ')};
             if(s>=.7)return{stars:1,title:`${(s*100).toFixed(1)}% served`,msg:'Part of the load test broke you. Viral reads need a cache, click counting needs a queue, bots need a limiter.'};
             return{stars:0,title:'The launch crashed',msg:'Most users got errors. Start with a cache and enough app servers, then add the rest.'};}};}});})()});
+/* ---------------- 0. PACKETS: knock on the right door ---------------- */
+chal('packets',{title:'Knock on the right door',goal:'Every packet reaches the same server address. Send each one to the program it is meant for, using the port it carries.',
+  hint:':443 → web server (https), :5432 → database, :53 → DNS, :22 → remote login (SSH).',
+  make:sortGame({timer:8,bins:[{id:'443',label:'Web server',sub:'port 443',c:C.blue},{id:'5432',label:'Database',sub:'port 5432',c:C.green},{id:'53',label:'DNS',sub:'port 53',c:C.accent},{id:'22',label:'Remote login',sub:'port 22 (SSH)',c:C.amber}],
+    cards:[{t:'to 93.184.216.34 :443 · "GET /index.html"',b:'443',why:'Port 443 is HTTPS, the web server.'},{t:'to 93.184.216.34 :5432 · "SELECT * FROM users"',b:'5432',why:'5432 is PostgreSQL, the database.'},
+      {t:'to 93.184.216.34 :53 · "where is shop.com?"',b:'53',why:'Port 53 answers DNS questions.'},{t:'to 93.184.216.34 :22 · "login as admin"',b:'22',why:'Port 22 is SSH, remote login.'},
+      {t:'to 93.184.216.34 :443 · "POST /cart"',b:'443',why:'Still HTTPS on 443, so the web server.'},{t:'to 93.184.216.34 :5432 · "INSERT INTO orders…"',b:'5432',why:'Database traffic goes to 5432.'},
+      {t:'to 93.184.216.34 :22 · "run backup.sh"',b:'22',why:'Remote commands come in over SSH on 22.'},{t:'to 93.184.216.34 :53 · "what is the IP of api.shop.com?"',b:'53',why:'Name → address questions are DNS, port 53.'}]})});
+
+/* ---------------- A1. CONSENSUS: can they still decide? ---------------- */
+chal('consensus',{title:'Majority or not?',goal:'For each cluster, decide: can the reachable nodes still elect a leader and accept writes?',
+  hint:'Count the reachable nodes and compare with the whole cluster: they need MORE than half of the total, not of the survivors.',
+  make:sortGame({bins:[{id:'ok',label:'Keeps working',sub:'a majority is reachable',c:C.green},{id:'no',label:'Stops writes',sub:'no majority',c:C.red}],
+    cards:[{t:'5 nodes, 2 have crashed',b:'ok',why:'3 of 5 is a majority.'},{t:'5 nodes, 3 have crashed',b:'no',why:'2 of 5 is not more than half.'},{t:'3 nodes, the leader crashed',b:'ok',why:'2 of 3 can elect a new leader.'},
+      {t:'4 nodes, 2 have crashed',b:'no',why:'2 of 4 is exactly half, not a majority. That is why clusters use odd sizes.'},{t:'6 nodes split 3 | 3 by a network cut',b:'no',why:'Neither side has more than half, so both sides stop.'},
+      {t:'7 nodes split 4 | 3: the side with 4',b:'ok',why:'4 of 7 is a majority, so that side carries on.'},{t:'5 nodes split 3 | 2: the side with 2',b:'no',why:'The small side must stop, or there could be two leaders.'},{t:'1 node on its own (no replicas)',b:'ok',why:'1 of 1 is a majority, but one crash stops everything.'}]})});
+
+/* ---------------- A2. TRANSACTIONS: unwind the saga ---------------- */
+chal('transactions',{title:'Unwind the saga',goal:'Booking the car fails. Put the saga\'s steps in order, including the compensations that undo the earlier steps.',
+  hint:'Compensate in reverse: undo the most recent successful step first, and tell the customer last.',
+  make:orderGame({head:'Flight → hotel → car, and the car fails. What happens, in order?',msg:'Each step commits on its own. When one fails, compensations undo the others in reverse order. No locks, nothing stuck.',
+    steps:[{t:'Book flight',sub:'✓ committed'},{t:'Book hotel',sub:'✓ committed'},{t:'Book car',sub:'✕ no cars left'},{t:'Cancel hotel',sub:'compensation'},{t:'Refund flight',sub:'compensation'},{t:'Tell the customer',sub:'trip cancelled'}]})});
+
+/* ---------------- A3. UNIQUE IDS: pick the scheme ---------------- */
+chal('unique-ids',{title:'Pick the ID scheme',goal:'For each situation, choose auto-increment, UUID or Snowflake IDs.',
+  hint:'One small database → auto-increment. No coordination possible, or IDs must be unguessable → UUID. Huge scale and time-sorted → Snowflake.',
+  make:sortGame({bins:[{id:'auto',label:'Auto-increment',sub:'1, 2, 3… from one DB',c:C.blue},{id:'uuid',label:'UUID',sub:'random 128-bit',c:C.accent},{id:'snow',label:'Snowflake',sub:'time · machine · seq',c:C.green}],
+    cards:[{t:'A small app with one database and light traffic',b:'auto',why:'One counter is simple and plenty at this scale.'},{t:'Notes created offline on phones and synced later',b:'uuid',why:'Phones cannot ask a central counter while offline.'},
+      {t:'500 servers creating a million posts per second, shown newest first',b:'snow',why:'No central counter, and the IDs sort by time.'},{t:'Public order links nobody should be able to guess',b:'uuid',why:'Random IDs cannot be guessed or counted.'},
+      {t:'Invoice numbers that must be sequential with no gaps',b:'auto',why:'Only a single counter guarantees 1, 2, 3 with no gaps.'},{t:'Chat messages that must sort by send time across many servers',b:'snow',why:'Time comes first in the ID, so sorting by ID sorts by time.'},
+      {t:'Merging two companies\' databases without clashes',b:'uuid',why:'Random 128-bit IDs practically never collide.'}]})});
+
+/* ---------------- A4. BACK-PRESSURE: keep checkout alive ---------------- */
+chal('backpressure',{title:'Keep checkout alive',goal:'Traffic is 300 req/s and the database takes 200. Keep ≥99% of checkouts succeeding, wait times under 250 ms, and do not run out of memory.',
+  hint:'A queue only postpones the problem. Decide what to drop: analytics and recommendations can wait, checkout cannot.',
+  make:(()=>{const MIX=[['checkout',80],['search',70],['recs',60],['analytics',90]];
+    return simGame({dur:12,defaults:{bound:false,bp:false,shed:'none'},intro:'Choose how the API protects itself, then press <b>Run it</b>.',
+      controls(api,p,re){api.toggle('Limit the queue (100)',p.bound,v=>{p.bound=v;re();});api.toggle('Back-pressure',p.bp,v=>{p.bp=v;re();});
+        api.seg('Shed when overloaded',[['none','nothing'],['an','analytics'],['anr','analytics + recs']],p.shed,v=>{p.shed=v;re();});},
+      build(p,api){const drop=new Set(p.shed==='an'?['analytics']:p.shed==='anr'?['analytics','recs']:[]);let q=0,up=0,crashed=false,acc=0;const ok={},tot={};MIX.forEach(([k])=>{ok[k]=0;tot[k]=0;});let wait=0,waitMax=0;const fl=[];
+        return{step(dt,t){let inRate=0;MIX.forEach(([k,r])=>{tot[k]+=r*dt;if(!drop.has(k))inRate+=r;});
+            // back-pressure: the API only sends what the database can take; the rest waits upstream
+            let enter=inRate*dt;if(p.bp){up+=enter;enter=Math.min(up,200*dt);up-=enter;}
+            const share=inRate>0?enter/(inRate*dt):0;let refused=0;
+            if(!crashed){q+=enter;if(p.bound&&q>100){refused=q-100;q=100;}q-=Math.min(q,200*dt);if(!p.bound&&q>400){crashed=true;FX.burst(470,290,C.red,40,240);}
+              const f=enter>0?Math.max(0,1-refused/enter):1;MIX.forEach(([k,r])=>{if(!drop.has(k)&&!crashed)ok[k]+=r*dt*Math.min(1,share)*f;});}
+            wait=(q+up)/200;waitMax=Math.max(waitMax,wait);
+            acc+=dt*20;const now=api.now();while(acc>=1){acc--;const r=Math.random()*300;let k='checkout',c=0;for(const[m,w]of MIX){c+=w;if(r<c){k=m;break;}}
+              const dr=drop.has(k),bad=crashed||dr||(p.bound&&q>=99&&Math.random()<.33);fl.push({t0:now,d:.7,pts:[[150,290],[470,290],[800,290]],c:bad?C.red:k==='checkout'?C.green:C.blue,r:k==='checkout'?5:3.5,drop:bad?(dr?.25:.55):0});}},
+          draw(now){flyers(now,fl);server(150,290,{label:'API',sub:'300 req/s',w:120,st:'hot'});
+            if(drop.size)box(290,170,{label:'Shedder',sub:[...drop].join(' + '),c:C.amber,w:170,h:50});
+            box(470,290,{label:crashed?'OUT OF MEMORY':'Queue',sub:crashed?'':`${Math.round(q)} waiting${p.bound?' / 100':''}`,c:crashed?C.red:q>90?C.amber:C.edge,w:170,h:60,st:crashed?'fail':undefined});
+            meter(400,332,140,8,q/(p.bound?100:400),q>80?C.red:C.amber);db(820,290,{label:'Database',sub:'200/s',w:110,h:86});
+            if(p.bp)pill(`held upstream: ${Math.round(up)}`,150,390,{c:C.amber,z:12});
+            tx('● checkout',120,470,{z:12,c:C.green,al:'left'});tx('● other requests',230,470,{z:12,c:C.blue,al:'left'});},
+          hud(){const c=tot.checkout?ok.checkout/tot.checkout:1;return[['checkout ok',`${(c*100).toFixed(1)}%`,c>=.99?C.green:C.red],['wait',`${Math.round(wait*1000)} ms`,wait<=.25?C.green:C.red],['memory',crashed?'CRASHED':'ok',crashed?C.red:C.green]];},
+          score(){const c=ok.checkout/tot.checkout;if(crashed)return{stars:0,title:'Out of memory',msg:'An unlimited queue just grew until the service died. Put a limit on it, or stop accepting work you cannot do.'};
+            if(c>=.99&&waitMax<=.25)return{stars:3,title:'Checkout never flinched',msg:`Shedding analytics and recommendations brought traffic under the database's 200/s, so checkout kept flowing with almost no wait (${Math.round(waitMax*1000)} ms at worst). Graceful degradation.`};
+            if(c>=.95)return{stars:2,title:`${(c*100).toFixed(1)}% of checkouts, up to ${(waitMax).toFixed(1)} s wait`,msg:p.bp?'Back-pressure kept things from breaking, but the waiting just moved upstream. Drop the low-priority work.':'Close. Drop one more low-priority kind of request.'};
+            return{stars:1,title:`${(c*100).toFixed(1)}% of checkouts succeeded`,msg:'The queue was full, so checkouts were refused just like everything else. Protect the important requests by shedding the unimportant ones.'};}};}});})()});
 </script>
 <script>
 /* ============================================================
