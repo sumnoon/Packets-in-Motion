@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.png" width="128" height="128" alt="Packets in Motion logo: a P-shaped route with traveling packets">
+</p>
+
 # Packets in Motion
 
 ![Packets in Motion: system design, explained by watching it happen](assets/social-preview.png)
@@ -45,6 +49,8 @@ Every lesson ends with a hands-on challenge played on the same stage, scored wit
 The rest use the same kinds of mechanics: sort cards into boxes, put steps in order, or tune a system and run it.
 
 ## Visual language
+
+The project logo traces a **P** with a routing path and two traveling packets, using the course's blue, mint, and violet palette. Transparent logo assets and usage notes are in [assets/BRAND.md](assets/BRAND.md).
 
 - Servers are rounded rectangles, databases are cylinders, users are circles, and requests are glowing dots.
 - **Blue** = request · **green** = success / response · **red** = failure · **amber** = cached / queued.
