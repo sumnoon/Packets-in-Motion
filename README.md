@@ -1,12 +1,10 @@
 <p align="center">
-  <img src="assets/logo.png" width="128" height="128" alt="Packets in Motion logo: a P-shaped route with traveling packets">
+  <img src="assets/logo-256.png" width="128" height="128" alt="Packets in Motion logo: a P-shaped route with traveling packets">
 </p>
 
-# Packets in Motion
+<h1 align="center">Packets in Motion</h1>
 
-![Packets in Motion: system design, explained by watching it happen](assets/social-preview.png)
-
-**System design, explained by watching it happen.**
+<p align="center"><strong>System design, explained by watching it happen.</strong></p>
 
 An animated, interactive course that takes you from "how do two computers talk?" to consensus, distributed transactions and a full URL-shortener design. Every concept is taught through motion: glowing requests leave light trails between servers, caches fill up, servers fail and traffic reroutes. Then you solve a hands-on challenge for each lesson.
 
