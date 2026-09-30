@@ -7,7 +7,7 @@
 <style>
 :root{--bg:#0a0e16;--side:#0c111b;--panel:#121a29;--line:#222d44;--text:#e7ecf5;--dim:#8b96ab;--accent:#a78bfa;--blue:#4ea1ff;--green:#34d399;--red:#f87171;--amber:#fbbf24}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+html,body{margin:0;height:100%;background:radial-gradient(60% 50% at 72% 30%,rgba(60,90,170,.10),transparent 70%),radial-gradient(45% 45% at 15% 85%,rgba(110,80,170,.07),transparent 70%),var(--bg);background-attachment:fixed;color:var(--text);font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
 #app{display:grid;grid-template-columns:290px minmax(0,1fr);height:100vh}
 aside{background:var(--side);border-right:1px solid var(--line);overflow-y:auto;padding:22px 14px 30px}
@@ -35,7 +35,7 @@ h1{margin:6px 0 0;font-size:26px;font-weight:650;letter-spacing:-.015em;line-hei
 .btn.pri:hover{background:#b9a3ff}
 #menuBtn{display:none}
 .stageWrap{position:relative}
-.stage{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#0b1019}
+.stage{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#04060d;box-shadow:0 30px 70px -34px rgba(40,70,160,.45)}
 canvas{display:block;width:100%;aspect-ratio:1000/560;cursor:pointer}
 .controls{display:flex;align-items:center;gap:10px}
 .ic{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--panel);display:grid;place-items:center;cursor:pointer;flex:none}
@@ -48,7 +48,7 @@ canvas{display:block;width:100%;aspect-ratio:1000/560;cursor:pointer}
 .scrub input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;margin-top:-5px;box-shadow:0 0 0 4px rgba(167,139,250,.35)}
 .scrub input::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:#fff;box-shadow:0 0 0 4px rgba(167,139,250,.35)}
 .ticks{position:absolute;left:8px;right:8px;top:0;bottom:0;pointer-events:none;z-index:3}
-.ticks b{position:absolute;top:50%;width:3px;height:12px;margin:-6px 0 0 -1.5px;border-radius:2px;background:#0b1019;opacity:.9}
+.ticks b{position:absolute;top:50%;width:3px;height:12px;margin:-6px 0 0 -1.5px;border-radius:2px;background:#04060d;opacity:.9}
 .time{font-variant-numeric:tabular-nums;font-size:13px;color:var(--dim);width:92px;text-align:center;flex:none}
 select.ic{width:auto;padding:0 8px;font-size:13px;color:var(--text);appearance:none;-webkit-appearance:none;text-align:center}
 .ic.on{border-color:var(--accent);color:var(--accent)}
@@ -206,7 +206,7 @@ select.ic{width:auto;padding:0 8px;font-size:13px;color:var(--text);appearance:n
    ============================================================ */
 const cv=document.getElementById('cv'), g=cv.getContext('2d');
 const W=1000, H=560;
-const C={bg:'#0b1019',panel:'#131b2b',panel2:'#1a2338',edge:'#3b4a69',line:'#27334d',text:'#e7ecf5',dim:'#8f9ab0',faint:'#56627a',
+const C={bg:'#04060d',panel:'#131b2b',panel2:'#1a2338',edge:'#3b4a69',line:'#27334d',text:'#e7ecf5',dim:'#8f9ab0',faint:'#56627a',
   accent:'#a78bfa',blue:'#4ea1ff',green:'#34d399',red:'#f87171',amber:'#fbbf24'};
 const SANS='ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
 const MONO='ui-monospace,"Cascadia Mono",Consolas,Menlo,monospace';
@@ -223,7 +223,7 @@ const rnd=i=>{const s=Math.sin(i*127.1+311.7)*43758.5453;return s-Math.floor(s);
 function A(t,t0,t1=1e9,d=.6){const pin=clamp((t-t0)/d),pout=clamp((t-t1)/.5);return{a:Math.min(clamp(pin*1.7),1-eio(pout)),s:.72+.28*spr(pin)};}
 const V=(t,t0,t1)=>A(t,t0,t1).a;
 const L2=(a,b,p)=>[lerp(a[0],b[0],p),lerp(a[1],b[1],p)];
-function hexA(h,a){const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${n>>8&255},${n&255},${a})`;}
+function hexA(h,a){if(h[0]!=='#'||h.length!==7)return h;const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${n>>8&255},${n&255},${a})`;}
 function mixC(h1,h2,p){const a=parseInt(h1.slice(1),16),b=parseInt(h2.slice(1),16);const m=(s)=>Math.round(lerp(a>>s&255,b>>s&255,clamp(p)));return `rgb(${m(16)},${m(8)},${m(0)})`;}
 const loadCol=l=>l<.6?C.green:l<.85?C.amber:C.red;
 
@@ -293,10 +293,22 @@ function ln(pts,o={}){const{c=C.line,w=2,a=1,dash,p=1,arrow}=o;if(a<=.01||p<=0)r
   g.restore();}
 // Glowing dot
 function dot(x,y,c=C.blue,r=6,a=1){if(a<=.01)return;g.save();g.globalAlpha*=a;glowOn(c,r*3.2);g.fillStyle=c;g.beginPath();g.arc(x,y,r,0,7);g.fill();glowOff();g.fillStyle='rgba(255,255,255,.7)';g.beginPath();g.arc(x-r*.28,y-r*.28,r*.38,0,7);g.fill();g.restore();}
+// Long exposure: a moving packet drags a streak of light, white-hot at the head
+// and its own colour at the tail. After it arrives the streak burns out over
+// TRAIL_FADE seconds, so the stage briefly remembers where traffic went.
+// Everything is computed from t alone, so seek stays exact.
+const TRAIL_LEN=96, TRAIL_FADE=1.2;
+function streak(pts,e0,e1,c,r,a){if(e1-e0<.002||a<=.01)return;const L=plen(pts),tot=L[L.length-1],n=Math.max(3,Math.ceil((e1-e0)*tot/6)),P=[];
+  for(let i=0;i<=n;i++)P.push(along(pts,e0+(e1-e0)*i/n));
+  const[x0,y0]=P[0],[x1,y1]=P[n],gr=g.createLinearGradient(x0,y0,x1,y1);
+  gr.addColorStop(0,hexA(c,0));gr.addColorStop(.7,hexA(c,.6*a));gr.addColorStop(1,`rgba(255,250,240,${.9*a})`);
+  g.save();g.lineCap='round';g.lineJoin='round';g.lineWidth=r*1.2;g.strokeStyle=gr;g.shadowColor=c;g.shadowBlur=r*2.4;
+  g.beginPath();g.moveTo(x0,y0);for(let i=1;i<=n;i++)g.lineTo(P[i][0],P[i][1]);g.stroke();g.restore();}
 // Packet travelling along a path between t0 and t0+d. Returns raw progress.
-function pk(t,t0,d,pts,c=C.blue,o={}){const p=(t-t0)/d;if(p<=0||p>=1)return p;const e=o.linear?p:esin(p),r=o.r||6,a=o.a??1;
-  const L=plen(pts),tot=L[L.length-1];
-  for(let k=4;k>=1;k--){const q=e-k*7/tot;if(q>0){const[x,y]=along(pts,q);g.save();g.globalAlpha*=a*.13*(5-k)/4;g.fillStyle=c;g.beginPath();g.arc(x,y,r*.85,0,7);g.fill();g.restore();}}
+function pk(t,t0,d,pts,c=C.blue,o={}){const p=(t-t0)/d,r=o.r||6,a=o.a??1;
+  if(p>=1){const q=(t-t0-d)/TRAIL_FADE;if(q<1){const L=plen(pts),len=Math.min(1,TRAIL_LEN/L[L.length-1]);streak(pts,1-len*(1-q),1,c,r,a*(1-q)*(1-q));}return p;}
+  if(p<=0)return p;const e=o.linear?p:esin(p);
+  const L=plen(pts),tot=L[L.length-1];streak(pts,Math.max(0,e-TRAIL_LEN/tot),e,c,r,a);
   const[x,y]=along(pts,e);dot(x,y,c,r,a);
   if(o.lock){g.save();g.globalAlpha*=a;g.strokeStyle=C.accent;g.lineWidth=2;g.beginPath();g.arc(x,y,r+5,0,7);g.stroke();g.restore();}
   if(o.label)pill(o.label,x,y-(r+15),{c:o.lc||c,z:12,a:a*clamp(Math.min(p,1-p)*9)});
@@ -1747,7 +1759,20 @@ function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(window.deviceP
 const fmt=s=>{s=Math.max(0,s);return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');};
 function beatIndex(c,tt){let k=0;c.beats.forEach((b,i)=>{if(tt>=b[0])k=i;});return k;}
 
-function drawBackground(){g.fillStyle=C.bg;g.fillRect(0,0,W,H);g.fillStyle='rgba(255,255,255,.035)';for(let x=20;x<W;x+=40)for(let y=20;y<H;y+=40){g.fillRect(x-1,y-1,2,2);}}
+// The Memory Void: a blue-black void with two drifting fog banks, a soft pool of
+// light and motes that rise with time. Driven by the clock it is given, so a
+// paused lesson holds still and seek stays exact.
+const MOTES=Array.from({length:80},(_,i)=>({x:rnd(i+1)*W,y:rnd(i+201)*H,r:.5+rnd(i+401)*1.7,d:.25+rnd(i+601)*.75,a:.12+rnd(i+801)*.5,p:rnd(i+1001)*6.28}));
+const reduceMQ=matchMedia('(prefers-reduced-motion: reduce)');
+function drawVoid(clock){const tt=reduceMQ.matches?0:clock;g.fillStyle=C.bg;g.fillRect(0,0,W,H);
+  const fog=(x,y,rx,col)=>{const gr=g.createRadialGradient(x,y,0,x,y,rx);gr.addColorStop(0,col);gr.addColorStop(1,'rgba(4,6,13,0)');g.fillStyle=gr;g.fillRect(0,0,W,H);};
+  fog(640+60*Math.sin(tt*.07),330+20*Math.cos(tt*.05),460,'rgba(44,66,130,.30)');
+  fog(170+50*Math.cos(tt*.06),110+18*Math.sin(tt*.08),300,'rgba(90,64,150,.22)');
+  fog(500,300,380,'rgba(28,38,72,.30)');
+  g.fillStyle='rgba(143,166,214,.08)';g.fillRect(0,500,W,1);
+  MOTES.forEach(m=>{const x=((m.x+tt*6*m.d)%W+W)%W,y=((m.y-tt*9*m.d)%H+H)%H,a=m.a*(.65+.35*Math.sin(tt*.9+m.p));g.fillStyle=`rgba(236,242,255,${a.toFixed(3)})`;g.beginPath();g.arc(x,y,m.r*m.d+.3,0,7);g.fill();});
+  const v=g.createRadialGradient(W/2,H/2,H*.42,W/2,H/2,W*.72);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.55)');g.fillStyle=v;g.fillRect(0,0,W,H);}
+function drawBackground(){drawVoid(t);}
 function drawBeatTitle(c,tt){const k=beatIndex(c,tt),b=c.beats[k],a=clamp((tt-b[0])/.45),e=eio(a);
   g.save();g.globalAlpha=.25+.75*e;const chip=`${k+1}/${c.beats.length}`;const cw=tw(chip,12,700)+16;
   rr(26,22,cw,24,12);g.fillStyle=hexA(C.accent,.18);g.fill();g.strokeStyle=hexA(C.accent,.6);g.lineWidth=1.2;g.stroke();
