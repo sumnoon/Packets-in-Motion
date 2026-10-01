@@ -9,8 +9,10 @@ chal('capstone',{title:'Launch the shortener',goal:'Build it, then survive the l
         const X={u:70,rl:190,lb:310,app:450,cache:610,db:800,q:610,wk:800};const AY=k=>alive===1&&p.apps===1?240:150+k*(180/Math.max(1,p.apps-1));
         return{step(dt,t){const legit=t<6?1000:t<12?3000:2000,bot0=t>=12?2000:0;phase=t<6?'Launch':t<12?(t>=9?'Viral + a server dies':'Viral link'):'Bot attack';alive=t>=9?p.apps-1:p.apps;
             const bot=p.rl?bot0*.05:bot0,inc=legit+bot,cap=Math.max(0,alive)*1000,served=Math.min(inc,cap),sL=served*legit/inc;appU=cap?inc/cap:9;
-            const reads=sL*.95,writes=sL*.05,miss=p.cache?reads*.1:reads,clicks=p.queue?0:reads,dbCap=600*(1+p.rep),wr=writes+clicks;
-            const readOk=Math.min(miss,dbCap-Math.min(wr,600)),wOk=Math.min(wr,600),dbFail=(miss-Math.max(0,readOk))+(wr-wOk)*(clicks?reads/Math.max(wr,1):0);dbU=(miss+wr)/dbCap;
+            // ~100 clicks per new link. Writes (new links, and click counts unless queued) all hit the primary;
+            // reads that miss the cache share the primary's leftover capacity and every replica's.
+            const reads=sL*.99,writes=sL*.01,miss=p.cache?reads*.1:reads,clicks=p.queue?0:reads,dbCap=600*(1+p.rep),wr=writes+clicks;
+            const wOk=Math.min(wr,600),readOk=Math.min(miss,dbCap-wOk),dbFail=(miss-readOk)+(wr-wOk);dbU=(miss+wr)/dbCap;
             const good=Math.max(0,sL-Math.max(0,dbFail));tot+=legit*dt;bad+=(legit-good)*dt;
             let ms=15+(p.cache?3:25)+(appU>.95?45:appU>.8?15:0)+(dbU>.95?70:dbU>.8?20:0);lat.push([ms,legit*dt]);
             acc+=dt*inc/150;const now=api.now();while(acc>=1){acc--;const isBot=Math.random()<bot0/(legit+bot0);const blocked=isBot&&p.rl;const k=Math.floor(Math.random()*Math.max(1,alive));

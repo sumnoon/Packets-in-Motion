@@ -15,21 +15,21 @@ beats:[
 [0,'The goal: long URL → short link','A URL shortener turns a long link into a short code, then redirects everyone who opens it. Clicks (reads) outnumber new links (writes) about 100 to 1.'],
 [5,'Assemble the building blocks','DNS, an API gateway with rate limiting, a load balancer, two stateless app servers, a cache, a sharded database, and a queue for click analytics.'],
 [12,'Write path: shorten a URL','POST the long URL. An app server takes a unique numeric id, encodes it in base62 to get a short code, and stores code → URL in the right shard.'],
-[24,'Read path: first click (cache miss)','A visitor opens the short link. The app checks the cache, misses, reads the database, fills the cache and answers with a 301 redirect.'],
+[24,'Read path: first click (cache miss)','A visitor opens the short link. The app checks the cache, misses, reads the database, fills the cache and answers with a 302 redirect. Temporary, so the browser comes back through us and every click can be counted.'],
 [33,'Popular link: cache hits','Every later click is served from memory. The database barely notices, even when a link goes viral.'],
 [40,'Count clicks asynchronously','Each click drops a small event on a queue. An analytics worker counts them in the background, so redirects stay fast.'],
 [46,'App server dies → traffic reroutes','App 1 fails its health check. The load balancer sends everything to App 2. Because the app servers are stateless, nothing is lost.'],
 [51,'Abuse → rate limited','A bot floods the API. The gateway\'s token bucket lets a few through and rejects the rest with 429 before they reach the app servers.'],
 [56,'Every chapter, one system','Each box you just watched is a chapter of this course, working together.']],
 use:['Reads ≫ writes: cache aggressively and replicate for reads','Unique ids via a counter/ID service + base62 give short, collision-free codes','Shard by the short code; push analytics to a queue so the redirect path stays tiny'],
-cons:['301 (permanent) redirects are cached by browsers: great for speed, but clicks go uncounted; 302 counts every click','Sequential ids are guessable, so add randomness if links must be private','Custom aliases, link expiry and abuse/malware checks add real complexity']
+cons:['302 lets you count every click but costs a round trip each time; 301 (permanent) is cached by browsers, so it is faster but repeat clicks go uncounted','Sequential ids are guessable, so add randomness if links must be private','Custom aliases, link expiry and abuse/malware checks add real complexity']
 ,draw(t){
   // intro
   if(t<5.2){const a=A(t,.3,4.6).a;
     pill('https://www.example.com/articles/2026/09/system-design-intro?ref=newsletter&utm=spring',500,230,{c:C.blue,z:13,f:MONO,a});
     const p=P(t,1.4,2.4);ln([[500,258],[500,258+44*p]],{c:C.dim,a,arrow:true});
     pill(`sho.rt/${CODE}`,500,330,{c:C.green,z:20,f:MONO,a:a*V(t,2.2)});
-    tx('7 characters instead of 80+',500,372,{z:13,c:C.dim,a:a*V(t,3)});return;}
+    tx(`${CODE.length} characters instead of 86 · 7 characters fit 3.5 trillion links`,500,372,{z:13,c:C.dim,a:a*V(t,3)});return;}
   const app1Dead=t>46.9;
   // links
   const L=(pts,t0,o={})=>ln(pts,{a:V(t,t0)*.5,...o});
@@ -51,13 +51,13 @@ cons:['301 (permanent) redirects are cached by browsers: great for speed, but cl
   pk(t,13.6,1.8,fwd(0),C.blue,{label:'POST /shorten',r:6.5});pop(t,14.1,GW[0],GW[1]-46,'✓ rate ok',C.green,{z:12,d:1});
   if(t>15.5&&t<23){const a=V(t,15.5,22.6);panel(455,86,210,58,{a});tx(`id = ${ID.toLocaleString()}`,560,104,{z:12.5,f:MONO,a});tx(`base62 → ${CODE}`,560,126,{z:13.5,f:MONO,wt:750,c:C.green,a:a*V(t,16.4)});}
   pk(t,17.6,.8,a2d(0),C.blue,{label:`INSERT ${CODE}`});ring(t,18.4,D1[0],D1[1],C.green,40);
-  if(t>17.4&&t<20.4)pill(`hash(${CODE}) % 2 → shard 1`,800,392,{c:C.accent,z:12,a:V(t,17.5,20)});
+  if(t>17.4&&t<20.4)pill(`hash(${CODE}) → shard 1 (consistent hashing)`,800,392,{c:C.accent,z:12,a:V(t,17.5,20)});
   pk(t,18.6,.7,rev(a2d(0)),C.green,{r:5.5});pk(t,19.4,1.8,rev(fwd(0)),C.green,{label:`sho.rt/${CODE}`,r:6.5});
   if(t>21.2&&t<24)pill(`✓ sho.rt/${CODE}`,U[0]-20,U[1]-56,{c:C.green,z:12.5,al:'left',f:MONO,a:V(t,21.2,23.7)});
   // ---- read path (miss)
   pk(t,24.3,1.8,fwd(1),C.blue,{label:`GET /${CODE}`,r:6.5});pk(t,26.2,.6,a2c(1),C.blue,{r:5.5});pop(t,26.8,CA[0],CA[1]-44,'MISS',C.red,{d:1});
   pk(t,26.9,.6,rev(a2c(1)),C.red,{r:4.5});pk(t,27.6,.7,a2d(1),C.blue,{r:5.5});pk(t,28.4,.7,rev(a2d(1)),C.green,{r:5.5});
-  pk(t,29.2,.6,a2c(1),C.amber,{label:'SET'});pk(t,29.3,1.8,rev(fwd(1)),C.green,{label:'301 → long URL',r:6.5});
+  pk(t,29.2,.6,a2c(1),C.amber,{label:'SET'});pk(t,29.3,1.8,rev(fwd(1)),C.green,{label:'302 → long URL',r:6.5});
   if(t>29.8)pill(`${CODE} → long URL`,CA[0],CA[1]+46,{c:C.amber,z:11.5,f:MONO,a:V(t,29.8)});
   if(t>31&&t<33.5)pill('≈ 25 ms',U[0]-20,U[1]-56,{c:C.blue,z:12.5,al:'left',a:V(t,31.1,33.2)});
   // ---- hits, analytics

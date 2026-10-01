@@ -108,6 +108,15 @@ const runWith = (id, set, seconds) => {
   r.click(/run|ship|chaos/i).step(seconds);
   return r.result;
 };
+test('capstone: URL shortener needs every building block', () => {
+  const ideal = [[/app servers/i, 4], [/cache/i, true], [/queue/i, true], [/limiter/i, true]];
+  assert.equal(runWith('capstone', ideal, 19).stars, 3);
+  const without = re => ideal.filter(([l]) => l.source !== re.source);
+  assert.ok(runWith('capstone', without(/queue/i), 19).stars < 3, 'click counts written synchronously swamp the database');
+  assert.ok(runWith('capstone', without(/limiter/i), 19).stars < 3, 'the bot attack gets through without a limiter');
+  assert.ok(runWith('capstone', without(/cache/i), 19).stars < 3, 'viral reads need a cache');
+  assert.ok(runWith('capstone', [[/app servers/i, 3], ...ideal.slice(1)], 19).stars < 3, 'no spare server when one dies');
+});
 test('capstone: chat app has a 3-star design', () => {
   assert.equal(runWith('capstone-chat', [[/gateways/i, 4], [/shards/i, 3], [/pub\/sub/i, true], [/push/i, true], [/resume/i, true]], 17).stars, 3);
   assert.equal(runWith('capstone-chat', [[/gateways/i, 4], [/shards/i, 3], [/pub\/sub/i, true], [/push/i, true]], 17).stars, 2);
