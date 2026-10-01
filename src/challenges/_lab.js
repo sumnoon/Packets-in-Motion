@@ -49,7 +49,10 @@ function labGame(o){return api=>{
   const snap=v=>Math.round(v/10)*10;
   const clampIn=(n,x,y)=>{const[w,h]=sizeOf(n);return[clamp(snap(x),LAB_BOARD.x+w/2,LAB_BOARD.x+LAB_BOARD.w-w/2),clamp(snap(y),LAB_BOARD.y+h/2+14,LAB_BOARD.y+LAB_BOARD.h-h/2-16)];};
   const free=(x,y,ign)=>G.nodes.every(n=>n===ign||Math.abs(n.x-x)>120||Math.abs(n.y-y)>70);
-  function slotFor(kind){const col=o.columns&&o.columns[kind]||520;for(let d=0;d<8;d++)for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx+d*0,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
+  // columns: {kind: x} or {kind: [x, preferred y]}
+  function slotFor(kind){const cc=o.columns&&o.columns[kind],col=(Array.isArray(cc)?cc[0]:cc)||520,y0=Array.isArray(cc)?cc[1]:null;
+    if(y0!=null&&free(col,y0))return[col,y0];
+    for(let d=0;d<8;d++)for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx+d*0,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
   function add(kind,x,y){if(!canAdd(kind)){FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
     const twin=K[kind].clone&&G.of(kind)[0];   // a new copy of a stateless server joins the pool with the same wires
     const n={id:'n'+(++G.seq),kind,x:0,y:0};G.nodes.push(n);if(x==null)[x,y]=slotFor(kind);[n.x,n.y]=clampIn(n,x,y);

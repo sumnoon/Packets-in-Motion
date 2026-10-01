@@ -3341,7 +3341,10 @@ function labGame(o){return api=>{
   const snap=v=>Math.round(v/10)*10;
   const clampIn=(n,x,y)=>{const[w,h]=sizeOf(n);return[clamp(snap(x),LAB_BOARD.x+w/2,LAB_BOARD.x+LAB_BOARD.w-w/2),clamp(snap(y),LAB_BOARD.y+h/2+14,LAB_BOARD.y+LAB_BOARD.h-h/2-16)];};
   const free=(x,y,ign)=>G.nodes.every(n=>n===ign||Math.abs(n.x-x)>120||Math.abs(n.y-y)>70);
-  function slotFor(kind){const col=o.columns&&o.columns[kind]||520;for(let d=0;d<8;d++)for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx+d*0,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
+  // columns: {kind: x} or {kind: [x, preferred y]}
+  function slotFor(kind){const cc=o.columns&&o.columns[kind],col=(Array.isArray(cc)?cc[0]:cc)||520,y0=Array.isArray(cc)?cc[1]:null;
+    if(y0!=null&&free(col,y0))return[col,y0];
+    for(let d=0;d<8;d++)for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx+d*0,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
   function add(kind,x,y){if(!canAdd(kind)){FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
     const twin=K[kind].clone&&G.of(kind)[0];   // a new copy of a stateless server joins the pool with the same wires
     const n={id:'n'+(++G.seq),kind,x:0,y:0};G.nodes.push(n);if(x==null)[x,y]=slotFor(kind);[n.x,n.y]=clampIn(n,x,y);
@@ -3772,32 +3775,69 @@ chal('indexing',{title:'Find the row',goal:'Walk down the index to one user id i
       key(k,now){const j=+k-1;if(!(j>=0))return;if(pageRows){if(j<pageRows.length)this.click(150+j*140,300,now);}else if(j<4){const K=kids()[j];this.click(K.x+K.w/2,K.y,now);}}};}});
 
 /* ---------------- 9. REPLICATION: build it, then survive the crash ---------------- */
-chal('replication',{title:'Keep it serving',goal:'Handle 150 requests/s (70% reads). Each node takes 60/s. Mid-run the leader crashes: click a follower (or press its number) to promote it. Stay above 95% success.',
-  hint:'Writes can only go to the leader. Spread the reads across followers. After a promotion you lose one follower, so keep a spare.',
-  make:simGame({dur:14,defaults:{f:1,reads:false},intro:'Choose followers and where reads go. Be ready: when the leader dies, click a follower (or press <kbd>1</kbd>–<kbd>3</kbd>) fast.',
-    controls(api,p,re){api.slider('Followers',0,3,1,p.f,v=>`${v}`,v=>{p.f=v;re();});api.toggle('Send reads to followers',p.reads,v=>{p.reads=v;re();});},
-    build(p,api){const L={x:560,y:130,role:'leader',alive:true},F=Array.from({length:p.f},(_,k)=>({x:p.f===1?560:360+k*(400/Math.max(1,p.f-1)),y:370,role:'follower',alive:true}));
-      const nodes=[L,...F];let ok=0,fail=0,crash=false,need=false,crashAt=0,down=0,acc=0;const fl=[];const APP=[150,250];
-      const leader=()=>nodes.find(n=>n.role==='leader'&&n.alive);
-      function promote(f){if(!f)return;f.role='leader';need=false;FX.burst(f.x,f.y,C.green,30,220);FX.text(f.x,f.y-70,'Promoted!',C.green);api.status('New leader promoted. Keep it serving…');}
-      return{step(dt,t){if(!crash&&t>=6){crash=true;L.alive=false;need=!!F.length;crashAt=t;FX.burst(L.x,L.y,C.red,30);if(need)api.status(`<span class="bad">Leader down!</span> Promote a follower: press <kbd>1</kbd>${F.length>1?`–<kbd>${F.length}</kbd>`:''} or click it.`);}
-          const ld=leader();if(!ld)down+=dt;const fol=nodes.filter(n=>n.role==='follower'&&n.alive);
-          const W_=45,Rd=105;let wOk=ld?Math.min(W_,60):0;let rd=0;if(p.reads&&fol.length){rd=Math.min(Rd,fol.length*60);wOk=ld?Math.min(W_,60):0;}else if(ld){const cap=60-wOk;rd=Math.min(Rd,Math.max(0,cap));}
-          ok+=(wOk+rd)*dt;fail+=(150-wOk-rd)*dt;
-          acc+=dt*18;const now=api.now();while(acc>=1){acc--;const isW=Math.random()<.3;let tgt=isW?ld:(p.reads&&fol.length?fol[Math.floor(Math.random()*fol.length)]:ld);
-            const bad=!tgt||(isW?0:Math.random()>rd/Rd);fl.push({t0:now,d:.6,pts:[APP,tgt?[tgt.x,tgt.y]:[L.x,L.y]],c:bad?C.red:isW?C.amber:C.blue,r:4,drop:bad?.8:0});}},
-        draw(now,running){flyers(now,fl);server(APP[0],APP[1],{label:'App',sub:'150 req/s',w:110});
-          nodes.forEach((n,k)=>db(n.x,n.y,{label:n.role==='leader'?'Leader':`Follower ${k}`,sub:n.alive?(n.role==='leader'?'writes':'reads'):'',st:n.alive?(n.role==='leader'?'acc':'ok'):'fail',col:n.role==='leader'?C.accent:undefined,w:96,h:84}));
-          F.forEach(f=>{if(f.alive&&L.alive)ln([[L.x,L.y+44],[f.x,f.y-44]],{c:hexA(C.accent,.4),dash:[4,6]});});
-          if(need){F.forEach((f,k)=>{if(f.alive)keycap(String(k+1),f.x-58,f.y-38,{c:C.red});});if(Math.sin(now*10)>-.2)tx('Leader down! Click a follower (or press its number) to promote it',W/2,500,{z:18,wt:800,c:C.red});}
-          tx('writes',80,470,{z:11,c:C.amber,al:'left'});tx('reads',80,490,{z:11,c:C.blue,al:'left'});},
-        hud(){const s=ok+fail?ok/(ok+fail):1;return[['success',`${(s*100).toFixed(1)}%`,s>=.95?C.green:C.red],['no leader for',`${down.toFixed(1)} s`,down<1.5?C.green:C.red]];},
-        down(x,y,now,running){if(!need||!running)return;promote(F.find(q=>q.alive&&Math.abs(x-q.x)<60&&Math.abs(y-q.y)<50));},
-        key(k,now,running){if(!need||!running)return;const f=F[+k-1];if(f&&f.alive)promote(f);},
-        score(){const s=ok/(ok+fail);if(s>=.95)return{stars:3,title:`${(s*100).toFixed(1)}% served`,msg:`Reads spread over followers, a quick promotion (${down.toFixed(1)} s without a leader) and a spare follower left afterwards. That is textbook replication.`};
-          if(s>=.85)return{stars:2,title:`${(s*100).toFixed(1)}% served`,msg:p.f<3?'After the promotion you ran short of followers for all the reads. Keep a spare.':'Promote faster, or send reads to followers.'};
-          if(s>=.6)return{stars:1,title:`${(s*100).toFixed(1)}% served`,msg:'One node cannot take everything. Add followers and move reads onto them.'};
-          return{stars:0,title:'Mostly down',msg:'A single database had to do all the work, and it died. Add followers.'};}};}})});
+// You build it on the board: app → leader (writes) and followers (reads), leader → followers (replication),
+// and optionally a failover manager watching the leader. 150 requests/s, 30% writes; each node takes 60/s.
+// The leader crashes at 6 s. A failover manager wired to the leader and to followers promotes a
+// replicating follower 1 s later and points writes at it; without one there is no leader again.
+(function(){
+const R=150,WRITES=45,READS=105,CAP=60,PROMOTE=1;
+chal('replication',{title:'Keep it serving',goal:'Build it yourself: 150 requests/s (30% writes), each database node takes 60/s, and the leader crashes halfway. Serve at least 95% of requests and spend at most $6/h.',
+  hint:'Writes go to the leader; spread reads over followers that replicate from it. A failover manager promotes a follower when the leader dies, and that costs you a follower, so keep a spare.',
+  make:labGame({id:'replication',budget:6,dur:14,scale:12,
+    intro:'The app sends writes and reads. Add a leader database and followers, wire the leader to each follower so it copies the data, and decide where reads go.',
+    fixedKinds:{app:{label:'App',shape:'server',w:110,h:56,sub:'150 req/s'}},
+    fixed:[{kind:'app',x:90,y:250,label:'App'}],
+    kinds:{
+      leader:{label:'Leader database',short:'Leader',cost:2,max:1,shape:'db',w:100,h:76,sub:'writes · 60/s'},
+      follower:{label:'Follower database',short:'Follower',cost:1,max:3,shape:'db',w:90,h:58,sub:'reads · 60/s',clone:true},
+      failover:{label:'Failover manager',short:'Failover',cost:1,max:1,shape:'box',c:C.amber,w:120,h:48,sub:'promotes a follower'}},
+    columns:{leader:[420,190],follower:740,failover:[420,360]},
+    links:{app:['leader','follower'],leader:['follower'],failover:['leader','follower']},
+    check(G){const a=G.of('app')[0];if(!G.out(a,['leader']).length)return['wire the App to a leader database: every write goes there.'];
+      const L=G.of('leader')[0],stale=G.of('follower').find(f=>!G.inn(f,['leader']).length);if(stale)return['wire the leader to every follower, or that follower never gets the data.'];
+      const fm=G.of('failover')[0];if(fm&&!G.out(fm,['leader']).length)return['wire the failover manager to the leader so it notices when it dies.'];
+      if(fm&&!G.out(fm,['follower']).length)return['wire the failover manager to the followers it may promote.'];
+      return[];},
+    sub(n,G,S){if(S&&n.id===S.lead&&n.kind==='follower')return'promoted · writes';return null;},
+    init(G){const L=G.of('leader')[0];return{lead:L?L.id:null,crashAt:null,dead:new Set(),total:0,fail:0,why:{nolead:0,reads:0,stale:0,leader:0}};},
+    step(S,G,dt,t){const phase=t<6?'Steady traffic':t<6+PROMOTE?'The leader dies':S.lead&&!S.dead.has(S.lead)?'Running on the new leader':'No leader';
+      const app=G.of('app')[0],L0=G.of('leader')[0],fm=G.of('failover')[0];
+      if(t>=6&&S.crashAt==null){S.crashAt=t;if(L0){S.dead.add(L0.id);FX.burst(L0.x,L0.y,C.red,30,220);labMark(L0,'crashed',C.red);}}
+      // the failover manager promotes a follower that was copying the leader
+      if(S.crashAt!=null&&t>=S.crashAt+PROMOTE&&S.lead===(L0&&L0.id)){const cand=fm&&L0&&G.out(fm,['leader']).includes(L0)?G.out(fm,['follower']).find(f=>G.inn(f,['leader']).includes(L0)):null;
+        if(cand){S.lead=cand.id;FX.burst(cand.x,cand.y,C.green,30,220);labMark(cand,'promoted',C.green);}else S.lead=null;}
+      const lead=S.lead&&!S.dead.has(S.lead)?G.nodes.find(n=>n.id===S.lead):null;
+      const flows=[],load={},used={},F=(a,b,r,isBad,c)=>{if(a&&b&&r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});};
+      const fail=(why,r)=>{S.why[why]+=r*dt;S.fail+=r*dt;};
+      // writes: to the leader (the failover manager points the app at a promoted one)
+      const writesTo=lead&&(lead===L0?G.out(app,['leader']).includes(L0):true)?lead:null;
+      if(writesTo){used[lead.id]=WRITES;F(app,lead,WRITES,false,C.amber);}else{fail(L0&&G.out(app,['leader']).length?'nolead':'leader',WRITES);if(L0&&G.out(app,['leader']).length)F(app,L0,WRITES,true,C.amber);}
+      // reads: spread over the live followers the app is wired to, otherwise the leader
+      const replicating=f=>L0&&G.inn(f,['leader']).includes(L0);
+      const rs=G.out(app,['follower']).filter(f=>!S.dead.has(f.id)&&f.id!==S.lead);
+      const tgt=rs.length?rs:lead?[lead]:[];
+      if(!tgt.length)fail('nolead',READS);
+      tgt.forEach(n=>{const share=READS/tgt.length,room=Math.max(0,CAP-(used[n.id]||0)),okR=Math.min(share,room);used[n.id]=(used[n.id]||0)+share;
+        if(n.kind==='follower'&&!replicating(n)){fail('stale',share);F(app,n,share,true,C.blue);return;}
+        if(share>okR)fail(n===lead?'leader':'reads',share-okR);F(app,n,share,share>okR+.01,C.blue);});
+      // replication traffic from the current leader
+      if(lead)G.of('follower').filter(f=>f!==lead&&!S.dead.has(f.id)&&replicating(f)).forEach(f=>F(lead,f,WRITES,false,C.accent));
+      G.nodes.filter(n=>n.kind==='leader'||n.kind==='follower').forEach(n=>{if(!S.dead.has(n.id))load[n.id]=(used[n.id]||0)/CAP;});
+      S.total+=R*dt;
+      return{flows,load,dead:S.dead,phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S){const s=S.total?1-S.fail/S.total:1;return[['served',`${(s*100).toFixed(1)}%`,s>=.95?C.green:C.red]];},
+    score(S,G,cost){const s=S.total?1-S.fail/S.total:0,pct=(s*100).toFixed(1),top=Object.entries(S.why).sort((a,b)=>b[1]-a[1])[0];
+      let advice={nolead:'After the leader died, nobody took over and every write failed. Add a failover manager wired to the leader and the followers.',
+        reads:G.of('failover').length&&G.of('follower').length<3?'After the promotion one follower became the leader, and the rest could not carry all the reads. Keep a spare follower.':'The followers could not carry all the reads (60/s each): add followers and send reads to them.',
+        stale:'A follower that is not wired from the leader never receives the data, so its reads are wrong. Wire the leader to every follower.',
+        leader:'The leader had to do too much: writes plus reads are more than 60/s. Add followers and send reads to them.'}[top[0]];
+      if(!G.of('follower').length)advice='One database had to take every read and every write, and when it died there was nothing left. Add followers for the reads and a failover manager.';
+      if(s>=.95&&cost<=6)return{stars:3,title:`${pct}% served`,msg:'Writes on the leader, reads spread over followers, an automatic promotion when the leader died, and a spare follower left afterwards. That is textbook replication.'};
+      if(s>=.95)return{stars:2,title:`${pct}% served, at $${cost}/h`,msg:'It works, but costs more than it needs to.'};
+      if(s>=.85)return{stars:2,title:`${pct}% served`,msg:advice};
+      if(s>=.6)return{stars:1,title:`${pct}% served`,msg:advice};
+      return{stars:0,title:'Mostly down',msg:advice};}})});
+})();
 
 /* ---------------- 9b. QUORUMS: tune N, W and R ---------------- */
 // replicas answer in this order (ms); the fastest one dies halfway through the run
@@ -4064,14 +4104,60 @@ chal('queues-pubsub',{title:'Survive the order surge',goal:'Build it yourself: o
 })();
 
 /* ---------------- 15. SYNC vs ASYNC: make checkout fast ---------------- */
-chal('sync-async',{title:'Make checkout fast',goal:'For each task in "Place order", decide: do it now, before replying, or later in a background worker. The customer must never be misled.',
-  hint:'Only what the customer must know before the page says "Order placed" belongs in "now". Everything else can happen seconds later.',
-  make:sortGame({bins:[{id:'now',label:'Now (they wait)',sub:'before replying',c:C.amber},{id:'later',label:'Later (worker)',sub:'after replying',c:C.green}],
-    cards:[{t:'Check the cart is valid · 50 ms',b:'now',why:'You cannot accept an invalid order.',ms:50},{t:'Charge the card · 400 ms',b:'now',why:'The customer must know if payment failed before you say "done".',ms:400},
-      {t:'Save the order · 30 ms',b:'now',why:'If you have not saved it, the order does not exist yet.',ms:30},{t:'Send confirmation email · 800 ms',b:'later',why:'An email a few seconds later is fine.',ms:800},
-      {t:'Update recommendations · 1200 ms',b:'later',why:'Nobody waits for recommendations.',ms:1200},{t:'Generate PDF invoice · 900 ms',b:'later',why:'The invoice can arrive by email later.',ms:900},{t:'Notify the warehouse · 300 ms',b:'later',why:'The warehouse can pick it up from a queue.',ms:300}],
-    done(miss,n){return miss===0?{stars:3,title:'480 ms instead of 3.7 s',msg:'Only three tasks (validate, charge, save) make the customer wait. Everything else happens in the background, so the reply is about 8× faster.'}:
-      {stars:miss<=1?2:1,title:`${miss} task${miss>1?'s':''} in the wrong lane`,msg:'Doing slow work before replying makes everyone wait. Doing the payment later lies to the customer. Find the balance.'};}})});
+// You build it on the board. Checkout must get seven jobs done for every order. A job wired straight
+// from Checkout runs before the reply (the customer waits for it); a job wired from the queue runs
+// after the reply. 5 orders a second; the email service is down from 4 s to 7.5 s; 5% of carts
+// are invalid and 10% of cards are declined.
+(function(){
+const JOBS={cart:{label:'Cart check',ms:50,must:'You cannot accept an invalid cart: check it before saying "Order placed".',bad:.05},
+  pay:{label:'Payment',ms:400,must:'Customers were told "Order placed" before their card was declined: charge the card before replying.',bad:.10},
+  save:{label:'Orders database',ms:30,must:'Customers were told "Order placed" before the order was saved: save it before replying.',bad:.20},
+  email:{label:'Email',ms:800},recs:{label:'Recommendations',ms:1200},invoice:{label:'PDF invoice',ms:900},warehouse:{label:'Warehouse',ms:300}};
+const IDS=Object.keys(JOBS),RATE=5;
+chal('sync-async',{title:'Make checkout fast',goal:'Build it yourself: Checkout must get seven jobs done for every order. Wire a job straight from Checkout to do it before replying, or through a queue to do it afterwards. Reply within 600 ms, never mislead a customer, and survive the email service going down.',
+  hint:'Only what the customer must know before the page says "Order placed" belongs on a direct wire: checking the cart, charging the card and saving the order. Everything else goes through the queue.',
+  make:labGame({id:'sync-async',budget:8,dur:12,scale:1,runLabel:'Open checkout',
+    intro:'Checkout is on the left. A job wired straight from it happens before the customer sees "Order placed". A job wired from a queue happens a moment later. Every job must be wired somewhere.',
+    fixedKinds:{checkout:{label:'Checkout',shape:'server',w:116,h:56,sub:'5 orders/s'}},
+    fixed:[{kind:'checkout',x:96,y:250,label:'Checkout'}],
+    kinds:Object.assign({queue:{label:'Queue',short:'Queue',cost:1,max:1,shape:'box',c:C.amber,w:110,h:54,sub:'jobs for later'}},
+      Object.fromEntries(IDS.map(k=>[k,{label:JOBS[k].label,short:JOBS[k].label.replace('Recommendations','Recs').replace('Orders database','Orders DB'),cost:1,max:1,shape:k==='save'?'db':'box',c:k==='save'?undefined:C.green,w:k==='save'?92:118,h:k==='save'?64:46,sub:`${JOBS[k].ms} ms`}]))),
+    columns:{queue:300,cart:600,pay:600,save:600,email:860,recs:860,invoice:860,warehouse:860},
+    links:{checkout:['queue',...IDS],queue:IDS},
+    check(G){const c=G.of('checkout')[0];if(!G.out(c).length)return['wire Checkout to the jobs it must do.'];
+      const q=G.of('queue')[0];if(q&&G.inn(q).length&&!G.out(q).length)return['wire the queue to the jobs it should run later.'];
+      const off=IDS.filter(k=>!G.of(k).length||!G.inn(G.of(k)[0]).length);if(off.length)return[`every job must be wired: ${off.map(k=>JOBS[k].label).join(', ')} ${off.length>1?'are':'is'} not.`];
+      return[];},
+    sub(n,G,S){if(n.kind==='queue'&&S)return`${Math.round(S.backlog)} waiting`;if(n.kind==='email'&&S&&S.down)return'DOWN';if(n.kind==='checkout'&&S)return`replies in ${S.ms} ms`;return null;},
+    init(){return{n:0,acc:0,ms:0,down:false,backlog:0,failed:0,misled:{},skipped:{},slow:0};},
+    step(S,G,dt,t){const down=t>=4&&t<7.5,phase=t<4?'Customers checking out':down?'The email service dies':'Email is back';S.down=down;
+      const c=G.of('checkout')[0],q=G.out(c,['queue'])[0],job=k=>G.of(k)[0];
+      const sync=IDS.filter(k=>job(k)&&G.out(c).includes(job(k))),later=q?IDS.filter(k=>job(k)&&G.out(q).includes(job(k))&&!sync.includes(k)):[];
+      const ms=sync.reduce((a,k)=>a+JOBS[k].ms,0)+(q?5:0);S.ms=ms;
+      const orders=RATE*dt;S.n+=orders;
+      // a direct call to a dead service fails the whole checkout
+      const failing=down&&sync.includes('email');if(failing)S.failed+=orders;
+      if(ms>600)S.slow+=orders;
+      later.forEach(k=>{if(JOBS[k].bad)S.misled[k]=(S.misled[k]||0)+orders*JOBS[k].bad;});
+      IDS.filter(k=>!sync.includes(k)&&!later.includes(k)).forEach(k=>S.skipped[k]=(S.skipped[k]||0)+orders);
+      // the queue holds email jobs while the service is down
+      if(later.includes('email')){if(down)S.backlog+=orders;else S.backlog=Math.max(0,S.backlog-RATE*4*dt);}
+      const flows=[],load={};
+      sync.forEach(k=>flows.push({a:c.id,b:job(k).id,rate:RATE,bad:(k==='email'&&down)||(ms>600),c:C.blue}));
+      if(q&&later.length){flows.push({a:c.id,b:q.id,rate:RATE,bad:false,c:C.amber});later.forEach(k=>{if(!(k==='email'&&down))flows.push({a:q.id,b:job(k).id,rate:k==='email'&&S.backlog>0?RATE*4:RATE,bad:false,c:C.green});});}
+      load[c.id]=ms/600;if(q)load[q.id]=Math.min(1.5,S.backlog/40);
+      return{flows,load,dead:new Set(down&&job('email')?[job('email').id]:[]),phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S){const m=Object.values(S.misled).reduce((a,b)=>a+b,0);return[['reply time',`${S.ms} ms`,S.ms<=600?C.green:C.red],['misled',`${Math.round(m)}`,m<.5?C.green:C.red],['failed',`${Math.round(S.failed)}`,S.failed<.5?C.green:C.red]];},
+    score(S,G,cost){const misled=Object.entries(S.misled).filter(([k,v])=>v>.01),skipped=Object.keys(S.skipped).filter(k=>S.skipped[k]>.01);
+      const issues=[];
+      if(skipped.length)issues.push(`${skipped.map(k=>JOBS[k].label).join(', ')} never happened: every job must be wired, directly or through the queue.`);
+      misled.forEach(([k])=>issues.push(JOBS[k].must));
+      if(S.failed>.5)issues.push('While the email service was down, every checkout that waited for it failed. Send email through the queue: it waits there until the service is back.');
+      if(S.ms>600)issues.push(`Customers waited ${S.ms} ms. Move the jobs nobody waits for (email, recommendations, invoice, warehouse) to the queue.`);
+      if(!issues.length)return{stars:3,title:`Replies in ${S.ms} ms`,msg:'Check the cart, charge the card, save the order, reply. Everything else ran from the queue, so the email outage cost nothing: the jobs waited and went out when it came back.'};
+      const n=issues.length,wrong=skipped.length||misled.length;
+      return{stars:wrong?(n>2?0:1):n>1?1:2,title:wrong?(misled.length?'Customers were misled':'Jobs went missing'):`${n} thing${n>1?'s':''} to fix`,msg:issues.join(' ')};}})});
+})();
 
 /* ---------------- 15b. STREAMS: partitions and consumers ---------------- */
 // 1,200 events/s spread over the partitions; a consumer handles 400/s; consumer 1 dies at 6 s
@@ -4384,11 +4470,67 @@ chal('microservices',{title:'Draw the service boundaries',goal:'Split six featur
       key(k){if(checked)return;const f=F[+k-1];if(!f)return;let b=f.box;for(let n=0;n<4;n++){b=b>=2?-1:b+1;if(b<0||F.filter(q=>q.box===b&&q!==f).length<3)break;}f.box=b;say();}};}});
 
 /* ---------------- 20. EVENT-DRIVEN: subscribe the services ---------------- */
-chal('event-driven',{title:'Wire up the events',goal:'Each service reacts to one event. Subscribe it to the right one. Nobody calls anybody directly.',
-  hint:'Ask: what just happened that this service cares about?',
-  make:sortGame({bins:[{id:'op',label:'OrderPlaced',sub:'an order came in',c:C.blue},{id:'pf',label:'PaymentFailed',sub:'the card was declined',c:C.red},{id:'is',label:'ItemShipped',sub:'the box left the warehouse',c:C.green}],
-    cards:[{t:'Send the order confirmation email',b:'op',why:'The confirmation goes out when the order is placed.'},{t:'Reserve the items in stock',b:'op',why:'Reserve stock as soon as the order exists.'},{t:'Ask the customer to update their card',b:'pf',why:'Only needed when payment fails.'},
-      {t:'Release the reserved stock',b:'pf',why:'If payment failed, free the items for others.'},{t:'Text the tracking link',b:'is',why:'A tracking link only exists once the box has shipped.'},{t:'Ask for a review 7 days later',b:'is',why:'Ask after delivery is under way.'},{t:'Award loyalty points',b:'op',why:'Points for placing an order, added with zero changes to the order service. That is the magic.'}]})});
+// You build it on the board. Three event topics are published by other services; you add the services
+// that react and subscribe each to the events it needs by wiring topic → service. Nobody calls anybody.
+// Events flow live: a service that misses an event it needs, or reacts to one it should not, is a mistake.
+// The email service is down from 5 s to 7 s; its events wait in its subscription.
+(function(){
+const TOPICS={placed:{label:'OrderPlaced',sub:'an order came in',c:C.blue,rate:6},failed:{label:'PaymentFailed',sub:'a card was declined',c:C.red,rate:1.5},shipped:{label:'ItemShipped',sub:'a box left the warehouse',c:C.green,rate:4}};
+// what each service needs, and why reacting to the other events would be wrong
+const NEEDS={email:{placed:'The confirmation email goes out when the order is placed.'},
+  stock:{placed:'Stock is reserved as soon as the order exists.',failed:'When payment fails, the reserved items must be released for others.'},
+  card:{failed:'Customers are asked to update their card only when payment fails.'},
+  sms:{shipped:'A tracking link only exists once the box has shipped.'},
+  reviews:{shipped:'Ask for a review after the box is on its way, not when the order is placed.'},
+  points:{placed:'Loyalty points are awarded for placing an order, with zero changes to the order service.'}};
+const WRONG={email:'Email sent an order confirmation for an event that was not a new order.',stock:'Inventory reserved or released stock at the wrong moment.',
+  card:'Customers were asked to update a card that was never declined.',sms:'Tracking texts went out before anything shipped.',
+  reviews:'Reviews were requested before anything shipped.',points:'Points were awarded for something other than placing an order.'};
+chal('event-driven',{title:'Wire up the events',goal:'Build it yourself: add the services and subscribe each one to the events it must react to. Every service gets exactly what it needs, and nobody calls anybody directly.',
+  hint:'Ask of each service: what just happened that it cares about? Inventory cares about two events: reserve stock when an order is placed, release it when payment fails.',
+  make:labGame({id:'event-driven',budget:6,dur:12,scale:1.2,runLabel:'Start the events',
+    intro:'Three kinds of events stream in on the left. Drag in the services that react, then wire each event to the services that care about it.',
+    fixedKinds:Object.fromEntries(Object.entries(TOPICS).map(([k,v])=>[k,{label:v.label,shape:'box',c:v.c,w:176,h:52,sub:v.sub}])),
+    fixed:[{kind:'placed',x:110,y:130,label:'OrderPlaced'},{kind:'failed',x:110,y:250,label:'PaymentFailed'},{kind:'shipped',x:110,y:370,label:'ItemShipped'}],
+    kinds:{
+      email:{label:'Email service',short:'Email',cost:1,max:1,shape:'server',w:152,h:48,sub:'order confirmation'},
+      stock:{label:'Inventory',short:'Inventory',cost:1,max:1,shape:'server',w:152,h:48,sub:'reserve / release'},
+      card:{label:'Card alerts',short:'Card alerts',cost:1,max:1,shape:'server',w:152,h:48,sub:'update your card'},
+      sms:{label:'Tracking SMS',short:'Tracking',cost:1,max:1,shape:'server',w:152,h:48,sub:'text the link'},
+      reviews:{label:'Reviews',short:'Reviews',cost:1,max:1,shape:'server',w:152,h:48,sub:'ask for a review'},
+      points:{label:'Loyalty points',short:'Loyalty',cost:1,max:1,shape:'server',w:152,h:48,sub:'award points'}},
+    columns:{email:560,stock:560,card:560,sms:820,reviews:820,points:820},
+    links:{placed:Object.keys(NEEDS),failed:Object.keys(NEEDS),shipped:Object.keys(NEEDS)},
+    check(G){const miss=Object.keys(NEEDS).filter(k=>!G.of(k).length);if(miss.length===6)return['drag in the services that react to events.'];
+      const deaf=Object.keys(NEEDS).find(k=>G.of(k).length&&!G.inn(G.of(k)[0]).length);if(deaf)return[`${NAME(deaf)} is not subscribed to anything yet.`];
+      return[];},
+    sub(n,G,S){if(n.kind==='email'&&S&&S.down)return`down · ${Math.round(S.held)} waiting`;return null;},
+    init(){return{down:false,held:0,missed:{},wrong:{},ok:0};},
+    step(S,G,dt,t){const down=t>=5&&t<7,phase=t<5?'Events flowing':down?'Email service dies':'Email is back';S.down=down;
+      const flows=[],load={};
+      Object.keys(TOPICS).forEach(tp=>{const src=G.of(tp)[0],r=TOPICS[tp].rate;
+        Object.keys(NEEDS).forEach(k=>{const s=G.of(k)[0],sub=s&&G.out(src).includes(s),need=!!NEEDS[k][tp];
+          if(need&&!sub){S.missed[k]=S.missed[k]||{};S.missed[k][tp]=(S.missed[k][tp]||0)+r*dt;}
+          if(!sub)return;
+          if(!need)S.wrong[k]=(S.wrong[k]||0)+r*dt;else S.ok+=r*dt;
+          if(k==='email'&&down){S.held+=r*dt;return;}
+          const rr=k==='email'&&S.held>0?r*3:r;if(k==='email'&&!down)S.held=Math.max(0,S.held-r*2*dt);
+          flows.push({a:src.id,b:s.id,rate:rr,bad:!need,c:TOPICS[tp].c});});});
+      const em=G.of('email')[0];
+      return{flows,load,dead:new Set(down&&em?[em.id]:[]),phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S){const m=Object.values(S.missed).reduce((a,o)=>a+Object.values(o).reduce((x,y)=>x+y,0),0),w=Object.values(S.wrong).reduce((a,b)=>a+b,0);
+      return[['handled',`${Math.round(S.ok)}`,C.green],['missed',`${Math.round(m)}`,m<.5?C.green:C.red],['wrong reactions',`${Math.round(w)}`,w<.5?C.green:C.red]];},
+    score(S,G){// one finding per service that got something wrong
+      const issues=Object.keys(NEEDS).map(k=>{const miss=Object.keys(S.missed[k]||{}).filter(tp=>S.missed[k][tp]>.01),wrong=(S.wrong[k]||0)>.01;
+        if(!G.of(k).length)return`${NAME(k)} is missing: drag it in. ${Object.values(NEEDS[k]).join(' ')}`;
+        if(wrong)return`${WRONG[k]} ${Object.values(NEEDS[k]).join(' ')}`;
+        if(miss.length)return`${NAME(k)} never heard about ${miss.map(tp=>TOPICS[tp].label).join(' or ')}. ${miss.map(tp=>NEEDS[k][tp]).join(' ')}`;
+        return null;}).filter(Boolean);
+      const uniq=issues,n=uniq.length;
+      if(!n)return{stars:3,title:'Every event, the right reaction',msg:'Each service subscribed to exactly what it cares about, and Inventory to two events. The order service knows none of them: new reactions are added without touching it. Email\'s events simply waited out the outage.'};
+      return{stars:n===1?2:n<=3?1:0,title:`${n} service${n>1?'s':''} wired wrong`,msg:uniq.slice(0,2).join(' ')+(n>2?` (and ${n-2} more)`:'')};}})});
+function NAME(k){return{email:'Email service',stock:'Inventory',card:'Card alerts',sms:'Tracking SMS',reviews:'Reviews',points:'Loyalty points'}[k];}
+})();
 
 /* ---------------- 21. OBSERVABILITY: find the culprit ---------------- */
 chal('observability',{title:'Find the culprit',goal:'Checkout is slow for some users. Open as few clues as you need, then click the component causing it.',

@@ -41,7 +41,6 @@ Every lesson ends with a hands-on challenge played on the same stage, scored wit
 
 - **Be the load balancer**: route requests by hand for 30 seconds without overflowing a server.
 - **Beat LRU**: choose what to evict from a tiny cache and try to match the algorithm.
-- **Keep it serving**: promote a follower the moment the leader dies.
 - **Stop the retry storm**: tune retries, backoff, jitter and a circuit breaker through an outage.
 - **Find the culprit**: use metrics, logs and a trace to find a slow service.
 
@@ -49,11 +48,14 @@ The rest use the same kinds of mechanics: sort cards into boxes, put steps in or
 
 ### Architecture labs
 
-Seven challenges are **architecture labs**: you design the system yourself. Drag components (load balancers, app servers, caches, databases, queues, gateways, pub/sub and so on) from a palette onto the board, drag from a component's ● to another to wire them, then run a load test. Traffic flows along the wires you drew, every component has its own capacity, and a crash, a spike or an attack hits whatever you built. The results name the weakest part of your design.
+Ten challenges are **architecture labs**: you design the system yourself. Drag components (load balancers, app servers, caches, databases, queues, gateways, pub/sub and so on) from a palette onto the board, drag from a component's ● to another to wire them, then run a load test. Traffic flows along the wires you drew, every component has its own capacity, and a crash, a spike or an attack hits whatever you built. The results name the weakest part of your design.
 
 - **Survive launch day**: one giant machine or several smaller ones behind a load balancer? Traffic climbs and the busiest machine crashes.
 - **Keep everyone logged in**: decide where sessions live, then lose a server and the session store's machine.
+- **Keep it serving**: a leader, followers that copy it, and a failover manager; the leader crashes halfway.
 - **Survive the order surge**: put a queue between the shop and the workers, and size the workers to catch up after a spike and a restart.
+- **Make checkout fast**: wire each job straight from checkout (the customer waits) or through a queue (it happens later), then survive declined cards and an email outage.
+- **Wire up the events**: subscribe each service to the events it must react to, and nothing else.
 - **Survive the chaos monkey**: find every single point of failure before an app server, a load balancer and the database are killed.
 - **Build the shortener**: survive a viral spike, the busiest app server crashing and a bot attack, and count every click.
 - **Build the chat app**: keep 100,000 people connected through a message storm, a gateway crash and offline members.

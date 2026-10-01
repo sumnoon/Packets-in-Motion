@@ -56,15 +56,13 @@ test('spof: the lab is built and run with keys', () => {
   assert.equal(r.result.stars, 3);
 });
 
-test('replication: a number key promotes a follower', () => {
+test('replication: the lab is built and run with keys', () => {
+  for (const k in page.get('LAB_SAVE')) delete page.get('LAB_SAVE')[k];
   const r = play('replication');
-  r.control(/followers/i).set(3);
-  r.control(/reads/i).set(true);
-  r.click(/run/i).step(6.3);
-  assert.match(r.state.status, /Leader down/);
-  r.press('1');
-  assert.match(r.state.status, /promoted/);
-  r.step(10);
+  // 1 leader · 2 follower · 3 failover manager; A is the app
+  r.press('1', '2', '3', 'a', 'b', 'b', 'c', 'a', 'c', 'd', 'b', 'd', 'c', '2', '2');
+  assert.match(r.state.status, /<b>B<\/b> Leader database → C, E, F/);
+  r.press('Enter').step(15);
   assert.equal(r.result.stars, 3);
 });
 
