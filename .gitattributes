@@ -1,0 +1,3 @@
+# The build writes LF; keep every checkout LF so index.html matches src/ byte for byte.
+* text=auto eol=lf
+*.png binary

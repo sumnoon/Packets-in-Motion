@@ -14,7 +14,7 @@ The mark combines the project's initial **P** with a routing path. Two rounded p
 
 Every logo file keeps its transparency. The visible mark fills about two thirds of the square canvas (roughly 18% padding left, 16% right, 9% top, 7% bottom). Keep the square aspect ratio and that padding. Use on the course's navy background (`#0a0e16`) or a plain light background; avoid placing it over busy imagery. Pair the mark with live text, **Packets in Motion**, rather than baking lettering into the image.
 
-`index.html` does not load `logo-96.png` or `favicon-32.png` from disk. It embeds its own copies as `data:image/png;base64` URLs so the course still works as a single offline file. Those embedded copies are kept in sync by hand: if you change either export, re-encode it and replace the matching data URL in `index.html`. The sidebar image has empty alternative text because the adjacent project name supplies its accessible label. The README image has descriptive alternative text.
+`index.html` does not load `logo-96.png` or `favicon-32.png` from disk. It embeds its own copies as `data:image/png;base64` URLs so the course still works as a single offline file. `npm run build` creates those data URLs from the files in `assets/`, so after changing either export, rebuild and commit `index.html`. The sidebar image has empty alternative text because the adjacent project name supplies its accessible label. The README image has descriptive alternative text.
 
 ## Creation
 

@@ -1,0 +1,7 @@
+/* ---------------- 18. IDEMPOTENCY: be the payment server ---------------- */
+chal('idempotency',{title:'Never charge twice',goal:'You are the payment server. For each request, charge the card, or return the saved result if you have already seen that key.',
+  hint:'The amount does not matter, the key does. A new key means a new payment, even for the same amount.',
+  make:sortGame({keepOrder:true,timer:8,bins:[{id:'new',label:'Charge the card',sub:'first time this key',c:C.green},{id:'dup',label:'Return saved result',sub:'seen this key before',c:C.accent}],
+    cards:[['50','7f3a','new'],['20','b21c','new'],['50','7f3a','dup'],['35','9d04','new'],['20','b21c','dup'],['50','e811','new'],['35','9d04','dup'],['12','40aa','new'],['50','e811','dup'],['12','5c2e','new']].map(([a,k,b])=>({t:`Pay $${a} · key ${k}`,b,k,why:b==='dup'?`Key ${k} was already processed. Return the saved receipt and do not charge again.`:`Key ${k} is new. It is a real payment, even if the amount looks familiar.`})),
+    side(st){const seen=st.cards.slice(0,st.i).map(c=>c.k);tx('keys seen',860,110,{z:12,c:C.dim});[...new Set(seen)].forEach((k,j)=>{pill(k,860,140+j*28,{c:C.accent,z:12,f:MONO});});},
+    done(miss){return miss===0?{stars:3,title:'Not one double charge',msg:'Same key, same result, no new charge. With that one rule, retrying is completely safe.'}:{stars:miss<=1?2:1,title:`${miss} mistake${miss>1?'s':''}`,msg:'Look only at the key. A repeated key means "I already did this".'};}})});
