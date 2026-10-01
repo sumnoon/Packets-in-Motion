@@ -164,7 +164,7 @@ export function loadPage(opts = {}) {
     console: { log() {}, info() {}, warn() {}, error: (...a) => errors.push(a.map(x => (x && x.stack) || String(x)).join(' ')) },
     matchMedia: () => ({ matches: false, addEventListener() {}, addListener() {} }),
     localStorage: { getItem: k => (storage.has(k) ? storage.get(k) : null), setItem: (k, v) => storage.set(k, String(v)), removeItem: k => storage.delete(k) },
-    location: { hash: opts.hash || '' },
+    location: { hash: opts.hash || '', search: opts.search || '', pathname: '/index.html', href: 'https://example.test/index.html' + (opts.search || '') + (opts.hash || '') },
     history: { replaceState(_, __, url) { context.location.hash = url; } },
     screen: { orientation: { lock: () => Promise.resolve(), unlock() {} } },
     devicePixelRatio: 1, innerWidth: 1280, innerHeight: 800,
@@ -173,7 +173,7 @@ export function loadPage(opts = {}) {
     clearTimeout() {},
     addEventListener: (type, fn) => (winListeners[type] ||= []).push(fn),
     removeEventListener() {},
-    Math, JSON, Object, Array, Number, String, Set, Map, Promise, Date, Error, Symbol, Proxy, Reflect, Infinity, NaN, parseInt, parseFloat, isFinite,
+    URLSearchParams, Math, JSON, Object, Array, Number, String, Set, Map, Promise, Date, Error, Symbol, Proxy, Reflect, Infinity, NaN, parseInt, parseFloat, isFinite,
   };
   context.window = context;
   context.globalThis = context;

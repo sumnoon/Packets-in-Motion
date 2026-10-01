@@ -26,7 +26,7 @@ chal('queues-pubsub',{title:'Survive the order surge',goal:'Build it yourself: o
       return[];},
     sub(n,G,S){if(n.kind==='shop')return S?`${S.rate} orders/s`:'40 orders/s';if(n.kind==='queue'&&S)return`${Math.round(S.backlog)} waiting`;if(n.kind==='worker'&&S&&S.out)return'restarting';return null;},
     init(){return{rate:40,out:false,backlog:0,lost:0,done:0,total:0,why:{full:0,restart:0,nowhere:0}};},
-    step(S,G,dt,t){const rate=t>=3&&t<7?120:40,out=t>=9&&t<10.5,phase=t<3?'Normal orders':t<7?'Order spike: 3×':t>=9&&t<10.5?'Workers restarting':'Catching up';
+    step(S,G,dt,t){const s0=labAt(S,'spike',3,1,5),r0=labAt(S,'restart',9,s0+4.5,Math.min(s0+6,10)),rate=t>=s0&&t<s0+4?120:40,out=t>=r0&&t<r0+1.5,phase=t<s0?'Normal orders':t<s0+4?'Order spike: 3×':out?'Workers restarting':'Catching up';
       const shop=G.of('shop')[0],outs=G.out(shop),q=G.of('queue')[0],flows=[],load={},used={},F=(a,b,r,isBad,c)=>{if(r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});};
       S.rate=rate;S.out=out;S.total+=rate*dt;
       if(!outs.length){S.lost+=rate*dt;S.why.nowhere+=rate*dt;}

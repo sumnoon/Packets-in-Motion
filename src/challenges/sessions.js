@@ -13,7 +13,7 @@ chal('sessions',{title:'Keep everyone logged in',goal:'Build it yourself: 30 use
     blame(S,G,gen){const m=[];
       if(S.why.mem)G.of('app').filter(a=>!G.out(a,['store']).length).forEach(a=>m.push({id:a.id,note:'sessions only in its own memory'}));
       if(S.why.dead)S.dead.forEach(d=>m.push({id:d,note:'its sessions died with it'}));
-      if(S.why.store){const st=G.of('store')[0];if(st)m.push({id:st.id,note:'no replica: every session lost at 9 s'});}
+      if(S.why.store){const st=G.of('store')[0];if(st)m.push({id:st.id,note:`no replica: every session lost at ${labAt(S,'store',9,0,0).toFixed(1)} s`});}
       if(S.why.direct){const u=G.of('users')[0];S.dead.forEach(d=>m.push({edge:u.id+'>'+d,note:'users stranded here'}));}
       return m.length?m:gen;},budget:7,dur:13,scale:.6,
     intro:'30 users are logged in. Build a path from Users to your servers and decide where their sessions live, then press Run.',
@@ -37,10 +37,10 @@ chal('sessions',{title:'Keep everyone logged in',goal:'Build it yourself: 30 use
       if(n.kind==='store'&&S&&S.storeHit)return G.out(n,['replica']).length?'replica took over':'restarted empty';return null;},
     init(){return{ema:{},badT:{},k:0,acc:0,rr:0,relog:0,dead:new Set(),killed:false,storeHit:false,hits:{},stranded:new Set(),why:{mem:0,dead:0,store:0,direct:0,none:0},
       users:Array.from({length:N},()=>({seen:false,mem:new Set(),last:null,pin:null}))};},
-    step(S,G,dt,t){const phase=t<5?'Users clicking around':t<9?'A server dies':'The store\'s machine dies';
+    step(S,G,dt,t){const ts=labAt(S,'server',5,3,7),tm=labAt(S,'store',9,ts+2,11),phase=t<ts?'Users clicking around':t<tm?'A server dies':'The store\'s machine dies';
       const U=G.of('users')[0],lb=G.out(U,['lb'])[0],direct=G.out(U,['app']),store=G.of('store')[0];
-      if(t>=5&&!S.killed){S.killed=true;const apps=G.of('app');if(apps.length){const b=apps.reduce((a,c)=>((S.hits[c.id]||0)>(S.hits[a.id]||0)?c:a));S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
-      if(t>=9&&!S.storeHit&&store){S.storeHit=true;const rep=G.out(store,['replica'])[0];FX.burst(store.x,store.y,C.red,30,220);
+      if(t>=ts&&!S.killed){S.killed=true;const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.hits[c.id]||0)>(S.hits[a.id]||0)?c:a)));S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
+      if(t>=tm&&!S.storeHit&&store){S.storeHit=true;const rep=G.out(store,['replica'])[0];FX.burst(store.x,store.y,C.red,30,220);
         if(rep)labMark(rep,'replica took over',C.green,14);
         else{const lost=S.users.filter(u=>u.seen&&u.inStore).length;S.relog+=lost;S.why.store+=lost;labMark(store,'all sessions lost',C.red,15);}}
       const edges={},E=(a,b,isBad)=>{const key=a.id+'>'+b.id,e=edges[key]||(edges[key]={a:a.id,b:b.id,n:0,bad:false});e.n++;e.bad=e.bad||isBad;};

@@ -26,10 +26,10 @@ chal('scaling',{title:'Survive launch day',goal:'Build it yourself: traffic clim
       const lb=G.out(u,['lb'])[0];if(lb&&!G.out(lb).length)return['wire the load balancer to your servers.'];
       return[];},
     init(){return{rate:0,total:0,drop:0,dead:new Set(),killed:null,lastIn:{},why:{dead:0,full:0,nowhere:0}};},
-    step(S,G,dt,t){const rate=traffic(t),phase=t<6?'Doors open':t<11?'Traffic climbing':t<15?'A server dies':'Peak traffic';
+    step(S,G,dt,t){const tc=labAt(S,'crash',11,7,13.5),rate=traffic(t),phase=t<6?'Doors open':t<tc?'Traffic climbing':t<tc+4?'A server dies':'Peak traffic';
       const servers=G.nodes.filter(n=>CAP[n.kind]);
-      if(t>=11&&!S.killed&&servers.length){const b=servers.reduce((a,c)=>((S.lastIn[c.id]||0)>(S.lastIn[a.id]||0)?c:a));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}
-      if(t>=15&&S.dead.size){const b=servers.find(n=>n.id===S.killed);S.dead.clear();if(b)labMark(b,'rebooted',C.green,14);}
+      if(t>=tc&&!S.killed&&servers.length){const b=labPick(S,'victim',servers,servers.reduce((a,c)=>((S.lastIn[c.id]||0)>(S.lastIn[a.id]||0)?c:a)));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}
+      if(t>=tc+4&&S.dead.size){const b=servers.find(n=>n.id===S.killed);S.dead.clear();if(b)labMark(b,'rebooted',C.green,14);}
       const flows=[],load={},inn={},F=(a,b,r,isBad)=>{if(r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad});};
       // users split evenly over what they are wired to; a load balancer skips dead servers and weights by size
       const send=(n,r)=>{if(CAP[n.kind]){inn[n.id]=(inn[n.id]||0)+r;return;}

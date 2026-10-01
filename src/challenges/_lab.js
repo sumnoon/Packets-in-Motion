@@ -29,8 +29,43 @@ const LAB_SAVE={};
 const LAB_POST={},LAB_HINT={},LAB_UNDO={},LAB_FAILS={};
 const LAB_DEFS={};   // every lab's scenario, by id (the tests build each solution from it)
 // the cheapest 3-star cost per lab, kept in the browser
-const LAB_BEST=(()=>{try{return JSON.parse(localStorage.getItem('pim-lab-best'))||{};}catch(e){return{};}})();
-function labSaveBest(){try{localStorage.setItem('pim-lab-best',JSON.stringify(LAB_BEST));}catch(e){}}
+function labStore(k,def){try{return JSON.parse(localStorage.getItem(k))||def;}catch(e){return def;}}
+function labPut(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+const LAB_BEST=labStore('pim-lab-best',{});
+function labSaveBest(){labPut('pim-lab-best',LAB_BEST);}
+// chaos mode: each run's incidents strike at random times and hit a random component.
+// Three 3-star runs in a row earn the lab's chaos-proof badge.
+const LAB_CHAOS=labStore('pim-lab-chaos',{}),LAB_CHAOS_ON={},LAB_STREAK={};
+function labRng(seed){return()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+// an incident's time: the scripted one, or in chaos mode a random time between lo and hi (fixed for the run)
+function labAt(S,key,def,lo,hi){if(!S.chaos)return def;const m=S._at||(S._at={});if(!(key in m))m[key]=lo+(hi-lo)*S.rng();return m[key];}
+// an incident's victim: the busiest one, or in chaos mode a random one
+function labPick(S,key,list,busiest){if(!S.chaos||!list.length)return busiest;const m=S._pick||(S._pick={});if(!(key in m))m[key]=Math.floor(S.rng()*list.length);return list[m[key]%list.length];}
+function labShuffle(S,arr){const a=arr.slice();if(!S.chaos)return a;for(let i=a.length-1;i>0;i--){const j=Math.floor(S.rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+// a component taught in an earlier chapter stays locked until you have watched that chapter (a toggle turns this off)
+const LAB_TEACH={lb:'load-balancers',app:'client-server',db:'sql-nosql',standby:'replication',replica:'replication',limiter:'rate-limiting',
+  cache:'caching',feedcache:'caching',pagecache:'caching',queue:'queues-pubsub',worker:'queues-pubsub',fanq:'queues-pubsub',fanw:'queues-pubsub',
+  pubsub:'queues-pubsub',gateway:'rest-grpc-ws',store:'sharding',postdb:'sharding'};
+// share links: a design packed into the URL as kind.x.y nodes, a-b wires and option bits
+const LAB_SHARED={};
+function labKinds(o){return[...Object.keys(o.fixedKinds||{}),...Object.keys(o.kinds)];}
+function labEncode(id,G){const o=LAB_DEFS[id],kinds=labKinds(o);
+  return['1',G.nodes.map(n=>[kinds.indexOf(n.kind),Math.round(n.x/10),Math.round(n.y/10)].join('.')).join('_'),
+    G.edges.map(e=>G.nodes.findIndex(n=>n.id===e.a)+'-'+G.nodes.findIndex(n=>n.id===e.b)).join('_'),
+    (o.toggles||[]).map(t=>G.opts[t.key]?1:0).join('')].join('~');}
+function labDecode(id,code){const o=LAB_DEFS[id];if(!o||typeof code!=='string'||code.length>4000)return null;
+  const p=code.split('~');if(p[0]!=='1'||p.length!==4)return null;
+  const kinds=labKinds(o),F=o.fixed.length,nodes=[],rows=p[1]?p[1].split('_'):[];if(rows.length<F||rows.length>26)return null;
+  for(let i=0;i<rows.length;i++){const[k,x,y]=rows[i].split('.').map(Number),kind=kinds[k];if(!kind||!isFinite(x)||!isFinite(y))return null;
+    if(i<F){if(kind!==o.fixed[i].kind)return null;nodes.push({id:'f'+i,kind,x:x*10,y:y*10,label:o.fixed[i].label,fixed:true});continue;}
+    if(!o.kinds[kind]||nodes.filter(n=>n.kind===kind).length>=(o.kinds[kind].max||8))return null;nodes.push({id:'n'+i,kind,x:x*10,y:y*10});}
+  nodes.forEach(n=>{n.x=clamp(n.x,LAB_BOARD.x+30,LAB_BOARD.x+LAB_BOARD.w-30);n.y=clamp(n.y,LAB_BOARD.y+30,LAB_BOARD.y+LAB_BOARD.h-30);});
+  const edges=[];for(const s of p[2]?p[2].split('_'):[]){const[a,b]=s.split('-').map(Number),A=nodes[a],B=nodes[b];
+    if(!A||!B||A===B||!(o.links[A.kind]||[]).includes(B.kind))return null;if(!edges.some(e=>e.a===A.id&&e.b===B.id))edges.push({a:A.id,b:B.id});}
+  const opts={};(o.toggles||[]).forEach((t,i)=>opts[t.key]=p[3][i]==='1');
+  return{nodes,edges,seq:nodes.length,opts};}
+// opens a shared design in its lab; false when the link is not a valid design
+function labImport(id,code){const G=labDecode(id,code);if(!G)return false;LAB_SAVE[id]=G;LAB_POST[id]=null;LAB_SHARED[id]=true;return true;}
 const LAB_BOARD={x:14,y:62,w:972,h:380};
 const LAB_PAL_Y=LAB_BOARD.y+LAB_BOARD.h+16;   // the palette is a row of tiles under the board
 function labGame(o){LAB_DEFS[o.id]=o;return api=>{
@@ -53,6 +88,12 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   const count=kind=>G.nodes.filter(n=>n.kind===kind).length;
   const canAdd=kind=>count(kind)<(K[kind].max||8)&&G.nodes.length<LET.length;
   const allowed=(a,b)=>a!==b&&(o.links[a.kind]||[]).includes(b.kind);
+  // locks (on unless turned off): a component taught in an earlier chapter waits until you have watched it
+  const seenCh=labStore('sdve-seen',{}),myIdx=chapters.findIndex(c=>c.id===id);
+  let locksOn=(()=>{try{return localStorage.getItem('pim-lab-locks')!=='false';}catch(e){return true;}})();
+  const taughtEarlier=kind=>{const cid=K[kind].teach||LAB_TEACH[kind],j=cid?chapters.findIndex(c=>c.id===cid):-1;return j>=0&&j<myIdx?{cid,n:j+1,title:chapters[j].title}:null;};
+  const lockOf=kind=>{if(!locksOn)return null;const T=taughtEarlier(kind);return T&&!seenCh[T.cid]?T:null;};
+  const lockMsg=kind=>{const L=lockOf(kind);return`${K[kind].label} unlocks when you watch chapter ${L.n}, ${L.title}. Or turn off the component locks.`;};
   const hasEdge=(a,b)=>G.edges.some(e=>e.a===a.id&&e.b===b.id);
   G.out=(n,kinds)=>G.edges.filter(e=>e.a===n.id).map(e=>node(e.b)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
   G.inn=(n,kinds)=>G.edges.filter(e=>e.b===n.id).map(e=>node(e.a)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
@@ -69,7 +110,8 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   function slotFor(kind,list){const cc=o.columns&&o.columns[kind],col=(Array.isArray(cc)?cc[0]:cc)||520,y0=Array.isArray(cc)?cc[1]:null;
     if(y0!=null&&free(col,y0,list))return[col,y0];
     for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y,list))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
-  function add(kind,x,y){if(!canAdd(kind)){FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
+  function add(kind,x,y){if(lockOf(kind)){say(lockMsg(kind));FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,'locked: watch its chapter first',C.amber,14);return null;}
+    if(!canAdd(kind)){FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
     remember();const twin=K[kind].clone&&G.of(kind)[0];   // a new copy of a stateless server joins the pool with the same wires
     const n={id:'n'+(++G.seq),kind,x:0,y:0};G.nodes.push(n);if(x==null)[x,y]=slotFor(kind);[n.x,n.y]=clampIn(n,x,y);
     if(twin)G.edges.filter(e=>e.a===twin.id||e.b===twin.id).forEach(e=>G.edges.push({a:e.a===twin.id?n.id:e.a,b:e.b===twin.id?n.id:e.b}));
@@ -80,7 +122,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
       say(`${nameOf(a)} can't send to ${nameOf(b)}. ${t.length?nameOf(a)+' can feed: '+t.join(', ')+'.':nameOf(a)+' has nothing to feed.'}`);return;}
     remember();G.edges.push({a:a.id,b:b.id});save();say(`Wired ${nameOf(a)} → ${nameOf(b)}.`);const[p,q]=seg(G.edges[G.edges.length-1]);FX.burst(q[0],q[1],C.accent,8,80);}
   // ---------- status line (read by screen readers) ----------
-  function describe(){const pal=PAL.map((k,i)=>`<kbd>${i+1}</kbd> ${esc(K[k].label)} $${K[k].cost}`).join(' · ');
+  function describe(){const pal=PAL.map((k,i)=>{const L=lockOf(k);return`<kbd>${i+1}</kbd> ${esc(K[k].label)} ${L?`(locked: watch chapter ${L.n})`:'$'+K[k].cost}`;}).join(' · ');
     const lines=G.nodes.map(n=>{const outs=G.out(n);return`<b>${letterOf(n)}</b> ${esc(nameOf(n))}${outs.length?' → '+outs.map(m=>letterOf(m)).join(', '):''}`;}).join(' · ');
     const probs=o.check?o.check(G):[];
     const opts=(o.toggles||[]).map(tg=>`${tg.label}: ${G.opts[tg.key]?'on':'off'}`).join(' · ');
@@ -91,11 +133,26 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   function say(msg){if(msg)lastMsg=msg;const s=sel&&sel.n?` Selected <b>${letterOf(sel.n)}</b> ${esc(nameOf(sel.n))}: press another letter to wire it, Delete to remove.`:'';api.status((lastMsg?esc(lastMsg)+' ':'')+describe()+s+' Press <kbd>Enter</kbd> to run the load test.');lastMsg='';}
   // ---------- run ----------
   let running=false,S=null,t0=0,last=0,done=false,res=null;const fl=[];
+  // simT: the run's clock (slowed for a moment when something crashes); vnow: the clock packets move on
+  let simT=0,vnow=0,lastNow=null,slowUntil=-1,shakeUntil=-1,badSfx=-9,celebrate=null;
   (o.toggles||[]).forEach(tg=>api.toggle(tg.label,G.opts[tg.key],v=>{G.opts[tg.key]=v;save();say();}));   // design choices that are not boxes
   const run=api.button(o.runLabel||'Run load test',()=>start(),{primary:true});
   const clear=api.button('Clear board',()=>{if(running)return;remember();G.nodes=G.nodes.filter(n=>n.fixed);G.edges=[];sel=null;save();say('Board cleared.');});
   api.button('Undo',()=>undo());
+  const shareBtn=api.button('Copy share link',()=>share());
+  function share(){if(running)return;const base=String((typeof location!=='undefined'&&location.href)||'').split(/[?#]/)[0],url=`${base}?lab=${id}&d=${labEncode(id,G)}#${id}`;
+    let copied=false;try{if(typeof navigator!=='undefined'&&navigator.clipboard){navigator.clipboard.writeText(url).catch(()=>{});copied=true;}}catch(e){}
+    say(`${copied?'Link copied. Send it to anyone':'Copy this link and send it to anyone'} to share your $${cost()}/h design: ${url}`);}
+  // the locks are one setting for every lab, offered where a lab uses components from earlier chapters
+  if(PAL.some(taughtEarlier))api.toggle('Lock components until I have watched their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
+    say(v?'Component locks on, in every lab: a component from a chapter you have not watched waits until you watch it.':'Component locks off: every component is available.');});
+  let chaosOn=!!LAB_CHAOS_ON[id];
+  api.toggle('Chaos mode: incidents strike at random times and places',chaosOn,v=>{chaosOn=v;LAB_CHAOS_ON[id]=v;LAB_STREAK[id]=0;say(v?'Chaos mode on: each run, the incidents strike at a random time and hit a random component. Survive three runs in a row for the chaos-proof badge.':'Chaos mode off.');});
   // what the run did to each component and wire, for the weak spots afterwards
+  // a crash shakes the board, slows time for a moment and sounds; failing traffic sounds once
+  function react(out,now){const seen=S._dead||(S._dead=new Set());let crash=false;(out.dead||[]).forEach(d=>{if(!seen.has(d)){seen.add(d);crash=true;}});
+    if(crash){SFX.play('bad');if(!reduceMQ.matches){slowUntil=now+.5;shakeUntil=now+.35;}}
+    const nb=out.badEdges?out.badEdges.size:0;if(nb&&!S._bad&&now-badSfx>1.5){SFX.play('beat');badSfx=now;}S._bad=nb>0;}
   function track(out,t,dt){const T=S.track||(S.track={peak:{},bad:{}});
     for(const nid in out.load||{}){const u=out.load[nid];if(u>(T.peak[nid]?T.peak[nid].u:0))T.peak[nid]={u,t};}
     (out.badEdges||[]).forEach(k=>{const b=T.bad[k]||(T.bad[k]={d:0,t});b.d+=dt;});}
@@ -108,11 +165,19 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     if(prev==null||c<prev){LAB_BEST[id]=c;labSaveBest();if(prev!=null)m+=` New best: $${c}/h, down from $${prev}/h.`;}
     if(o.lean!=null)m+=c<=o.lean?` Lean medal: no 3-star design we know of costs less than $${o.lean}/h.`:` A 3-star design exists for $${o.lean}/h. Can you find it?`;
     return m;}
-  function finish(){const c=cost();res=o.score(S,G,c);let msg=res.msg;
+  function chaosNote(stars){if(!chaosOn)return stars===3&&!LAB_CHAOS[id]?' Ready for more? Turn on chaos mode: the incidents strike at random.':'';
+    if(stars<3){LAB_STREAK[id]=0;return' Chaos streak reset.';}
+    const n=LAB_STREAK[id]=(LAB_STREAK[id]||0)+1;
+    if(n>=3&&!LAB_CHAOS[id]){LAB_CHAOS[id]=true;labPut('pim-lab-chaos',LAB_CHAOS);return' Chaos-proof badge earned: your design survived three random runs in a row.';}
+    return LAB_CHAOS[id]?` Chaos-proof, again (${n} in a row).`:` Chaos streak: ${n} of 3.`;}
+  function finish(now){const c=cost();res=o.score(S,G,c);let msg=res.msg;
     post=res.stars<3?weakSpots():[];LAB_POST[id]=post;
     if(post.length)msg+=' Press Try again to see where it broke on the board.';
     if(res.stars<3){LAB_FAILS[id]=(LAB_FAILS[id]||0)+1;if(LAB_FAILS[id]>=2&&hintLvl<3)msg+=' Stuck? Press Hint for a nudge.';}
     else msg+=medal(c);
+    msg+=chaosNote(res.stars);
+    // three stars: the wires glow for a moment before the result
+    if(res.stars===3){celebrate={at:now,msg};SFX.play('good');G.nodes.slice(0,12).forEach(n=>FX.burst(n.x,n.y,C.amber,10,120));return;}
     api.win(res.stars,res.title,msg);setTimeout(()=>say(),50);}
   // hints: a nudge, then which components, then a faint outline of a 3-star design
   let post=LAB_POST[id]||null,hintLvl=LAB_HINT[id]||0,ghostOn=true;
@@ -132,7 +197,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     hintLvl=Math.min(3,hintLvl+1);LAB_HINT[id]=hintLvl;ghostOn=true;
     const text=hintLvl<3&&h[hintLvl-1]?h[hintLvl-1]:outlineText(full);
     return{text:`Hint ${hintLvl} of 3: ${text}`,label:hintLabel()};}
-  function start(){if(running)return;sel=null;drag=null;post=null;LAB_POST[id]=null;S=o.init(G);running=true;done=false;res=null;api.lock(true);t0=api.now();last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
+  function start(){if(running)return;sel=null;drag=null;post=null;LAB_POST[id]=null;S=o.init(G);S.chaos=chaosOn;S.rng=labRng(Math.floor(Math.random()*2147483647));celebrate=null;running=true;done=false;res=null;api.lock(true);t0=api.now();simT=0;last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
   // ---------- pointer ----------
   let sel=null,drag=null,hover=null,pal=-1,kb=false;   // kb: shortcut keycaps show once the player uses the keyboard
   const TW=Math.min(150,(LAB_BOARD.w+12-(PAL.length-1)*8)/PAL.length),TX0=LAB_BOARD.x-6+(LAB_BOARD.w+12-(PAL.length*TW+(PAL.length-1)*8))/2;
@@ -141,21 +206,25 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   const portAt=(x,y)=>G.nodes.find(n=>(o.links[n.kind]||[]).length&&Math.hypot(x-port(n)[0],y-port(n)[1])<12)||null;
   const edgeAt=(x,y)=>G.edges.find(e=>{const[[x0,y0],[x1,y1]]=seg(e),L=Math.hypot(x1-x0,y1-y0)||1,u=clamp(((x-x0)*(x1-x0)+(y-y0)*(y1-y0))/(L*L));return Math.hypot(x-(x0+u*(x1-x0)),y-(y0+u*(y1-y0)))<7;})||null;
   const delBtn=()=>{if(!sel)return null;if(sel.n){if(sel.n.fixed)return null;const[w,h]=sizeOf(sel.n);return[sel.n.x+w/2,sel.n.y-h/2];}const[[a,b],[c,d]]=seg(sel.e);return[(a+c)/2,(b+d)/2];};
-  say();
+  if(LAB_SHARED[id]){LAB_SHARED[id]=false;say(`Someone shared this design with you: $${cost()}/h. Press Enter or Run to test it, then try to beat it.`);}else say();
   return{hint,hintLabel,
     draw(now,dt){
       // run loop
-      if(running){const el=now-t0,step=Math.min(el-last,.1);if(step>0){const out=o.step(S,G,step,el);S.view=out;last+=step;spawn(out,now,step);track(out,el,step);}
-        if(el>=o.dur&&!done){done=true;running=false;api.lock(false);finish();}}
+      const fdt=lastNow==null?0:clamp(now-lastNow,0,.1),slowF=running&&now<slowUntil?.45:1;lastNow=now;vnow+=fdt*slowF;
+      if(running){simT+=fdt*slowF;const el=simT,step=el-last;if(step>0){const out=o.step(S,G,step,el);S.view=out;last=el;spawn(out,vnow,step);track(out,el,step);react(out,now);}
+        if(el>=o.dur&&!done){done=true;running=false;api.lock(false);finish(now);}}
+      if(celebrate&&now-celebrate.at>=.8){const m=celebrate.msg;celebrate=null;api.win(res.stars,res.title,m);setTimeout(()=>say(),50);}
+      const shake=now<shakeUntil?(shakeUntil-now)/.35*5:0;g.save();if(shake)g.translate((Math.random()-.5)*2*shake,(Math.random()-.5)*2*shake);
       const V_=S&&S.view;
       // board
       g.save();rr(LAB_BOARD.x-6,LAB_BOARD.y-6,LAB_BOARD.w+12,LAB_BOARD.h+12,14);g.fillStyle=hexA(C.panel,.35);g.fill();g.strokeStyle=hexA(C.line,.8);g.setLineDash([3,6]);g.lineWidth=1;g.stroke();g.restore();
       for(let x=LAB_BOARD.x+10;x<LAB_BOARD.x+LAB_BOARD.w;x+=40)for(let y=LAB_BOARD.y+10;y<LAB_BOARD.y+LAB_BOARD.h;y+=40){g.fillStyle='rgba(255,255,255,.035)';g.fillRect(x-1,y-1,2,2);}
       // palette
-      PAL.forEach((k,i)=>{const T=TILE(i),kk=K[k],ok=canAdd(k)&&cost()+kk.cost<=o.budget+20,hot=pal===i&&!running;
+      PAL.forEach((k,i)=>{const T=TILE(i),kk=K[k],L=lockOf(k),ok=!L&&canAdd(k)&&cost()+kk.cost<=o.budget+20,hot=pal===i&&!running&&!L;
         g.save();g.globalAlpha=running?.45:ok?1:.5;rr(T.x,T.y,T.w,T.h,10);g.fillStyle=hot?hexA(kk.c||C.accent,.18):C.panel;g.fill();g.strokeStyle=hot?kk.c||C.accent:C.line;g.lineWidth=1.3;g.stroke();g.restore();
         icon(kk,T.x+28,T.y+T.h/2,running?.45:1);if(kb)keycap(String(i+1),T.x+11,T.y+11,{a:running?.45:1});
-        tx(kk.short||kk.label,T.x+52,T.y+T.h/2-7,{z:12.5,wt:700,al:'left',a:running?.45:1});tx(`$${kk.cost}`+(kk.max?` · max ${kk.max}`:''),T.x+52,T.y+T.h/2+9,{z:10.5,c:C.dim,al:'left',f:MONO,a:running?.45:1});});
+        tx(kk.short||kk.label,T.x+52,T.y+T.h/2-7,{z:12.5,wt:700,al:'left',a:running?.45:1});tx(L?`watch ch. ${L.n}`:`$${kk.cost}`+(kk.max?` · max ${kk.max}`:''),T.x+52,T.y+T.h/2+9,{z:10.5,c:L?C.amber:C.dim,al:'left',f:MONO,a:running?.45:1});
+        if(L)labLock(T.x+T.w-14,T.y+12);});
       if(!running)tx(kb?'keys: a number adds a component · press two letters to wire them (again to unwire) · Delete removes · Enter runs':'drag a component up onto the board · drag one back down here to remove it · press Tab for keyboard shortcuts',W/2,LAB_PAL_Y+68,{z:11,c:C.dim});
       // empty-board coaching
       if(G.nodes.length===o.fixed.length&&!running)textBlock(o.intro||'Drag components from the row below onto the board, then drag from a component’s ● to another to wire them.',LAB_BOARD.x+LAB_BOARD.w/2+40,LAB_BOARD.y+LAB_BOARD.h/2,420,{z:14,wt:500,c:C.dim});
@@ -165,7 +234,9 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
       // wires
       G.edges.forEach(e=>{const s=seg(e),on=sel&&sel.e===e,bad=V_&&V_.badEdges&&V_.badEdges.has(e.a+'>'+e.b);ln(s,{c:on?C.accent:bad?hexA(C.red,.7):hexA(C.edge,.9),w:on?3:2,arrow:true});});
       if(drag&&drag.type==='wire'){const a=drag.from,[px,py]=port(a),tgt=nodeAt(drag.x,drag.y),okT=tgt&&allowed(a,tgt);ln([[px,py],tgt?anchor(tgt,px,py):[drag.x,drag.y]],{c:tgt?(okT?C.green:C.red):C.accent,w:2,dash:[5,5],arrow:true});}
-      flyers(now,fl);
+      flyers(vnow,fl);
+      // three stars: light up every wire
+      if(celebrate){const k=clamp((now-celebrate.at)/.8);G.edges.forEach(e=>{const s=seg(e);ln(s,{c:hexA(C.amber,.85*(1-k*.6)),w:4});dot(s[0][0]+(s[1][0]-s[0][0])*k,s[0][1]+(s[1][1]-s[0][1])*k,C.amber,4);});}
       // nodes
       G.nodes.forEach(n=>{const k=kindOf(n),[w,h]=sizeOf(n),util=V_&&V_.load?V_.load[n.id]:null,dead=V_&&V_.dead&&V_.dead.has(n.id);
         const st=dead?'fail':util==null?(k.st||'ok'):util>1.02?'fail':util>.85?'hot':'ok';
@@ -186,13 +257,16 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
       if(drag&&drag.type==='new'){const kk=K[drag.kind],over=drag.y<LAB_BOARD.y+LAB_BOARD.h;g.save();g.globalAlpha=over?.85:.5;drawKind({x:drag.x,y:drag.y,kind:drag.kind},kk,kk.w||110,kk.h||52,'ok',null);g.restore();}
       // top bar: budget and phase
       if(!running){const c=cost(),b=LAB_BEST[id],bt=`budget $${c} / $${o.budget}`;tx(bt,LAB_BOARD.x+6,LAB_BOARD.y-24,{z:13,wt:800,c:c<=o.budget?C.green:C.red,al:'left',f:MONO});
-        if(b!=null)tx(`best 3★ $${b}`+(o.lean==null?'':b<=o.lean?' · lean medal':` · lean is $${o.lean}`),LAB_BOARD.x+6+tw(bt,13,800,MONO)+18,LAB_BOARD.y-24,{z:12,wt:700,c:o.lean!=null&&b<=o.lean?C.amber:C.dim,al:'left',f:MONO});}
-      if(running&&V_){tx(V_.phase||'',LAB_BOARD.x+6,LAB_BOARD.y-24,{al:'left',z:16,wt:800,c:/die|attack|storm|spike|star/i.test(V_.phase||'')?C.red:C.accent});const f=clamp((now-t0)/o.dur);meter(LAB_BOARD.x,H-12,LAB_BOARD.w,4,f,C.accent);
+        let bx=LAB_BOARD.x+6+tw(bt,13,800,MONO)+18;
+        if(b!=null){const s_=`best 3★ $${b}`+(o.lean==null?'':b<=o.lean?' · lean medal':` · lean is $${o.lean}`);tx(s_,bx,LAB_BOARD.y-24,{z:12,wt:700,c:o.lean!=null&&b<=o.lean?C.amber:C.dim,al:'left',f:MONO});bx+=tw(s_,12,700,MONO)+18;}
+        if(chaosOn||LAB_CHAOS[id])tx(LAB_CHAOS[id]?'chaos-proof ✓':`chaos mode · streak ${LAB_STREAK[id]||0}/3`,bx,LAB_BOARD.y-24,{z:12,wt:800,c:C.red,al:'left',f:MONO});}
+      if(running&&V_){tx(V_.phase||'',LAB_BOARD.x+6,LAB_BOARD.y-24,{al:'left',z:16,wt:800,c:/die|attack|storm|spike|star/i.test(V_.phase||'')?C.red:C.accent});const f=clamp(simT/o.dur);meter(LAB_BOARD.x,H-12,LAB_BOARD.w,4,f,C.accent);
         // live readout along the top bar, right-aligned, clear of the board
         let hx=W-14;o.hud(S,G).slice().reverse().forEach(([l,v,c])=>{tx(v,hx,LAB_BOARD.y-24,{z:12.5,wt:800,c:c||C.text,al:'right',f:MONO});hx-=tw(v,12.5,800,MONO)+6;tx(l,hx,LAB_BOARD.y-24,{z:11,c:C.dim,al:'right'});hx-=tw(l,11,500)+16;});}
+      g.restore();
     },
     down(x,y){if(running)return;const d=delBtn();if(d&&Math.hypot(x-d[0],y-d[1])<11){if(sel.n)removeNode(sel.n);else{remember();G.edges=G.edges.filter(e=>e!==sel.e);sel=null;save();say('Wire removed.');}return;}
-      const pi=PAL.findIndex((k,i)=>inBox(x,y,TILE(i)));if(pi>=0){drag={type:'new',kind:PAL[pi],x,y};return;}
+      const pi=PAL.findIndex((k,i)=>inBox(x,y,TILE(i)));if(pi>=0){if(lockOf(PAL[pi])){say(lockMsg(PAL[pi]));return;}drag={type:'new',kind:PAL[pi],x,y};return;}
       const pn=portAt(x,y);if(pn){drag={type:'wire',from:pn,x,y};sel={n:pn};return;}
       const n=nodeAt(x,y);if(n){drag={type:'move',n,dx:x-n.x,dy:y-n.y,x0:x,y0:y,ox:n.x,oy:n.y,snap:snapshot()};sel={n};say();return;}
       const e=edgeAt(x,y);if(e){sel={e};say(`Selected the wire ${nameOf(node(e.a))} → ${nameOf(node(e.b))}. Press Delete or × to remove it.`);return;}
@@ -217,6 +291,8 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
 };}
 // a short label over a component, or under it when the component sits against the top of the board
 function labMark(n,text,c,z){FX.text(n.x,n.y<LAB_BOARD.y+90?n.y+54:n.y-50,text,c,z||15);}
+// a small padlock for a locked palette tile
+function labLock(x,y){g.save();g.strokeStyle=C.amber;g.fillStyle=C.amber;g.lineWidth=1.6;g.beginPath();g.arc(x,y-2,3.5,Math.PI,0);g.stroke();g.fillRect(x-5,y-1,10,7);g.restore();}
 // a small glyph for the palette
 function icon(k,x,y,a){draw(x,y,{a},()=>{if(k.shape==='db'){g.beginPath();g.ellipse(0,-8,13,4.5,0,0,7);g.moveTo(-13,-8);g.lineTo(-13,8);g.ellipse(0,8,13,4.5,0,Math.PI,0,true);g.lineTo(13,-8);g.fillStyle=C.panel2;g.fill();g.strokeStyle=k.c||C.edge;g.lineWidth=1.6;g.stroke();}
   else if(k.shape==='user'){g.beginPath();g.arc(0,0,11,0,7);g.fillStyle=C.panel2;g.fill();g.strokeStyle=C.blue;g.lineWidth=1.5;g.stroke();g.fillStyle=C.blue;g.beginPath();g.arc(0,-3,3.5,0,7);g.fill();g.beginPath();g.arc(0,7,5.5,Math.PI,0);g.fill();}

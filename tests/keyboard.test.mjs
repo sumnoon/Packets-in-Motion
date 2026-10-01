@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { loadPage, challenge } from './harness.mjs';
 
 const page = loadPage();
+// component locks off, as if each chapter had been watched (the lock test turns them back on)
+page.context.localStorage.setItem('pim-lab-locks', 'false');
 const CHAL = page.get('CHAL');
 const play = id => challenge(page, id);
 
@@ -52,7 +54,7 @@ test('spof: the lab is built and run with keys', () => {
   // 1 LB · 2 app · 3 database · 4 standby; A is DNS
   r.press('1', '2', '3', '4', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', '1', '2');
   assert.match(r.state.status, /<b>A<\/b> DNS → B, F/);
-  r.press('Enter').step(14);
+  r.press('Enter').step(16);
   assert.equal(r.result.stars, 3);
 });
 
@@ -62,7 +64,7 @@ test('replication: the lab is built and run with keys', () => {
   // 1 leader · 2 follower · 3 failover manager; A is the app
   r.press('1', '2', '3', 'a', 'b', 'b', 'c', 'a', 'c', 'd', 'b', 'd', 'c', '2', '2');
   assert.match(r.state.status, /<b>B<\/b> Leader database → C, E, F/);
-  r.press('Enter').step(15);
+  r.press('Enter').step(17);
   assert.equal(r.result.stars, 3);
 });
 
