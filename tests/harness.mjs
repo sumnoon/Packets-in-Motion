@@ -109,6 +109,8 @@ function makeDocument(ctx) {
     append(...cs) { cs.forEach(c => this.appendChild(c)); }
     setAttribute(k, v) { this.attrs[k] = String(v); }
     getAttribute(k) { return this.attrs[k] ?? null; }
+    removeAttribute(k) { delete this.attrs[k]; }
+    contains(el) { return el === this || descendants(this).includes(el); }
     addEventListener(type, fn) { (this.ls[type] ||= []).push(fn); }
     removeEventListener() {}
     dispatch(type, ev = {}) { (this.ls[type] || []).forEach(fn => fn({ target: this, preventDefault() {}, ...ev })); }
@@ -183,3 +185,30 @@ export function loadPage(opts = {}) {
   };
 }
 export { CanvasError };
+
+// ---------- drive one challenge without the player ----------
+// A stand-in for the player's api: records buttons, controls, status and results.
+export function challenge(page, id) {
+  const state = { now: 0, buttons: [], controls: [], wins: [], locked: false, status: '' };
+  const api = {
+    now: () => state.now,
+    status(h) { state.status = String(h); },
+    button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary }; state.buttons.push(b); return b; },
+    slider(label, min, max, step, val, fmt, fn) { const c = { kind: 'slider', label, min: +min, max: +max, step: +step, fmt, set: v => { fmt(v); fn(v); } }; state.controls.push(c); return c; },
+    seg(label, opts, val, fn) { const c = { kind: 'seg', label, opts, set: fn }; state.controls.push(c); return c; },
+    toggle(label, val, fn) { let v = !!val; const c = { kind: 'toggle', label, set: x => fn((v = x === undefined ? !v : !!x)) }; state.controls.push(c); return c; },
+    lock(v) { state.locked = !!v; },
+    win(stars, title, msg) { state.wins.push({ stars, title, msg }); },
+  };
+  const FX = page.get('FX');
+  const inst = page.get('CHAL')[id].make(api);
+  const run = {
+    state, inst,
+    step(seconds, dt = 1 / 30) { for (let f = 0; f < seconds / dt; f++) { state.now += dt; page.reset(); page.runTimers(state.now); inst.draw(state.now, dt); FX.step(dt); } return run; },
+    press(...keys) { keys.forEach(k => inst.key && inst.key(k, state.now)); run.step(0.1); return run; },
+    click(label) { const b = state.buttons.find(b => label.test(b.label)); if (!b) throw new Error('no button ' + label); b.fn(); return run; },
+    control(label) { const c = state.controls.find(c => label.test(c.label)); if (!c) throw new Error('no control ' + label); return c; },
+    get result() { return state.wins[state.wins.length - 1] || null; },
+  };
+  return run.step(0.1);
+}

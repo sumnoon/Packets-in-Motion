@@ -65,10 +65,20 @@ The project logo traces a **P** with a routing path and two traveling packets, u
 | P | Start the chapter's challenge (Esc to leave) |
 | 1–9 | Jump to a step |
 | C | Toggle captions |
+| S | Transcript: every step as text; click one to jump there |
 | T | Trade-offs card |
 | F | Fullscreen |
 
+In a challenge, number keys (or letters, in the put-in-order games) do everything the mouse does; each target on the stage shows its key.
+
 On phones the course runs in landscape. Held upright, it asks you to rotate the phone and pauses until you do.
+
+## Accessibility
+
+- **Screen readers:** each step is announced as it plays (title and caption), the stage is labelled with the current step, and the transcript (S) lists every step as text. The sidebar reads each chapter's number, title, whether you've watched it and your stars.
+- **Keyboard only:** every lesson control and every challenge works without a mouse. Challenge status lines name the cards, slots and targets so you know which key does what.
+- **Themes:** pick Dark, Light or High contrast at the bottom of the sidebar. The stage stays dark in Light (it's the video); High contrast also brightens labels and lines on the stage. High contrast is chosen for you if your system asks for more contrast.
+- **Reduced motion** stills the drifting background and tones down the particle bursts.
 
 ## How it works
 

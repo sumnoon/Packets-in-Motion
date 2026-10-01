@@ -3,12 +3,13 @@ chal('observability',{title:'Find the culprit',goal:'Checkout is slow for some u
   hint:'Metrics tell you when and where it hurts. Logs tell you what happened. A trace shows one request\'s whole path. Two clues are usually enough.',
   make:api=>{const N=[{id:'gw',n:'Gateway',x:150,y:120},{id:'cart',n:'Cart',x:380,y:120},{id:'pay',n:'Payments',x:380,y:250},{id:'price',n:'Pricing',x:610,y:120},{id:'inv',n:'Inventory',x:610,y:250},{id:'pdb',n:'Pricing DB',x:840,y:120,isDb:true}];
     const L=[['gw','cart'],['gw','pay'],['cart','price'],['cart','inv'],['price','pdb']];let view=null,used=new Set(),wrong=0,done=false;
-    const open=v=>()=>{view=v;used.add(v);api.status(`Clues opened: <b>${used.size}</b>. When you know, click the culprit on the diagram.`);};
+    const pickList=N.map((n,k)=>`<kbd>${k+1}</kbd> ${n.n}`).join(' · ');
+    const open=v=>()=>{view=v;used.add(v);api.status(`Clues opened: <b>${used.size}</b>. When you know, click the culprit on the diagram, or press its number: ${pickList}.`);};
     api.button('Metrics',open('m'));api.button('Logs',open('l'));api.button('Trace',open('t'));
-    api.status('Open a clue, or click a component if you already know.');
+    api.status(`Open a clue, or pick the culprit if you already know: ${pickList}.`);
     const series=(id,k)=>{const base=id==='gw'||id==='cart'||id==='price'?1:0,s=[];for(let i=0;i<40;i++){const spike=base&&i>18&&i<34?.55+.3*rnd(i+k):0;s.push(.12+.08*rnd(i*3+k)+spike);}return s;};
     return{draw(now){L.forEach(([a,b])=>{const A=N.find(n=>n.id===a),B=N.find(n=>n.id===b);ln([[A.x,A.y],[B.x,B.y]],{c:C.line});});
-        N.forEach(n=>{if(n.isDb)db(n.x,n.y,{label:n.n,w:92,h:70});else server(n.x,n.y,{label:n.n,w:112,h:50});});
+        N.forEach((n,k)=>{if(n.isDb)db(n.x,n.y,{label:n.n,w:92,h:70});else server(n.x,n.y,{label:n.n,w:112,h:50});keycap(String(k+1),n.x-(n.isDb?58:68),n.y-(n.isDb?36:26));});
         const y0=320;if(!view){tx('Pick a clue: Metrics, Logs or Trace',W/2,y0+90,{z:15,c:C.dim});return;}
         panel(40,y0,920,200,{});
         if(view==='m'){[['gw','Gateway'],['cart','Cart'],['pay','Payments'],['price','Pricing']].forEach(([id,n],k)=>{const x=60+k*228,s=series(id,k);tx(`${n} · p99 latency`,x,y0+22,{z:12,c:C.dim,al:'left'});
@@ -20,4 +21,5 @@ chal('observability',{title:'Find the culprit',goal:'Checkout is slow for some u
       click(x,y,now){if(done)return;const n=N.find(q=>Math.abs(x-q.x)<60&&Math.abs(y-q.y)<40);if(!n)return;
         if(n.id==='pdb'||n.id==='price'){done=true;FX.burst(n.x,n.y,C.green,40,240);const st=Math.max(1,(used.size<=2?3:2)-wrong);
           api.win(st,'Found it: a slow pricing query',`Metrics showed where it hurt (Gateway, Cart, Pricing). The trace showed the time sinking into one database query. The Payments warning was a red herring: it retried and succeeded.${wrong?' Wrong guesses cost a star.':''}`);}
-        else{wrong++;FX.burst(n.x,n.y,C.red,16);FX.text(n.x,n.y-45,'not the cause',C.red,14);}}};}});
+        else{wrong++;FX.burst(n.x,n.y,C.red,16);FX.text(n.x,n.y-45,'not the cause',C.red,14);api.status(`<span class="bad">✕</span> ${n.n} is not the cause. Try another: ${pickList}.`);}},
+      key(k,now){const n=N[+k-1];if(n)this.click(n.x,n.y,now);}};}});

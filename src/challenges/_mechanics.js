@@ -16,6 +16,9 @@ function wrapLines(s,maxW,z=14,wt=600){const out=[];let cur='';for(const w of s.
 function textBlock(s,x,y,maxW,o={}){const{z=14,wt=600,c=C.text,lh=z*1.3,al='center',a=1}=o;const L=wrapLines(s,maxW,z,wt);const y0=y-(L.length-1)*lh/2;L.forEach((l,i)=>tx(l,x,y0+i*lh,{z,wt,c,al,a}));return L.length;}
 // a rounded plate centred on x,y
 function plate(x,y,w,h,o={}){const{c=C.edge,fill=C.panel,glow=0,a=1,r=12,lw=2,s=1}=o;draw(x,y,{a,s},()=>{if(glow)glowOn(c,glow);rr(-w/2,-h/2,w,h,r);g.fillStyle=fill;g.fill();glowOff();g.strokeStyle=c;g.lineWidth=lw;g.stroke();});}
+// a little key label, so every pointer target also has a key
+function keycap(s,x,y,o={}){const a=o.a??1;draw(x,y,{a},()=>{rr(-10,-10,20,20,5);g.fillStyle=C.bg;g.fill();g.strokeStyle=o.c||C.edge;g.lineWidth=1.2;g.stroke();});tx(s,x,y+.5,{z:11.5,wt:800,c:o.c||C.dim,f:MONO,a});}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 function meter(x,y,w,h,f,c,bg=C.line){rr(x,y,w,h,h/2);g.fillStyle=bg;g.fill();if(f>0){rr(x,y,Math.max(h,w*clamp(f)),h,h/2);g.fillStyle=c;g.fill();}}
 // a packet flying along pts, started at t0 (real seconds), lasting d; drawn with its trail
 function flyer(now,f){const p=(now-f.t0)/f.d;if(p<0)return false;if(f.drop&&p>=f.drop){const q=(now-f.t0-f.d*f.drop)/.8;if(q>=1)return true;const[x,y]=along(f.pts,esin(f.drop));dot(x-10*q,y+60*q*q,C.red,(f.r||5)*.9,1-q);return false;}
@@ -38,7 +41,8 @@ function sortGame(o){return api=>{
   const bins=o.bins.map((b,k)=>({...b,k,x:x0+k*(bw+gap),y:356,w:bw,h:150,got:[]}));
   const HOME=[W/2,o.side?205:200];let i=0,miss=0,streak=0,best=0,cx=HOME[0],cy=HOME[1],drag=null,hover=-1,shake=0,dealt=0,flying=[],over=false,deadline=0;
   const state={cards,get i(){return i;}};
-  function deal(now){dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer)deadline=now+o.timer;api.status(`Card <b>${i+1}</b> of ${cards.length}. Drag it into a box, or press <kbd>1</kbd>–<kbd>${n}</kbd>.`);}
+  const keyList=o.bins.map((b,k)=>`<kbd>${k+1}</kbd> ${esc(b.label)}`).join(' · ');
+  function deal(now){dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer)deadline=now+o.timer;api.status(`Card <b>${i+1}</b> of ${cards.length}: “${esc(cards[i].t)}”. Drag it into a box, or press ${keyList}.`);}
   function place(k,now){if(over||i>=cards.length)return;const c=cards[i],b=bins[k],right=o.bins[k].id===c.b;
     const tgt=bins.find(q=>q.id===c.b);flying.push({c,from:[cx,cy],to:[tgt.x+tgt.w/2,tgt.y+40+Math.min(tgt.got.length,4)*14],t0:now,ok:right});
     if(right){streak++;best=Math.max(best,streak);FX.burst(b.x+b.w/2,b.y+30,b.c);FX.text(b.x+b.w/2,b.y-10,streak>2?`${streak} in a row!`:'Right!',C.green);}
@@ -80,8 +84,11 @@ function orderGame(o){return api=>{
   cards.forEach((c,j)=>{c.home=j;c.slot=-1;c.x=tray[j].x+sw/2;c.y=tray[j].y+38;});
   let drag=null,tries=0,check=null,won=false;
   const pos=c=>c.slot>=0?[slots[c.slot].x+sw/2,slots[c.slot].y+38]:[tray[c.home].x+sw/2,tray[c.home].y+38];
-  const btn=api.button('Check my order',()=>{if(cards.some(c=>c.slot<0)){api.status('Fill every numbered slot first.');return;}tries++;check={t0:api.now(),res:slots.map((s,k)=>s.card.k===k)};api.lock(true);},{primary:true});
-  api.status('Drag each step into the numbered slots, in the order it really happens.');
+  const LET='ABCDEFGHIJ';
+  const doCheck=()=>{if(check)return;if(cards.some(c=>c.slot<0)){api.status('Fill every numbered slot first.');return;}tries++;check={t0:api.now(),res:slots.map((s,k)=>s.card.k===k)};api.lock(true);};
+  const btn=api.button('Check my order',doCheck,{primary:true});
+  const trayText=()=>{const left=cards.filter(c=>c.slot<0).sort((a,b)=>a.home-b.home);return left.length?'Tray: '+left.map(c=>`<kbd>${LET[c.home]}</kbd> ${esc(c.t)}`).join(' · '):'All slots filled: press <kbd>Enter</kbd> or <b>Check my order</b>.';};
+  api.status(`Drag each step into the numbered slots, in the order it really happens. Or press a letter to put that card in the next slot (<kbd>Backspace</kbd> takes one back). ${trayText()}`);
   return{
     draw(now,dt){tx(o.head||'What happens, in order?',W/2,150,{z:15,wt:650,c:C.dim});
       slots.forEach((s,k)=>{let c=C.line;if(check){const p=(now-check.t0)/.45;if(p>k)c=check.res[k]?C.green:C.red;}
@@ -89,10 +96,14 @@ function orderGame(o){return api=>{
       if(check){const p=(now-check.t0)/.45;const k=Math.min(n-1,Math.floor(p));const x=lerp(slots[0].x+sw/2,slots[n-1].x+sw/2,clamp(p/(n-1)));
         if(p<n)dot(x,sy-58,C.blue,6);if(o.play)o.play(now,p);
         if(p>=n+.3){const ok=check.res.every(v=>v);if(ok&&!won){won=true;FX.burst(W/2,sy,C.green,40,260);api.win(tries===1?3:tries===2?2:1,tries===1?'Perfect order':'Got it',o.msg||'Every step in its place.');}
-          else if(!ok){check.res.forEach((v,j)=>{if(!v){const c=slots[j].card;c.slot=-1;slots[j].card=null;}});FX.text(W/2,sy-90,'Some steps are out of place',C.red,15);check=null;api.lock(false);api.status('The red ones went back to the tray. Try again.');}}}
+          else if(!ok){check.res.forEach((v,j)=>{if(!v){const c=slots[j].card;c.slot=-1;slots[j].card=null;}});FX.text(W/2,sy-90,'Some steps are out of place',C.red,15);check=null;api.lock(false);api.status(`The red ones went back to the tray. Try again. ${trayText()}`);}}}
       cards.forEach(c=>{if(c!==drag){const[hx,hy]=pos(c);c.x=lerp(c.x,hx,clamp(dt*12));c.y=lerp(c.y,hy,clamp(dt*12));}});
       [...cards.filter(c=>c!==drag),...(drag?[drag]:[])].forEach(c=>{plate(c.x,c.y,sw,70,{c:c===drag?C.accent:c.slot>=0?C.blue:C.edge,fill:C.panel2,glow:c===drag?16:0});
-        textBlock(c.t,c.x,c.y-(c.sub?8:0),sw-16,{z:13.5,wt:700});if(c.sub)tx(c.sub,c.x,c.y+20,{z:10.5,c:C.dim});});},
+        textBlock(c.t,c.x,c.y-(c.sub?8:0),sw-16,{z:13.5,wt:700});if(c.sub)tx(c.sub,c.x,c.y+20,{z:10.5,c:C.dim});if(c.slot<0&&c!==drag)keycap(LET[c.home],c.x-sw/2+14,c.y-24);});},
+    key(k){if(check)return;if(k==='Enter'){doCheck();return;}
+      if(k==='Backspace'){const s=slots.map(s=>s.card).filter(Boolean).pop();if(s){slots[s.slot].card=null;s.slot=-1;api.status(`Took “${esc(s.t)}” back. ${trayText()}`);}return;}
+      const j=LET.indexOf(String(k).toUpperCase());if(j<0||k.length!==1)return;const c=cards.find(c=>c.home===j&&c.slot<0),e=slots.findIndex(s=>!s.card);if(!c||e<0)return;
+      slots[e].card=c;c.slot=e;api.status(`Slot ${e+1}: ${esc(c.t)}. ${trayText()}`);},
     down(x,y){if(check)return;drag=cards.find(c=>Math.abs(x-c.x)<sw/2&&Math.abs(y-c.y)<36)||null;if(drag){drag.dx=x-drag.x;drag.dy=y-drag.y;}},
     move(x,y){if(drag){drag.x=x-drag.dx;drag.y=y-drag.dy;}},
     up(){if(!drag)return;const k=slots.findIndex(s=>Math.abs(drag.x-(s.x+sw/2))<sw/2+gap/2&&Math.abs(drag.y-(s.y+38))<70);
