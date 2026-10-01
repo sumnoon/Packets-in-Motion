@@ -36,7 +36,7 @@ chal('capstone-feed',{title:'Build the news feed',goal:'Build it yourself: ordin
       const fanOut=!!(q&&writers.length),fromCache=fs&&G.out(fs,['feedcache']).length>0,fromDb=fs&&G.out(fs,['postdb']).length>0,page=fs&&G.out(fs,['pagecache']).length>0,skip=G.opts.skipStars;
       const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       // posting: fan-out writes pile into the queue; workers drain it
-      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=3&&!skip){S.q+=STAR;S.star=true;FX.text(q.x,q.y-46,'+30 M writes',C.red,15);}S.q=Math.max(0,S.q-cap*dt);
+      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=3&&!skip){S.q+=STAR;S.star=true;labMark(q,'+30 M writes',C.red,15);}S.q=Math.max(0,S.q-cap*dt);
         const wait=Math.max(NEED/cap,S.q/cap)+(cap<=NEED?60:0);S.fresh=Math.max(S.fresh,wait);load[q.id]=Math.min(1.5,S.q/(cap*10));writers.forEach(w=>load[w.id]=NEED/cap);}
       else if(fromCache)S.fresh=Math.max(S.fresh,1e9);         // nothing fills the feed cache: new posts never show up
       if(fromCache&&fanOut&&skip&&!fromDb)S.fresh=Math.max(S.fresh,1e9);   // stars skip fan-out, but nothing reads their posts

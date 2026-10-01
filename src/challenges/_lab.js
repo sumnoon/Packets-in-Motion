@@ -16,6 +16,7 @@
      budget, dur, intro
      init(G) → S;  step(S,G,dt,t) → {flows:[{a,b,rate,bad}], load:{id:util}, dead:Set, phase}
      hud(S,G) → [[label,value,colour]];  score(S,G) → {stars,title,msg};  check(G) → [problem]
+     sub(n,G,S) → a live subtitle for a component, or null (S is null before a run)
    ============================================================ */
 const LAB_SAVE={};
 const LAB_BOARD={x:14,y:62,w:972,h:380};
@@ -25,7 +26,7 @@ function labGame(o){return api=>{
   // ---------- the graph ----------
   let G=LAB_SAVE[id]?JSON.parse(JSON.stringify(LAB_SAVE[id])):{nodes:o.fixed.map((f,i)=>({id:'f'+i,kind:f.kind,x:f.x,y:f.y,label:f.label,fixed:true})),edges:[],seq:0};
   if(!G.opts)G.opts={};(o.toggles||[]).forEach(tg=>{if(!(tg.key in G.opts))G.opts[tg.key]=tg.val;});
-  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));};
+  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));if(!running)S=null;};   // an edit clears the last run's readings
   const LET='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const node=nid=>G.nodes.find(n=>n.id===nid);
   const sizeOf=n=>{const k=K[n.kind]||o.fixedKinds[n.kind];return[k.w||110,k.h||52];};
@@ -106,7 +107,7 @@ function labGame(o){return api=>{
       // nodes
       G.nodes.forEach(n=>{const k=kindOf(n),[w,h]=sizeOf(n),util=V_&&V_.load?V_.load[n.id]:null,dead=V_&&V_.dead&&V_.dead.has(n.id);
         const st=dead?'fail':util==null?(k.st||'ok'):util>1.02?'fail':util>.85?'hot':'ok';
-        drawKind(n,k,w,h,st,util);
+        const sb=o.sub&&o.sub(n,G,S);drawKind(n,sb!=null?Object.assign({},k,{sub:sb}):k,w,h,st,util);
         if(kb)keycap(letterOf(n),n.x-w/2-1,n.y-h/2-1,{c:sel&&sel.n===n?C.accent:C.edge});
         if((o.links[n.kind]||[]).length&&!running){const[px,py]=port(n),hv=hover===n||sel&&sel.n===n;g.save();g.beginPath();g.arc(px,py,hv?6.5:4.5,0,7);g.fillStyle=hv?C.accent:C.panel2;g.fill();g.strokeStyle=C.accent;g.lineWidth=1.5;g.stroke();g.restore();}
         if(sel&&sel.n===n){g.save();g.strokeStyle=C.accent;g.lineWidth=2;g.setLineDash([4,4]);rr(n.x-w/2-6,n.y-h/2-6,w+12,h+12,14);g.stroke();g.restore();}
@@ -144,6 +145,8 @@ function labGame(o){return api=>{
   function spawn(out,now,dt){(out.flows||[]).forEach(f=>{if(!(f.rate>0))return;const e={a:f.a,b:f.b};if(!node(f.a)||!node(f.b))return;const pps=Math.min(10,f.rate/(o.scale||100));
       if(Math.random()<pps*dt)fl.push({t0:now,d:.55,pts:seg(e),c:f.bad?C.red:f.c||C.blue,r:3.6,drop:f.bad?.85:0});});}
 };}
+// a short label over a component, or under it when the component sits against the top of the board
+function labMark(n,text,c,z){FX.text(n.x,n.y<LAB_BOARD.y+90?n.y+54:n.y-50,text,c,z||15);}
 // a small glyph for the palette
 function icon(k,x,y,a){draw(x,y,{a},()=>{if(k.shape==='db'){g.beginPath();g.ellipse(0,-8,13,4.5,0,0,7);g.moveTo(-13,-8);g.lineTo(-13,8);g.ellipse(0,8,13,4.5,0,Math.PI,0,true);g.lineTo(13,-8);g.fillStyle=C.panel2;g.fill();g.strokeStyle=k.c||C.edge;g.lineWidth=1.6;g.stroke();}
   else if(k.shape==='user'){g.beginPath();g.arc(0,0,11,0,7);g.fillStyle=C.panel2;g.fill();g.strokeStyle=C.blue;g.lineWidth=1.5;g.stroke();g.fillStyle=C.blue;g.beginPath();g.arc(0,-3,3.5,0,7);g.fill();g.beginPath();g.arc(0,7,5.5,Math.PI,0);g.fill();}

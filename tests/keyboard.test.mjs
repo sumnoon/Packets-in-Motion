@@ -46,11 +46,13 @@ test('cdn: number keys place the edges', () => {
   assert.equal(r.result.stars, 3);
 });
 
-test('spof: number keys add standbys', () => {
+test('spof: the lab is built and run with keys', () => {
+  for (const k in page.get('LAB_SAVE')) delete page.get('LAB_SAVE')[k];
   const r = play('spof');
-  r.press('2', '3', '4');
-  assert.match(r.state.status, /Load balancer, App server, Database/);
-  r.click(/chaos/i).step(15);
+  // 1 LB · 2 app · 3 database · 4 standby; A is DNS
+  r.press('1', '2', '3', '4', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', '1', '2');
+  assert.match(r.state.status, /<b>A<\/b> DNS → B, F/);
+  r.press('Enter').step(14);
   assert.equal(r.result.stars, 3);
 });
 

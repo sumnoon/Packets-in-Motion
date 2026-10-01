@@ -3308,6 +3308,7 @@ function simGame(o){return api=>{
      budget, dur, intro
      init(G) → S;  step(S,G,dt,t) → {flows:[{a,b,rate,bad}], load:{id:util}, dead:Set, phase}
      hud(S,G) → [[label,value,colour]];  score(S,G) → {stars,title,msg};  check(G) → [problem]
+     sub(n,G,S) → a live subtitle for a component, or null (S is null before a run)
    ============================================================ */
 const LAB_SAVE={};
 const LAB_BOARD={x:14,y:62,w:972,h:380};
@@ -3317,7 +3318,7 @@ function labGame(o){return api=>{
   // ---------- the graph ----------
   let G=LAB_SAVE[id]?JSON.parse(JSON.stringify(LAB_SAVE[id])):{nodes:o.fixed.map((f,i)=>({id:'f'+i,kind:f.kind,x:f.x,y:f.y,label:f.label,fixed:true})),edges:[],seq:0};
   if(!G.opts)G.opts={};(o.toggles||[]).forEach(tg=>{if(!(tg.key in G.opts))G.opts[tg.key]=tg.val;});
-  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));};
+  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));if(!running)S=null;};   // an edit clears the last run's readings
   const LET='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const node=nid=>G.nodes.find(n=>n.id===nid);
   const sizeOf=n=>{const k=K[n.kind]||o.fixedKinds[n.kind];return[k.w||110,k.h||52];};
@@ -3398,7 +3399,7 @@ function labGame(o){return api=>{
       // nodes
       G.nodes.forEach(n=>{const k=kindOf(n),[w,h]=sizeOf(n),util=V_&&V_.load?V_.load[n.id]:null,dead=V_&&V_.dead&&V_.dead.has(n.id);
         const st=dead?'fail':util==null?(k.st||'ok'):util>1.02?'fail':util>.85?'hot':'ok';
-        drawKind(n,k,w,h,st,util);
+        const sb=o.sub&&o.sub(n,G,S);drawKind(n,sb!=null?Object.assign({},k,{sub:sb}):k,w,h,st,util);
         if(kb)keycap(letterOf(n),n.x-w/2-1,n.y-h/2-1,{c:sel&&sel.n===n?C.accent:C.edge});
         if((o.links[n.kind]||[]).length&&!running){const[px,py]=port(n),hv=hover===n||sel&&sel.n===n;g.save();g.beginPath();g.arc(px,py,hv?6.5:4.5,0,7);g.fillStyle=hv?C.accent:C.panel2;g.fill();g.strokeStyle=C.accent;g.lineWidth=1.5;g.stroke();g.restore();}
         if(sel&&sel.n===n){g.save();g.strokeStyle=C.accent;g.lineWidth=2;g.setLineDash([4,4]);rr(n.x-w/2-6,n.y-h/2-6,w+12,h+12,14);g.stroke();g.restore();}
@@ -3436,6 +3437,8 @@ function labGame(o){return api=>{
   function spawn(out,now,dt){(out.flows||[]).forEach(f=>{if(!(f.rate>0))return;const e={a:f.a,b:f.b};if(!node(f.a)||!node(f.b))return;const pps=Math.min(10,f.rate/(o.scale||100));
       if(Math.random()<pps*dt)fl.push({t0:now,d:.55,pts:seg(e),c:f.bad?C.red:f.c||C.blue,r:3.6,drop:f.bad?.85:0});});}
 };}
+// a short label over a component, or under it when the component sits against the top of the board
+function labMark(n,text,c,z){FX.text(n.x,n.y<LAB_BOARD.y+90?n.y+54:n.y-50,text,c,z||15);}
 // a small glyph for the palette
 function icon(k,x,y,a){draw(x,y,{a},()=>{if(k.shape==='db'){g.beginPath();g.ellipse(0,-8,13,4.5,0,0,7);g.moveTo(-13,-8);g.lineTo(-13,8);g.ellipse(0,8,13,4.5,0,Math.PI,0,true);g.lineTo(13,-8);g.fillStyle=C.panel2;g.fill();g.strokeStyle=k.c||C.edge;g.lineWidth=1.6;g.stroke();}
   else if(k.shape==='user'){g.beginPath();g.arc(0,0,11,0,7);g.fillStyle=C.panel2;g.fill();g.strokeStyle=C.blue;g.lineWidth=1.5;g.stroke();g.fillStyle=C.blue;g.beginPath();g.arc(0,-3,3.5,0,7);g.fill();g.beginPath();g.arc(0,7,5.5,Math.PI,0);g.fill();}
@@ -3462,30 +3465,61 @@ chal('client-server',{title:'Load the page',goal:'Put the six steps of opening a
   make:orderGame({head:'You type example.com and press Enter. What happens, in order?',msg:'Name → address → connection → secure channel → ask → answer → draw. That is every page load.',
     steps:[{t:'DNS lookup',sub:'name → IP'},{t:'TCP handshake',sub:'SYN · SYN-ACK · ACK'},{t:'TLS handshake',sub:'agree on keys'},{t:'HTTP request',sub:'GET /'},{t:'HTTP response',sub:'200 OK + HTML'},{t:'Render',sub:'draw the page'}]})});
 
-/* ---------------- 2. SCALING: survive launch day ---------------- */
-chal('scaling',{title:'Survive launch day',goal:'Traffic climbs to 1,200 requests/s and one machine will crash. Drop under 1% of requests and spend no more than $12/hour.',
-  hint:'One huge box is expensive and dies alone. Several medium boxes cost less and keep serving when one fails.',
-  make:(()=>{const SZ={S:{cap:200,cost:1,w:84},M:{cap:450,cost:3,w:100},L:{cap:800,cost:8,w:116},XL:{cap:1100,cost:20,w:132}};
-    const traffic=t=>100+1100*(x=>x*x*(3-2*x))(clamp(t/16));
-    return simGame({dur:18,defaults:{size:'M',n:1},
-      intro:'Pick a machine size and how many. Press <b>Run it</b> to open the doors.',
-      controls(api,p,re){api.seg('Machine size',[['S','S · 200/s · $1'],['M','M · 450/s · $3'],['L','L · 800/s · $8'],['XL','XL · 1100/s · $20']],p.size,v=>{p.size=v;re();});
-        api.slider('Machines',1,6,1,p.n,v=>`${v}`,v=>{p.n=v;re();});},
-      build(p,api){const S=SZ[p.size],ms=Array.from({length:p.n},(_,k)=>({alive:true,load:0,y:p.n===1?280:130+k*(300/(p.n-1))}));
-        let total=0,dropped=0,acc=0,rr=0,rate=100,crashed=false;const fl=[];const LB=[380,280];
-        return{step(dt,t){rate=traffic(t);if(!crashed&&t>=11){crashed=true;ms[0].alive=false;FX.burst(740,ms[0].y,C.red,26);}if(crashed&&t>=15&&!ms[0].alive){ms[0].alive=true;}
-            const alive=ms.filter(m=>m.alive),cap=alive.length*S.cap,drop=Math.max(0,rate-cap);total+=rate*dt;dropped+=drop*dt;ms.forEach(m=>m.load=m.alive?Math.min(1,rate/Math.max(cap,1)):0);
-            acc+=rate*dt/45;const now=api.now();while(acc>=1){acc--;const u=[90,170+Math.random()*220];const m=alive.length?alive[rr++%alive.length]:null;
-              const isDrop=!m||Math.random()<drop/rate;const to=m?[740-S.w/2,m.y]:[740,280];fl.push({t0:now,d:.9,pts:[u,LB,to],c:isDrop?C.red:C.blue,r:4,drop:isDrop?.62:0});}},
-          draw(now,running){flyers(now,fl);for(let i=0;i<3;i++)user(90,170+i*110,{c:C.blue,r:13});tx('your users',90,470,{z:12,c:C.dim});
-            box(LB[0],LB[1],{label:'Load balancer',w:140,h:54});ms.forEach((m,k)=>server(740,m.y,{label:`${p.size}-${k+1}`,sub:`${S.cap}/s`,w:S.w,h:p.n>4?48:58,st:m.alive?(m.load>.95?'hot':'ok'):'fail',load:m.alive?m.load:null}));
-            if(!running&&!total){tx(`Capacity ${p.n*S.cap}/s  ·  peak 1,200/s`,W/2,520,{z:14,wt:700,c:p.n*S.cap>=1200?C.green:C.amber});}},
-          hud(){const cap=ms.filter(m=>m.alive).length*S.cap;return[['traffic',`${Math.round(rate)}/s`],['capacity',`${cap}/s`,cap>=rate?C.green:C.red],['dropped',`${total?(dropped/total*100).toFixed(1):'0.0'}%`,dropped/Math.max(total,1)<.01?C.green:C.red],['cost',`$${p.n*S.cost}/h`,p.n*S.cost<=12?C.green:C.amber]];},
-          score(){const d=dropped/total,cost=p.n*S.cost;
-            if(d<.01&&cost<=12)return{stars:3,title:'Launch day survived',msg:`${p.n} × ${p.size} for $${cost}/h dropped ${(d*100).toFixed(1)}%. Scaling out beats scaling up: cheaper, and one crash is only a dent.`};
-            if(d<.03)return{stars:2,title:'Mostly survived',msg:`Dropped ${(d*100).toFixed(1)}% at $${cost}/h. ${cost>12?'It works, but costs too much. Several smaller machines give the same capacity for less.':'Close. Leave room for one machine to fail at peak.'}`};
-            if(d<.2)return{stars:1,title:'Rough launch',msg:`${(d*100).toFixed(1)}% of requests failed. When the crash hit, there was not enough spare capacity.`};
-            return{stars:0,title:'The site went down',msg:`${(d*100).toFixed(0)}% of requests were dropped. You need total capacity above 1,200/s, even with one machine gone.`};}};}});})()});
+/* ---------------- 2. SCALING: build for launch day ---------------- */
+// You build it on the board: users → (load balancer) → servers of any size.
+// Traffic climbs to 1,200 requests/s; the busiest server crashes at 11 s and is back at 15 s.
+// A load balancer sends traffic only to live servers, in proportion to their size;
+// users wired straight to servers keep hitting the dead one.
+(function(){
+const CAP={small:200,medium:450,large:800,xl:1100},SERVERS=Object.keys(CAP);
+const traffic=t=>100+1100*(x=>x*x*(3-2*x))(clamp(t/16));
+chal('scaling',{title:'Survive launch day',goal:'Build it yourself: traffic climbs to 1,200 requests/s and the busiest machine crashes on the way up. Drop under 1% of requests and spend at most $13/h.',
+  hint:'One huge machine is expensive and dies alone. Put a load balancer in front of several medium machines: they cost less and keep serving when one fails.',
+  make:labGame({id:'scaling',budget:13,dur:18,scale:60,runLabel:'Open the doors',
+    intro:'Your users are on the left. Drag servers from the row below onto the board, then drag from the ● on Users to a server to wire them. Press Open the doors when you are ready.',
+    fixedKinds:{users:{label:'Users',shape:'user',w:44,h:44}},
+    fixed:[{kind:'users',x:70,y:250,label:'Your users'}],
+    kinds:{
+      lb:{label:'Load balancer',short:'LB',cost:1,max:1,shape:'box',c:C.accent,w:110,h:50,sub:'health checks'},
+      small:{label:'Small server',short:'Small',cost:1,max:6,shape:'server',w:86,h:46,sub:'200/s',clone:true},
+      medium:{label:'Medium server',short:'Medium',cost:3,max:6,shape:'server',w:100,h:50,sub:'450/s',clone:true},
+      large:{label:'Large server',short:'Large',cost:8,max:3,shape:'server',w:116,h:54,sub:'800/s',clone:true},
+      xl:{label:'Extra-large server',short:'XL',cost:20,max:2,shape:'server',w:132,h:58,sub:'1,100/s',clone:true}},
+    columns:{lb:260,small:560,medium:560,large:560,xl:560},
+    links:{users:['lb',...SERVERS],lb:SERVERS},
+    check(G){const u=G.of('users')[0];if(!G.out(u).length)return['wire Users to a server or a load balancer.'];
+      const lb=G.out(u,['lb'])[0];if(lb&&!G.out(lb).length)return['wire the load balancer to your servers.'];
+      return[];},
+    init(){return{rate:0,total:0,drop:0,dead:new Set(),killed:null,lastIn:{},why:{dead:0,full:0,nowhere:0}};},
+    step(S,G,dt,t){const rate=traffic(t),phase=t<6?'Doors open':t<11?'Traffic climbing':t<15?'A server dies':'Peak traffic';
+      const servers=G.nodes.filter(n=>CAP[n.kind]);
+      if(t>=11&&!S.killed&&servers.length){const b=servers.reduce((a,c)=>((S.lastIn[c.id]||0)>(S.lastIn[a.id]||0)?c:a));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}
+      if(t>=15&&S.dead.size){const b=servers.find(n=>n.id===S.killed);S.dead.clear();if(b)labMark(b,'rebooted',C.green,14);}
+      const flows=[],load={},inn={},F=(a,b,r,isBad)=>{if(r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad});};
+      // users split evenly over what they are wired to; a load balancer skips dead servers and weights by size
+      const send=(n,r)=>{if(CAP[n.kind]){inn[n.id]=(inn[n.id]||0)+r;return;}
+        const all=G.out(n,['lb',...SERVERS]),outs=n.kind==='lb'?all.filter(m=>!S.dead.has(m.id)):all;
+        if(!outs.length){S.why[all.length?'dead':'nowhere']+=r*dt;S.drop+=r*dt;return;}
+        const wt=m=>n.kind==='lb'?CAP[m.kind]:1,sum=outs.reduce((a,m)=>a+wt(m),0);
+        outs.forEach(m=>{const share=r*wt(m)/sum;F(n,m,share,S.dead.has(m.id));send(m,share);});};
+      send(G.of('users')[0],rate);
+      servers.forEach(n=>{const r=inn[n.id]||0;if(S.dead.has(n.id)){S.why.dead+=r*dt;S.drop+=r*dt;return;}
+        const over=Math.max(0,r-CAP[n.kind]);S.why.full+=over*dt;S.drop+=over*dt;load[n.id]=r/CAP[n.kind];});
+      if(!S.killed)S.lastIn=inn;S.rate=rate;S.total+=rate*dt;
+      return{flows,load,dead:S.dead,phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S,G){const cap=G.nodes.filter(n=>CAP[n.kind]&&!S.dead.has(n.id)).reduce((a,n)=>a+CAP[n.kind],0),d=S.total?S.drop/S.total:0;
+      return[['traffic',`${Math.round(S.rate)}/s`],['capacity',`${cap}/s`,cap>=S.rate?C.green:C.red],['dropped',`${(d*100).toFixed(1)}%`,d<.01?C.green:C.red]];},
+    score(S,G,cost){const d=S.total?S.drop/S.total:1,pct=(d*100).toFixed(1),top=Object.entries(S.why).sort((a,b)=>b[1]-a[1])[0][0];
+      const one=G.nodes.filter(n=>CAP[n.kind]).length===1;
+      const advice=one&&top!=='nowhere'?'One machine, however big, falls short at peak and takes the whole site down when it crashes. Put several smaller machines behind a load balancer.':{dead:G.of('lb').length?'When a server crashed, the others could not take its traffic. Add one more server than the peak needs.':'Users were wired straight to the server that crashed, so their requests kept going to a dead machine. Put a load balancer in front: it sends traffic only to live servers.',
+        full:'Not enough capacity: keep total capacity above 1,200/s even with your biggest server gone.',
+        nowhere:'Some traffic had nowhere to go: wire Users to a load balancer, and the load balancer to every server.'}[top];
+      if(d<.01&&cost<=13)return{stars:3,title:'Launch day survived',msg:`Dropped ${pct}% for $${cost}/h. Several machines behind a load balancer cost less than one giant, and a crash is only a dent. That is scaling out.`};
+      if(d<.01)return{stars:2,title:`Survived, at $${cost}/h`,msg:'It works, but it costs too much. Several medium machines give the same capacity for far less than large or extra-large ones.'};
+      if(d<.03)return{stars:2,title:`Dropped ${pct}%`,msg:advice};
+      if(d<.2)return{stars:1,title:'Rough launch',msg:`${pct}% of requests failed. ${advice}`};
+      return{stars:0,title:'The site went down',msg:`${(d*100).toFixed(0)}% of requests were dropped. ${advice}`};}})});
+})();
 
 /* ---------------- 2b. AUTOSCALING: tune the rules ---------------- */
 // Target tracking: scale out at once to reach the target; scale in one server at a
@@ -3561,25 +3595,79 @@ chal('load-balancers',{title:'Be the load balancer',goal:'For 30 seconds, send e
       click(x,y,now){const k=S.findIndex(s=>Math.abs(x-800)<150&&Math.abs(y-s.y)<50);if(k>=0)send(k,now);},
       key(k,now){if(k>='1'&&k<='3')send(+k-1,now);}};}});
 
-/* ---------------- 3b. SESSIONS: keep them logged in ---------------- */
-chal('sessions',{title:'Keep everyone logged in',goal:'30 users click around. At 5 s Server A dies; at 9 s the session store\'s machine dies. Finish with zero forced re-logins.',
-  hint:'Memory on each server loses users to round robin; sticky sessions lose everyone on the dead server. A shared store fixes both, but the store must survive too.',
-  make:simGame({dur:13,defaults:{mode:'mem',rep:false},intro:'Choose where sessions live, then press <b>Run it</b>.',
-    controls(api,p,re){api.seg('Sessions live in',[['mem','server memory'],['sticky','memory + sticky cookie'],['shared','shared store (Redis)']],p.mode,v=>{p.mode=v;re();});api.toggle('Store has a replica',p.rep,v=>{p.rep=v;re();});},
-    build(p,api){const SV=['A','B','C'],users=Array.from({length:30},(_,i)=>({home:i%3,where:new Set([i%3]),n:0}));let relog=0,aDead=false,sDead=false,acc=0,rr_=0,T=0;const fl=[];const SY=k=>150+k*140;
-      return{step(dt,t){T=t;if(!aDead&&t>=5){aDead=true;FX.burst(560,SY(0),C.red,24);}if(!sDead&&t>=9&&p.mode==='shared'){sDead=true;FX.burst(840,290,C.red,24);if(!p.rep){relog+=30;FX.text(840,230,'all sessions lost',C.red);}else FX.text(840,230,'replica took over',C.green);}
-          acc+=dt*6;const now=api.now();while(acc>=1){acc--;const i=Math.floor(Math.random()*30),u=users[i];let k;
-            if(p.mode==='sticky'){k=u.home;if(aDead&&k===0){k=1+(i%2);if(!u.moved){u.moved=true;relog++;fl.push({t0:now,d:.6,pts:[[70,110+i*11],[300,290],[560-60,SY(k)]],c:C.red,r:3.5,label:'log in again'});continue;}}}
-            else{do{k=rr_++%3;}while(aDead&&k===0);}
-            let bad=false;if(p.mode==='mem'){if(!u.where.has(k)||(k===0&&aDead)){bad=true;relog++;u.where.add(k);}}
-            fl.push({t0:now,d:.6,pts:[[70,110+i*11],[300,290],[560-60,SY(k)]],c:bad?C.red:C.blue,r:3.5});if(p.mode==='shared')fl.push({t0:now+.6,d:.4,pts:[[620,SY(k)],[790,290]],c:C.amber,r:3});}},
-        draw(now){flyers(now,fl);for(let i=0;i<30;i++)dot(70,110+i*11,C.blue,3.2);tx('30 users',70,460,{z:12,c:C.dim});box(300,290,{label:'Load balancer',sub:p.mode==='sticky'?'sticky':'round robin',w:140,h:52});
-          SV.forEach((n,k)=>server(560,SY(k),{label:`Server ${n}`,sub:p.mode==='shared'?'stateless':'sessions in RAM',w:130,h:54,st:k===0&&aDead?'fail':'ok'}));
-          if(p.mode==='shared'){db(840,290,{label:'Session store',sub:sDead?(p.rep?'replica now':'DOWN'):'Redis',w:120,h:86,st:sDead&&!p.rep?'fail':'ok'});if(p.rep)db(840,420,{label:'Replica',w:90,h:64,st:sDead?'good':'ok'});}},
-        hud(){return[['forced re-logins',`${relog}`,relog===0?C.green:C.red]];},
-        score(){if(relog===0)return{stars:3,title:'Nobody noticed a thing',msg:'Stateless servers plus a replicated session store: a server died and so did the store\'s machine, and every user stayed logged in.'};
-          if(relog<=12)return{stars:2,title:`${relog} users logged out`,msg:p.mode==='sticky'?'Sticky sessions kept most users happy, but everyone pinned to Server A lost their session when it died.':'Close. Make the session store itself survive a failure.'};
-          return{stars:1,title:`${relog} forced re-logins`,msg:p.mode==='mem'?'With sessions in each server\'s memory, round robin keeps sending users to servers that do not know them.':'The session store was a single point of failure: when it died, every session went with it. Give it a replica.'};}};}})});
+/* ---------------- 3b. SESSIONS: keep everyone logged in ---------------- */
+// You build it on the board: users → (load balancer) → app servers → (session store → replica).
+// 30 logged-in users click around, 10 requests a second. At 5 s the busiest server dies; at 9 s the
+// session store's machine dies. Where a session lives follows from your wiring: a server wired to
+// the store keeps sessions there, otherwise in its own memory. Sticky sessions pin each user to one server.
+(function(){
+const N=30,RATE=10;
+chal('sessions',{title:'Keep everyone logged in',goal:'Build it yourself: 30 users click around, then a server dies, then the session store\'s machine dies. Finish with zero forced re-logins and spend at most $7/h.',
+  hint:'A session kept in one server\'s memory is lost when the load balancer sends you elsewhere or that server dies. Wire every server to a shared session store, and give the store a replica so its machine can die too.',
+  make:labGame({id:'sessions',budget:7,dur:13,scale:.6,
+    intro:'30 users are logged in. Build a path from Users to your servers and decide where their sessions live, then press Run.',
+    fixedKinds:{users:{label:'Users',shape:'user',w:44,h:44}},
+    fixed:[{kind:'users',x:70,y:250,label:'30 users'}],
+    kinds:{
+      lb:{label:'Load balancer',short:'LB',cost:1,max:1,shape:'box',c:C.accent,w:110,h:50,sub:'round robin'},
+      app:{label:'App server',short:'Server',cost:1,max:4,shape:'server',w:110,h:50,sub:'sessions in RAM',clone:true},
+      store:{label:'Session store',short:'Store',cost:2,max:1,shape:'db',w:96,h:72,sub:'Redis'},
+      replica:{label:'Store replica',short:'Replica',cost:1,max:1,shape:'db',w:84,h:62,sub:'a live copy'}},
+    columns:{lb:260,app:490,store:730,replica:900},
+    links:{users:['lb','app'],lb:['app'],app:['store'],store:['replica']},
+    toggles:[{key:'sticky',label:'Sticky sessions: the load balancer pins each user to one server',val:false}],
+    check(G){const u=G.of('users')[0];if(!G.out(u).length)return['wire Users to a load balancer or a server.'];
+      const lb=G.out(u,['lb'])[0];if(lb&&!G.out(lb).length)return['wire the load balancer to your servers.'];
+      const st=G.of('store')[0];if(st&&!G.inn(st).length)return['wire your servers to the session store, or it holds nothing.'];
+      if(G.of('replica').length&&!(st&&G.out(st,['replica']).length))return['wire the session store to its replica so it keeps a copy.'];
+      return[];},
+    sub(n,G,S){if(n.kind==='app')return G.out(n,['store']).length?'sessions in the store':'sessions in RAM';
+      if(n.kind==='lb')return G.opts.sticky?'sticky':'round robin';
+      if(n.kind==='store'&&S&&S.storeHit)return G.out(n,['replica']).length?'replica took over':'restarted empty';return null;},
+    init(){return{ema:{},badT:{},k:0,acc:0,rr:0,relog:0,dead:new Set(),killed:false,storeHit:false,hits:{},stranded:new Set(),why:{mem:0,dead:0,store:0,direct:0,none:0},
+      users:Array.from({length:N},()=>({seen:false,mem:new Set(),last:null,pin:null}))};},
+    step(S,G,dt,t){const phase=t<5?'Users clicking around':t<9?'A server dies':'The store\'s machine dies';
+      const U=G.of('users')[0],lb=G.out(U,['lb'])[0],direct=G.out(U,['app']),store=G.of('store')[0];
+      if(t>=5&&!S.killed){S.killed=true;const apps=G.of('app');if(apps.length){const b=apps.reduce((a,c)=>((S.hits[c.id]||0)>(S.hits[a.id]||0)?c:a));S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
+      if(t>=9&&!S.storeHit&&store){S.storeHit=true;const rep=G.out(store,['replica'])[0];FX.burst(store.x,store.y,C.red,30,220);
+        if(rep)labMark(rep,'replica took over',C.green,14);
+        else{const lost=S.users.filter(u=>u.seen&&u.inStore).length;S.relog+=lost;S.why.store+=lost;labMark(store,'all sessions lost',C.red,15);}}
+      const edges={},E=(a,b,isBad)=>{const key=a.id+'>'+b.id,e=edges[key]||(edges[key]={a:a.id,b:b.id,n:0,bad:false});e.n++;e.bad=e.bad||isBad;};
+      const kick=why=>{S.relog++;S.why[why]++;};
+      S.acc+=RATE*dt;
+      while(S.acc>=1){S.acc--;const i=(S.k++*7)%N,u=S.users[i];let srv=null,from=lb||U;
+        if(lb){const live=G.out(lb,['app']).filter(a=>!S.dead.has(a.id));E(U,lb,!live.length);
+          if(!live.length){S.why.none++;continue;}
+          if(G.opts.sticky){if(!u.pin||!live.includes(u.pin))u.pin=live[i%live.length];srv=u.pin;}else srv=live[S.rr++%live.length];}
+        else if(direct.length){srv=direct[i%direct.length];
+          if(S.dead.has(srv.id)){E(U,srv,true);if(!S.stranded.has(i)){S.stranded.add(i);kick('direct');}continue;}}
+        else{S.why.none++;continue;}
+        S.hits[srv.id]=(S.hits[srv.id]||0)+1;
+        // does this server know the user?
+        const st=G.out(srv,['store'])[0];let bad=false;
+        if(!u.seen){u.seen=true;if(st)u.inStore=true;else u.mem.add(srv.id);}
+        else if(st){if(!u.inStore){bad=true;kick('mem');u.inStore=true;}}
+        else if(!u.mem.has(srv.id)){bad=true;kick(u.last&&S.dead.has(u.last)?'dead':'mem');u.mem.add(srv.id);}
+        u.last=srv.id;E(from,srv,bad);if(st)E(srv,st,false);}
+      // smooth the request counts into rates so packets flow steadily along each wire
+      for(const key in S.ema)S.ema[key].r*=Math.max(0,1-dt*1.5);
+      Object.values(edges).forEach(e=>{const key=e.a+'>'+e.b;(S.ema[key]||(S.ema[key]={a:e.a,b:e.b,r:0})).r+=e.n*1.5;if(e.bad)S.badT[key]=t;});
+      const flows=Object.entries(S.ema).filter(([key,e])=>!(S.dead.has(e.a)||S.dead.has(e.b))||t-(S.badT[key]??-9)<.4).map(([key,e])=>({a:e.a,b:e.b,rate:e.r,bad:t-(S.badT[key]??-9)<.4,c:node_kind(G,e.b)==='store'?C.amber:undefined}));
+      return{flows,load:{},dead:S.dead,phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S){return[['forced re-logins',`${S.relog}`,S.relog===0?C.green:C.red]];},
+    score(S,G,cost){const r=S.relog,top=Object.entries(S.why).sort((a,b)=>b[1]-a[1])[0][0];
+      const advice={mem:'Sessions lived in each server\'s memory, so whenever someone landed on a different server they were logged out. Wire every server to a shared session store.',
+        dead:'Everyone whose session lived on the server that died was logged out. Keep sessions in a shared store, not in a server\'s memory.',
+        store:'The session store was a single point of failure: when its machine died, every session went with it. Give it a replica.',
+        direct:'Users were wired straight to servers, so the ones on the dead server were stranded. Put a load balancer in front.',
+        none:'Requests had nowhere to go: wire Users to a load balancer, and the load balancer to your servers.'}[top];
+      if(S.why.none>RATE*2)return{stars:0,title:'Nobody got in',msg:advice};
+      if(r===0&&cost<=7)return{stars:3,title:'Nobody noticed a thing',msg:`Stateless servers and a replicated session store for $${cost}/h: a server died, then the store's machine died, and every user stayed logged in.`};
+      if(r===0)return{stars:2,title:`Nobody logged out, at $${cost}/h`,msg:'It works, but costs more than it needs to. Two or three servers are enough when sessions live in the store.'};
+      if(r<=12)return{stars:2,title:`${r} forced re-login${r>1?'s':''}`,msg:advice};
+      return{stars:1,title:`${r} forced re-logins`,msg:advice};}})});
+function node_kind(G,id){const n=G.nodes.find(m=>m.id===id);return n&&n.kind;}
+})();
 
 /* ---------------- 4. GATEWAY: route by path ---------------- */
 chal('proxy-gateway',{title:'Run the gateway',goal:'Route each request to the right service, and reject anything without a valid token. You have 7 seconds per request.',
@@ -3927,24 +4015,53 @@ chal('rest-grpc-ws',{title:'Pick the protocol',goal:'Match each feature to REST,
       {t:'Showing other people\'s cursors in a shared doc',b:'ws',why:'Constant two-way updates need an open connection.'},{t:'CRUD for a small blog',b:'rest',why:'Create, read, update, delete: REST\'s home turf.'}]})});
 
 /* ---------------- 14. QUEUES: survive the order surge ---------------- */
-chal('queues-pubsub',{title:'Survive the order surge',goal:'Orders triple for 4 seconds, then the workers restart. Lose zero orders, clear the backlog by the end, and use at most 4 workers.',
-  hint:'A queue turns "too many right now" into "a bit later". It needs enough workers to catch up afterwards.',
-  make:simGame({dur:14,defaults:{q:false,n:2},intro:'Decide whether to put a queue in the middle and how many workers to run.',
-    controls(api,p,re){api.toggle('Put a queue in the middle',p.q,v=>{p.q=v;re();});api.slider('Workers',1,5,1,p.n,v=>`${v} × 25/s`,v=>{p.n=v;re();});},
-    build(p,api){let backlog=0,lost=0,done_=0,rate=40,acc=0,out=false;const fl=[];const WY=k=>p.n===1?280:150+k*(260/(p.n-1));
-      return{step(dt,t){rate=t>=3&&t<7?120:40;out=t>=9&&t<10.5;const cap=out?0:p.n*25;const arr=rate*dt;
-          if(p.q){backlog+=arr;const d=Math.min(backlog,cap*dt);backlog-=d;done_+=d;}else{const d=Math.min(arr,cap*dt);done_+=d;lost+=arr-d;}
-          acc+=arr/3;const now=api.now();while(acc>=1){acc--;const full=!p.q&&(out||rate>cap);fl.push({t0:now,d:p.q?.4:.7,pts:p.q?[[120,280],[440,280]]:[[120,280],[760,WY(Math.floor(Math.random()*p.n))]],c:full&&Math.random()<(out?1:1-cap/rate)?C.red:C.amber,r:3.5,drop:0});
-            const last=fl[fl.length-1];if(last.c===C.red)last.drop=.7;}
-          if(p.q&&backlog>0&&!out&&Math.random()<cap*dt/3)fl.push({t0:now,d:.5,pts:[[520,280],[760,WY(Math.floor(Math.random()*p.n))]],c:C.green,r:3.5});},
-        draw(now){flyers(now,fl);server(120,280,{label:'Web shop',sub:`${rate} orders/s`,w:120,st:rate>40?'hot':'ok'});
-          if(p.q){box(480,280,{label:'Queue',sub:`${Math.round(backlog)} waiting`,c:C.amber,w:140,h:64,glow:backlog>0});meter(410,322,140,8,backlog/300,C.amber);}
-          for(let k=0;k<p.n;k++)server(800,WY(k),{label:`Worker ${k+1}`,sub:out?'restarting':'25/s',w:110,h:52,st:out?'off':'ok'});
-          if(out&&Math.sin(now*9)>0)tx('Workers restarting…',800,480,{z:14,wt:700,c:C.red});},
-        hud(){return[['lost',`${Math.round(lost)}`,lost<1?C.green:C.red],['waiting',`${Math.round(backlog)}`,backlog<1?C.green:C.amber],['processed',`${Math.round(done_)}`]];},
-        score(){if(lost>=1)return{stars:1,title:`${Math.round(lost)} orders lost`,msg:'Without a queue, anything beyond the workers\' speed, and everything sent while they restarted, is simply gone. Put a queue in between.'};
-          if(backlog>=1)return{stars:1,title:`${Math.round(backlog)} still waiting`,msg:'Nothing was lost, but the workers never caught up. Add a worker so the queue drains after the surge.'};
-          return p.n<=4?{stars:3,title:'Zero lost, queue drained',msg:'The queue absorbed the surge and the restart. Four workers were just enough to drain it. That is buffering.'}:{stars:2,title:'Zero lost',msg:'It works, but four workers would have been enough.'};}};}})});
+// You build it on the board: web shop → (queue) → workers, 25 orders/s each.
+// Orders: 40/s, 120/s from 3 s to 7 s, and every worker restarts from 9 s to 10.5 s.
+// Orders sent straight to a worker are lost when it is full or restarting; a queue holds them.
+(function(){
+const WORKER=25;
+chal('queues-pubsub',{title:'Survive the order surge',goal:'Build it yourself: orders triple for 4 seconds, then the workers restart. Lose zero orders, clear the backlog by the end, and spend at most $5/h.',
+  hint:'Wire the shop to a queue and the queue to the workers. The queue turns "too many right now" into "a bit later", but it needs enough workers (25 orders/s each) to catch up afterwards.',
+  make:labGame({id:'queues-pubsub',budget:5,dur:14,scale:8,
+    intro:'The web shop takes orders on the left. Workers process them, 25 a second each. Wire the shop to your workers, directly or through a queue, then press Run.',
+    fixedKinds:{shop:{label:'Web shop',shape:'server',w:110,h:54,sub:'takes orders'}},
+    fixed:[{kind:'shop',x:90,y:250,label:'Web shop'}],
+    kinds:{
+      queue:{label:'Queue',short:'Queue',cost:1,max:1,shape:'box',c:C.amber,w:130,h:58,sub:'holds orders'},
+      worker:{label:'Worker',short:'Worker',cost:1,max:6,shape:'server',w:104,h:48,sub:'25 orders/s',clone:true}},
+    columns:{queue:420,worker:740},
+    links:{shop:['queue','worker'],queue:['worker']},
+    check(G){const s=G.of('shop')[0];if(!G.out(s).length)return['wire the web shop to a queue or to workers.'];
+      const q=G.of('queue')[0];if(q&&G.inn(q).length&&!G.out(q).length)return['the queue needs workers: wire it to them.'];
+      return[];},
+    sub(n,G,S){if(n.kind==='shop')return S?`${S.rate} orders/s`:'40 orders/s';if(n.kind==='queue'&&S)return`${Math.round(S.backlog)} waiting`;if(n.kind==='worker'&&S&&S.out)return'restarting';return null;},
+    init(){return{rate:40,out:false,backlog:0,lost:0,done:0,total:0,why:{full:0,restart:0,nowhere:0}};},
+    step(S,G,dt,t){const rate=t>=3&&t<7?120:40,out=t>=9&&t<10.5,phase=t<3?'Normal orders':t<7?'Order spike: 3×':t>=9&&t<10.5?'Workers restarting':'Catching up';
+      const shop=G.of('shop')[0],outs=G.out(shop),q=G.of('queue')[0],flows=[],load={},used={},F=(a,b,r,isBad,c)=>{if(r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});};
+      S.rate=rate;S.out=out;S.total+=rate*dt;
+      if(!outs.length){S.lost+=rate*dt;S.why.nowhere+=rate*dt;}
+      // the shop splits orders evenly over what it is wired to
+      const share=rate/Math.max(1,outs.length);
+      outs.forEach(m=>{if(m.kind==='queue'){S.backlog+=share*dt;F(shop,m,share,false,C.amber);return;}
+        const cap=out?0:WORKER,ok=Math.min(share,cap),l=(share-ok)*dt;used[m.id]=ok;S.done+=ok*dt;S.lost+=l;S.why[out?'restart':'full']+=l;F(shop,m,share,share>cap+.01,C.amber);});
+      // the queue's workers drain it with whatever capacity they have left
+      if(q){const ws=G.out(q,['worker']),spare=ws.map(w=>out?0:Math.max(0,WORKER-(used[w.id]||0))),cap=spare.reduce((a,b)=>a+b,0);
+        const d=Math.min(S.backlog,cap*dt);S.backlog-=d;S.done+=d;
+        ws.forEach((w,k)=>{const r=cap?d/dt*spare[k]/cap:0;used[w.id]=(used[w.id]||0)+r;F(q,w,r,false,C.green);});
+        load[q.id]=Math.min(1.5,S.backlog/200);}
+      G.of('worker').forEach(w=>{if(!out)load[w.id]=(used[w.id]||0)/WORKER;});
+      return{flows,load,dead:new Set(out?G.of('worker').map(w=>w.id):[]),phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S){return[['lost',`${Math.round(S.lost)}`,S.lost<1?C.green:C.red],['waiting',`${Math.round(S.backlog)}`,S.backlog<1?C.green:C.amber],['processed',`${Math.round(S.done)}`]];},
+    score(S,G,cost){
+      if(S.lost>=1){const top=Object.entries(S.why).sort((a,b)=>b[1]-a[1])[0][0];
+        const msg={full:'The workers could not keep up with the spike, and without a queue the extra orders were simply turned away. Put a queue between the shop and the workers.',
+          restart:'Orders that arrived while the workers restarted had nowhere to wait. Put a queue between the shop and the workers.',
+          nowhere:'The shop was not wired to anything, so orders had nowhere to go.'}[top];
+        return{stars:S.lost>S.total/2?0:1,title:`${Math.round(S.lost)} orders lost`,msg};}
+      if(S.backlog>=1)return{stars:1,title:`${Math.round(S.backlog)} still waiting`,msg:'Nothing was lost, but the workers never caught up. Add a worker so the queue drains after the spike.'};
+      if(cost<=5)return{stars:3,title:'Zero lost, queue drained',msg:'The queue absorbed the spike and the restart, and four workers were just enough to drain it. That is buffering.'};
+      return{stars:2,title:'Zero lost',msg:`It works, but $${cost}/h is more than it needs: four workers behind a queue are enough.`};}})});
+})();
 
 /* ---------------- 15. SYNC vs ASYNC: make checkout fast ---------------- */
 chal('sync-async',{title:'Make checkout fast',goal:'For each task in "Place order", decide: do it now, before replying, or later in a background worker. The customer must never be misled.',
@@ -3984,29 +4101,70 @@ chal('streams',{title:'Keep up with the stream',goal:'1,200 events per second; e
           return{stars:n===2?2:1,title:`${n} of 3 goals`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
 
 /* ---------------- 16. SPOF: survive the chaos monkey ---------------- */
-chal('spof',{title:'Survive the chaos monkey',goal:'The chaos monkey will kill three components. Click components to add a standby ($1 each, budget $4) and stay up the whole time.',
-  hint:'Look at which boxes stand alone. DNS is a managed service and already redundant.',
-  make:(()=>{const K=[{id:'dns',n:'DNS',sub:'managed · redundant',x:150,managed:true},{id:'lb',n:'Load balancer',x:370},{id:'app',n:'App server',x:600},{id:'db',n:'Database',x:830,isDb:true}];const kills=[['app',3],['lb',6.5],['db',10]];
-    const dup=new Set();
-    return simGame({dur:13,defaults:{},intro:'Click components (or press <kbd>1</kbd> DNS, <kbd>2</kbd> load balancer, <kbd>3</kbd> app server, <kbd>4</kbd> database) to give them a standby, then press <b>Unleash chaos</b>.',runLabel:'Unleash chaos',
-      controls(){},
-      build(p,api){let up=0,down=0,dead={},acc=0;const fl=[];
-        function toggle(k){if(!k)return;if(dup.has(k.id))dup.delete(k.id);else if(dup.size<4){dup.add(k.id);FX.burst(k.x,390,C.green,12,120);}
-          api.status(`Standbys: ${dup.size?K.filter(q=>dup.has(q.id)).map(q=>q.n).join(', '):'none'} ($${dup.size} of $4). Then press <b>Unleash chaos</b>.`);}
-        return{step(dt,t){kills.forEach(([id,at])=>{if(t>=at&&!(id in dead)){dead[id]=t;const k=K.find(q=>q.id===id);FX.burst(k.x,250,C.red,30,220);FX.text(k.x,170,dup.has(id)?'Failover!':'DEAD',dup.has(id)?C.green:C.red);}});
-            const broken=Object.keys(dead).some(id=>!dup.has(id)&&t-dead[id]<2.5);if(broken)down+=dt;else up+=dt;
-            acc+=dt*12;const now=api.now();while(acc>=1){acc--;fl.push({t0:now,d:.9,pts:[[40,250],...K.map(k=>[k.x,250])],c:broken?C.red:C.blue,r:4,drop:broken?.55:0});}},
-          draw(now,running){flyers(now,fl);K.forEach(k=>{const d=k.id in dead,has=dup.has(k.id);const st=d?(has?'ok':'fail'):'ok';
-              if(k.isDb)db(k.x,250,{label:k.n,st,w:100,h:86});else server(k.x,250,{label:k.n,sub:k.sub||'',w:130,st});
-              if(has){if(k.isDb)db(k.x,390,{label:'Standby',st:d?'good':'ok',w:84,h:70});else server(k.x,390,{label:'Standby',w:110,h:52,st:d?'good':'ok'});ln([[k.x,300],[k.x,358]],{c:hexA(C.green,.5),dash:[4,5]});}
-              else if(!running&&!k.managed)tx('+ add standby',k.x,390,{z:12,c:C.dim});if(!running)keycap(String(K.indexOf(k)+1),k.x-(k.isDb?62:77),212);});
-            tx(`spent $${dup.size} of $4`,W/2,500,{z:14,wt:700,c:dup.size<=4?C.amber:C.red});},
-          hud(){const tot=up+down;return[['uptime',`${tot?(up/tot*100).toFixed(0):100}%`,down<.01?C.green:C.red],['budget',`$${dup.size} / $4`]];},
-          down(x,y,now,running){if(running)return;toggle(K.find(q=>Math.abs(x-q.x)<70&&y>200&&y<440));},
-          key(k,now,running){if(running)return;toggle(K[+k-1]);},
-          score(){const ok=down<.01;if(ok&&!dup.has('dns'))return{stars:3,title:'Zero downtime',msg:'Every single point of failure had a standby, and you did not waste money on DNS, which was already redundant.'};
-            if(ok)return{stars:2,title:'Zero downtime, $1 wasted',msg:'DNS was already a managed, redundant service. That standby bought nothing.'};
-            return{stars:1,title:`Down ${down.toFixed(1)} s`,msg:'A box with no standby took the whole system down when it died. Find every box that stands alone.'};}};}});})()});
+// You build it on the board: DNS → load balancer(s) → app servers → database (→ standby).
+// The chaos monkey kills the busiest app server at 3 s, the busiest load balancer at 6.5 s and the
+// database at 10 s; each dead box is rebooted 2.5 s later. Managed DNS health-checks what it points at,
+// a load balancer skips dead app servers, and the database fails over only to a standby it replicates to.
+(function(){
+const KILLS=[['app',3],['lb',6.5],['db',10]],REBOOT=2.5,R=60;
+chal('spof',{title:'Survive the chaos monkey',goal:'Build it yourself, then let the chaos monkey kill an app server, a load balancer and the database. Stay up the whole time and spend at most $7/h.',
+  hint:'Every box that stands alone is a single point of failure: two load balancers, two app servers, and a standby that the database replicates to. DNS is a managed service and already redundant.',
+  make:labGame({id:'spof',budget:7,dur:13,scale:6,runLabel:'Unleash chaos',
+    intro:'Requests arrive through DNS on the left. Build a path from DNS to a database, then press Unleash chaos: it kills one box of each kind.',
+    fixedKinds:{dns:{label:'DNS',shape:'box',c:C.blue,w:120,h:52,sub:'managed · redundant'}},
+    fixed:[{kind:'dns',x:84,y:250,label:'DNS'}],
+    kinds:{
+      lb:{label:'Load balancer',short:'LB',cost:1,max:2,shape:'box',c:C.accent,w:104,h:48,sub:'health checks',clone:true},
+      app:{label:'App server',short:'App',cost:1,max:3,shape:'server',w:100,h:50,sub:'stateless',clone:true},
+      db:{label:'Database',short:'DB',cost:2,max:1,shape:'db',w:90,h:72,sub:'primary'},
+      standby:{label:'Standby database',short:'Standby',cost:1,max:1,shape:'db',w:84,h:64,sub:'takes over'}},
+    columns:{lb:290,app:510,db:760,standby:760},
+    links:{dns:['lb','app'],lb:['app'],app:['db'],db:['standby']},
+    check(G){const d=G.of('dns')[0];if(!G.out(d).length)return['wire DNS to a load balancer or an app server.'];
+      const lone=G.of('lb').find(l=>!G.out(l).length);if(lone)return['wire the load balancer to your app servers.'];
+      if(!G.of('db').length)return['add a database.'];
+      const noDb=G.of('app').filter(a=>!G.out(a,['db']).length);if(noDb.length)return[`${noDb.length===1?'an app server is':'some app servers are'} not wired to the database.`];
+      if(G.of('standby').length&&!G.out(G.of('db')[0],['standby']).length)return['wire the database to the standby so it keeps a copy.'];
+      return[];},
+    sub(n,G,S){if(n.kind==='standby'&&S&&S.failover)return'now the primary';return null;},
+    init(){return{ok:0,lost:0,down:0,deadAt:{},hits:{},killed:[],failover:false,why:{lb:0,app:0,db:0,none:0}};},
+    step(S,G,dt,t){const phase=t<3?'Calm before the chaos':t<6.5?'An app server dies':t<10?'A load balancer dies':'The database dies';
+      KILLS.forEach(([kind,at])=>{if(t<at||S.killed.includes(kind))return;S.killed.push(kind);const c=G.of(kind);if(!c.length)return;
+        const b=c.reduce((a,x)=>((S.hits[x.id]||0)>(S.hits[a.id]||0)?x:a));S.deadAt[b.id]=t;FX.burst(b.x,b.y,C.red,30,220);labMark(b,'killed',C.red,15);});
+      const dead=new Set(Object.keys(S.deadAt).filter(id=>t<S.deadAt[id]+REBOOT)),live=ns=>ns.filter(n=>!dead.has(n.id));
+      const flows=[],F=(a,b,r,isBad,c)=>{if(a&&b&&r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});};
+      let lostNow=0;const lose=(why,r)=>{S.why[why]+=r*dt;lostNow+=r;};
+      const hit=(n,r)=>{S.hits[n.id]=(S.hits[n.id]||0)+r*dt;};
+      // the database: the primary, or the standby it replicates to while the primary is dead
+      const pdb=G.of('db')[0],sb=pdb&&G.out(pdb,['standby'])[0];S.failover=!!(pdb&&sb&&dead.has(pdb.id));
+      const toApp=(from,a,r)=>{hit(a,r);F(from,a,r,false);const d=G.out(a,['db'])[0];
+        if(!d){lose('none',r);return;}
+        if(!dead.has(d.id)){F(a,d,r,false,C.green);return;}
+        if(sb){F(a,sb,r,false,C.green);return;}
+        F(a,d,r,true);lose('db',r);};
+      // managed DNS health-checks its targets; a load balancer skips dead app servers
+      const dns=G.of('dns')[0],targets=G.out(dns),up=live(targets);
+      if(!targets.length)lose('none',R);
+      else if(!up.length){targets.forEach(m=>F(dns,m,R/targets.length,true));lose(targets[0].kind,R);}
+      else up.forEach(m=>{const r=R/up.length;hit(m,r);
+        if(m.kind==='app'){toApp(dns,m,r);return;}
+        const apps=G.out(m,['app']),ok=live(apps);
+        if(!ok.length){F(dns,m,r,false);apps.forEach(a=>F(m,a,r/apps.length,true));lose(apps.length?'app':'none',r);return;}
+        F(dns,m,r,false);ok.forEach(a=>toApp(m,a,r/ok.length));});
+      S.lost+=lostNow*dt;S.ok+=(R-lostNow)*dt;if(lostNow>R*.01)S.down+=dt;
+      return{flows,load:{},dead,phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S){const s=S.ok+S.lost?S.ok/(S.ok+S.lost):1;return[['served',`${(s*100).toFixed(1)}%`,S.lost<.5?C.green:C.red],['down for',`${S.down.toFixed(1)} s`,S.down<.05?C.green:C.red]];},
+    score(S,G,cost){const failed=Object.entries(S.why).filter(([k,v])=>v>.5).sort((a,b)=>b[1]-a[1]);
+      if(!failed.length&&cost<=7)return{stars:3,title:'Zero downtime',msg:`Every box had a twin, for $${cost}/h. The chaos monkey killed three of them and nobody noticed. DNS was already redundant, so it needed nothing.`};
+      if(!failed.length)return{stars:2,title:`Zero downtime, at $${cost}/h`,msg:'It works, but costs more than it needs to: one spare of each kind is enough.'};
+      const advice={lb:'The load balancer stood alone: when it died, nothing could reach the app servers. Add a second one and point DNS at both.',
+        app:'The app server stood alone: when it died, the load balancer had nowhere to send requests. Add a second one.',
+        db:'The database stood alone. Add a standby and wire the database to it, so it keeps a copy and takes over.',
+        none:'Requests had nowhere to go: build a full path from DNS through app servers to the database.'};
+      const msg=failed.map(([k])=>advice[k]).join(' ');
+      if(S.why.none>S.lost/2)return{stars:0,title:'Never fully up',msg};
+      return{stars:failed.length===1?2:1,title:`Down for ${S.down.toFixed(1)} s`,msg};}})});
+})();
 
 /* ---------------- 16b. TIMEOUTS: set the budget ---------------- */
 function timeoutRun(p){const out=[];for(let i=0;i<40;i++){const slow=[2,5,8].includes(i%10),L=slow?3:.2;
@@ -4385,7 +4543,7 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
     init(){return{tot:0,bad:0,lat:[],dead:new Set(),killed:null,qb:{},lost:{deadEnd:0,deadApp:0,overload:0,overBot:0,db:0,dbSync:0,noDb:0},appIn:{}};},
     step(S,G,dt,t){const legit=t<6?1000:t<12?3000:2000,bot=t>=12?2000:0;
       const phase=t<6?'Launch':t<9?'A link goes viral':t<12?'Viral, and an app server dies':'Bot attack';
-      if(t>=9&&!S.killed){const apps=G.of('app');if(apps.length){const b=apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);FX.text(b.x,b.y-46,'crashed',C.red,15);}}
+      if(t>=9&&!S.killed){const apps=G.of('app');if(apps.length){const b=apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
       const flows=[],load={},bad=new Set(),F=(a,b,rate,isBad,c)=>{flows.push({a:a.id,b:b.id,rate,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       const appIn={};let lost=0;
       // front tier: traffic follows the wires to the app servers
@@ -4467,7 +4625,7 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
       return[];},
     init(){return{sent:0,ok:0,dead:new Set(),killed:null,deadShare:0,deadAt:null,gwIn:{},lost:{noConn:0,noChat:0,store:0,route:0,fan:0,offline:0,crash:0}};},
     step(S,G,dt,t){const rate=t>=5&&t<12?8000:4000,phase=t<5?'Normal traffic':t<9?'Message storm':t<12?'Storm, and a gateway dies':'Recovering';
-      if(t>=9&&!S.killed){const gws=G.of('gateway');if(gws.length){const b=gws.reduce((a,c)=>((S.gwIn[c.id]||0)>(S.gwIn[a.id]||0)?c:a));S.killed=b.id;S.dead.add(b.id);S.deadAt=t;S.deadShare=Math.min(S.gwIn[b.id]||0,SOCK)/ONLINE;FX.burst(b.x,b.y,C.red,30,220);FX.text(b.x,b.y-44,'crashed',C.red,15);}}
+      if(t>=9&&!S.killed){const gws=G.of('gateway');if(gws.length){const b=gws.reduce((a,c)=>((S.gwIn[c.id]||0)>(S.gwIn[a.id]||0)?c:a));S.killed=b.id;S.dead.add(b.id);S.deadAt=t;S.deadShare=Math.min(S.gwIn[b.id]||0,SOCK)/ONLINE;FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
       const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       // connections: people → (LB) → gateways. The LB sends reconnects only to live gateways;
       // people wired straight to a gateway stay stuck on it when it dies.
@@ -4550,7 +4708,7 @@ chal('capstone-feed',{title:'Build the news feed',goal:'Build it yourself: ordin
       const fanOut=!!(q&&writers.length),fromCache=fs&&G.out(fs,['feedcache']).length>0,fromDb=fs&&G.out(fs,['postdb']).length>0,page=fs&&G.out(fs,['pagecache']).length>0,skip=G.opts.skipStars;
       const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       // posting: fan-out writes pile into the queue; workers drain it
-      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=3&&!skip){S.q+=STAR;S.star=true;FX.text(q.x,q.y-46,'+30 M writes',C.red,15);}S.q=Math.max(0,S.q-cap*dt);
+      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=3&&!skip){S.q+=STAR;S.star=true;labMark(q,'+30 M writes',C.red,15);}S.q=Math.max(0,S.q-cap*dt);
         const wait=Math.max(NEED/cap,S.q/cap)+(cap<=NEED?60:0);S.fresh=Math.max(S.fresh,wait);load[q.id]=Math.min(1.5,S.q/(cap*10));writers.forEach(w=>load[w.id]=NEED/cap);}
       else if(fromCache)S.fresh=Math.max(S.fresh,1e9);         // nothing fills the feed cache: new posts never show up
       if(fromCache&&fanOut&&skip&&!fromDb)S.fresh=Math.max(S.fresh,1e9);   // stars skip fan-out, but nothing reads their posts

@@ -1,24 +1,55 @@
-/* ---------------- 2. SCALING: survive launch day ---------------- */
-chal('scaling',{title:'Survive launch day',goal:'Traffic climbs to 1,200 requests/s and one machine will crash. Drop under 1% of requests and spend no more than $12/hour.',
-  hint:'One huge box is expensive and dies alone. Several medium boxes cost less and keep serving when one fails.',
-  make:(()=>{const SZ={S:{cap:200,cost:1,w:84},M:{cap:450,cost:3,w:100},L:{cap:800,cost:8,w:116},XL:{cap:1100,cost:20,w:132}};
-    const traffic=t=>100+1100*(x=>x*x*(3-2*x))(clamp(t/16));
-    return simGame({dur:18,defaults:{size:'M',n:1},
-      intro:'Pick a machine size and how many. Press <b>Run it</b> to open the doors.',
-      controls(api,p,re){api.seg('Machine size',[['S','S · 200/s · $1'],['M','M · 450/s · $3'],['L','L · 800/s · $8'],['XL','XL · 1100/s · $20']],p.size,v=>{p.size=v;re();});
-        api.slider('Machines',1,6,1,p.n,v=>`${v}`,v=>{p.n=v;re();});},
-      build(p,api){const S=SZ[p.size],ms=Array.from({length:p.n},(_,k)=>({alive:true,load:0,y:p.n===1?280:130+k*(300/(p.n-1))}));
-        let total=0,dropped=0,acc=0,rr=0,rate=100,crashed=false;const fl=[];const LB=[380,280];
-        return{step(dt,t){rate=traffic(t);if(!crashed&&t>=11){crashed=true;ms[0].alive=false;FX.burst(740,ms[0].y,C.red,26);}if(crashed&&t>=15&&!ms[0].alive){ms[0].alive=true;}
-            const alive=ms.filter(m=>m.alive),cap=alive.length*S.cap,drop=Math.max(0,rate-cap);total+=rate*dt;dropped+=drop*dt;ms.forEach(m=>m.load=m.alive?Math.min(1,rate/Math.max(cap,1)):0);
-            acc+=rate*dt/45;const now=api.now();while(acc>=1){acc--;const u=[90,170+Math.random()*220];const m=alive.length?alive[rr++%alive.length]:null;
-              const isDrop=!m||Math.random()<drop/rate;const to=m?[740-S.w/2,m.y]:[740,280];fl.push({t0:now,d:.9,pts:[u,LB,to],c:isDrop?C.red:C.blue,r:4,drop:isDrop?.62:0});}},
-          draw(now,running){flyers(now,fl);for(let i=0;i<3;i++)user(90,170+i*110,{c:C.blue,r:13});tx('your users',90,470,{z:12,c:C.dim});
-            box(LB[0],LB[1],{label:'Load balancer',w:140,h:54});ms.forEach((m,k)=>server(740,m.y,{label:`${p.size}-${k+1}`,sub:`${S.cap}/s`,w:S.w,h:p.n>4?48:58,st:m.alive?(m.load>.95?'hot':'ok'):'fail',load:m.alive?m.load:null}));
-            if(!running&&!total){tx(`Capacity ${p.n*S.cap}/s  ·  peak 1,200/s`,W/2,520,{z:14,wt:700,c:p.n*S.cap>=1200?C.green:C.amber});}},
-          hud(){const cap=ms.filter(m=>m.alive).length*S.cap;return[['traffic',`${Math.round(rate)}/s`],['capacity',`${cap}/s`,cap>=rate?C.green:C.red],['dropped',`${total?(dropped/total*100).toFixed(1):'0.0'}%`,dropped/Math.max(total,1)<.01?C.green:C.red],['cost',`$${p.n*S.cost}/h`,p.n*S.cost<=12?C.green:C.amber]];},
-          score(){const d=dropped/total,cost=p.n*S.cost;
-            if(d<.01&&cost<=12)return{stars:3,title:'Launch day survived',msg:`${p.n} × ${p.size} for $${cost}/h dropped ${(d*100).toFixed(1)}%. Scaling out beats scaling up: cheaper, and one crash is only a dent.`};
-            if(d<.03)return{stars:2,title:'Mostly survived',msg:`Dropped ${(d*100).toFixed(1)}% at $${cost}/h. ${cost>12?'It works, but costs too much. Several smaller machines give the same capacity for less.':'Close. Leave room for one machine to fail at peak.'}`};
-            if(d<.2)return{stars:1,title:'Rough launch',msg:`${(d*100).toFixed(1)}% of requests failed. When the crash hit, there was not enough spare capacity.`};
-            return{stars:0,title:'The site went down',msg:`${(d*100).toFixed(0)}% of requests were dropped. You need total capacity above 1,200/s, even with one machine gone.`};}};}});})()});
+/* ---------------- 2. SCALING: build for launch day ---------------- */
+// You build it on the board: users → (load balancer) → servers of any size.
+// Traffic climbs to 1,200 requests/s; the busiest server crashes at 11 s and is back at 15 s.
+// A load balancer sends traffic only to live servers, in proportion to their size;
+// users wired straight to servers keep hitting the dead one.
+(function(){
+const CAP={small:200,medium:450,large:800,xl:1100},SERVERS=Object.keys(CAP);
+const traffic=t=>100+1100*(x=>x*x*(3-2*x))(clamp(t/16));
+chal('scaling',{title:'Survive launch day',goal:'Build it yourself: traffic climbs to 1,200 requests/s and the busiest machine crashes on the way up. Drop under 1% of requests and spend at most $13/h.',
+  hint:'One huge machine is expensive and dies alone. Put a load balancer in front of several medium machines: they cost less and keep serving when one fails.',
+  make:labGame({id:'scaling',budget:13,dur:18,scale:60,runLabel:'Open the doors',
+    intro:'Your users are on the left. Drag servers from the row below onto the board, then drag from the ● on Users to a server to wire them. Press Open the doors when you are ready.',
+    fixedKinds:{users:{label:'Users',shape:'user',w:44,h:44}},
+    fixed:[{kind:'users',x:70,y:250,label:'Your users'}],
+    kinds:{
+      lb:{label:'Load balancer',short:'LB',cost:1,max:1,shape:'box',c:C.accent,w:110,h:50,sub:'health checks'},
+      small:{label:'Small server',short:'Small',cost:1,max:6,shape:'server',w:86,h:46,sub:'200/s',clone:true},
+      medium:{label:'Medium server',short:'Medium',cost:3,max:6,shape:'server',w:100,h:50,sub:'450/s',clone:true},
+      large:{label:'Large server',short:'Large',cost:8,max:3,shape:'server',w:116,h:54,sub:'800/s',clone:true},
+      xl:{label:'Extra-large server',short:'XL',cost:20,max:2,shape:'server',w:132,h:58,sub:'1,100/s',clone:true}},
+    columns:{lb:260,small:560,medium:560,large:560,xl:560},
+    links:{users:['lb',...SERVERS],lb:SERVERS},
+    check(G){const u=G.of('users')[0];if(!G.out(u).length)return['wire Users to a server or a load balancer.'];
+      const lb=G.out(u,['lb'])[0];if(lb&&!G.out(lb).length)return['wire the load balancer to your servers.'];
+      return[];},
+    init(){return{rate:0,total:0,drop:0,dead:new Set(),killed:null,lastIn:{},why:{dead:0,full:0,nowhere:0}};},
+    step(S,G,dt,t){const rate=traffic(t),phase=t<6?'Doors open':t<11?'Traffic climbing':t<15?'A server dies':'Peak traffic';
+      const servers=G.nodes.filter(n=>CAP[n.kind]);
+      if(t>=11&&!S.killed&&servers.length){const b=servers.reduce((a,c)=>((S.lastIn[c.id]||0)>(S.lastIn[a.id]||0)?c:a));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}
+      if(t>=15&&S.dead.size){const b=servers.find(n=>n.id===S.killed);S.dead.clear();if(b)labMark(b,'rebooted',C.green,14);}
+      const flows=[],load={},inn={},F=(a,b,r,isBad)=>{if(r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad});};
+      // users split evenly over what they are wired to; a load balancer skips dead servers and weights by size
+      const send=(n,r)=>{if(CAP[n.kind]){inn[n.id]=(inn[n.id]||0)+r;return;}
+        const all=G.out(n,['lb',...SERVERS]),outs=n.kind==='lb'?all.filter(m=>!S.dead.has(m.id)):all;
+        if(!outs.length){S.why[all.length?'dead':'nowhere']+=r*dt;S.drop+=r*dt;return;}
+        const wt=m=>n.kind==='lb'?CAP[m.kind]:1,sum=outs.reduce((a,m)=>a+wt(m),0);
+        outs.forEach(m=>{const share=r*wt(m)/sum;F(n,m,share,S.dead.has(m.id));send(m,share);});};
+      send(G.of('users')[0],rate);
+      servers.forEach(n=>{const r=inn[n.id]||0;if(S.dead.has(n.id)){S.why.dead+=r*dt;S.drop+=r*dt;return;}
+        const over=Math.max(0,r-CAP[n.kind]);S.why.full+=over*dt;S.drop+=over*dt;load[n.id]=r/CAP[n.kind];});
+      if(!S.killed)S.lastIn=inn;S.rate=rate;S.total+=rate*dt;
+      return{flows,load,dead:S.dead,phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S,G){const cap=G.nodes.filter(n=>CAP[n.kind]&&!S.dead.has(n.id)).reduce((a,n)=>a+CAP[n.kind],0),d=S.total?S.drop/S.total:0;
+      return[['traffic',`${Math.round(S.rate)}/s`],['capacity',`${cap}/s`,cap>=S.rate?C.green:C.red],['dropped',`${(d*100).toFixed(1)}%`,d<.01?C.green:C.red]];},
+    score(S,G,cost){const d=S.total?S.drop/S.total:1,pct=(d*100).toFixed(1),top=Object.entries(S.why).sort((a,b)=>b[1]-a[1])[0][0];
+      const one=G.nodes.filter(n=>CAP[n.kind]).length===1;
+      const advice=one&&top!=='nowhere'?'One machine, however big, falls short at peak and takes the whole site down when it crashes. Put several smaller machines behind a load balancer.':{dead:G.of('lb').length?'When a server crashed, the others could not take its traffic. Add one more server than the peak needs.':'Users were wired straight to the server that crashed, so their requests kept going to a dead machine. Put a load balancer in front: it sends traffic only to live servers.',
+        full:'Not enough capacity: keep total capacity above 1,200/s even with your biggest server gone.',
+        nowhere:'Some traffic had nowhere to go: wire Users to a load balancer, and the load balancer to every server.'}[top];
+      if(d<.01&&cost<=13)return{stars:3,title:'Launch day survived',msg:`Dropped ${pct}% for $${cost}/h. Several machines behind a load balancer cost less than one giant, and a crash is only a dent. That is scaling out.`};
+      if(d<.01)return{stars:2,title:`Survived, at $${cost}/h`,msg:'It works, but it costs too much. Several medium machines give the same capacity for far less than large or extra-large ones.'};
+      if(d<.03)return{stars:2,title:`Dropped ${pct}%`,msg:advice};
+      if(d<.2)return{stars:1,title:'Rough launch',msg:`${pct}% of requests failed. ${advice}`};
+      return{stars:0,title:'The site went down',msg:`${(d*100).toFixed(0)}% of requests were dropped. ${advice}`};}})});
+})();
