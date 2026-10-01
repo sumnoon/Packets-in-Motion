@@ -3334,7 +3334,7 @@ function labAt(S,key,def,lo,hi){if(!S.chaos)return def;const m=S._at||(S._at={})
 // an incident's victim: the busiest one, or in chaos mode a random one
 function labPick(S,key,list,busiest){if(!S.chaos||!list.length)return busiest;const m=S._pick||(S._pick={});if(!(key in m))m[key]=Math.floor(S.rng()*list.length);return list[m[key]%list.length];}
 function labShuffle(S,arr){const a=arr.slice();if(!S.chaos)return a;for(let i=a.length-1;i>0;i--){const j=Math.floor(S.rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-// opt-in: a component taught in an earlier chapter stays locked until you have watched that chapter
+// a component taught in an earlier chapter stays locked until you have watched that chapter (a toggle turns this off)
 const LAB_TEACH={lb:'load-balancers',app:'client-server',db:'sql-nosql',standby:'replication',replica:'replication',limiter:'rate-limiting',
   cache:'caching',feedcache:'caching',pagecache:'caching',queue:'queues-pubsub',worker:'queues-pubsub',fanq:'queues-pubsub',fanw:'queues-pubsub',
   pubsub:'queues-pubsub',gateway:'rest-grpc-ws',store:'sharding',postdb:'sharding'};
@@ -3380,8 +3380,9 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   const count=kind=>G.nodes.filter(n=>n.kind===kind).length;
   const canAdd=kind=>count(kind)<(K[kind].max||8)&&G.nodes.length<LET.length;
   const allowed=(a,b)=>a!==b&&(o.links[a.kind]||[]).includes(b.kind);
-  // locks (opt-in, off by default): a component taught in an earlier chapter waits until you have watched it
-  const seenCh=labStore('sdve-seen',{}),myIdx=chapters.findIndex(c=>c.id===id);let locksOn=labStore('pim-lab-locks',false)===true;
+  // locks (on unless turned off): a component taught in an earlier chapter waits until you have watched it
+  const seenCh=labStore('sdve-seen',{}),myIdx=chapters.findIndex(c=>c.id===id);
+  let locksOn=(()=>{try{return localStorage.getItem('pim-lab-locks')!=='false';}catch(e){return true;}})();
   const taughtEarlier=kind=>{const cid=K[kind].teach||LAB_TEACH[kind],j=cid?chapters.findIndex(c=>c.id===cid):-1;return j>=0&&j<myIdx?{cid,n:j+1,title:chapters[j].title}:null;};
   const lockOf=kind=>{if(!locksOn)return null;const T=taughtEarlier(kind);return T&&!seenCh[T.cid]?T:null;};
   const lockMsg=kind=>{const L=lockOf(kind);return`${K[kind].label} unlocks when you watch chapter ${L.n}, ${L.title}. Or turn off the component locks.`;};

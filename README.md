@@ -63,7 +63,7 @@ Ten challenges are **architecture labs**: you design the system yourself. Drag c
 
 After a run that falls short, the board marks the weak spots: the component that overloaded and when, or the wire where requests failed. Hint goes a level deeper with each press: a nudge, then the components you need, then a faint outline of a 3-star design to trace. Ctrl+Z (or Undo) reverses any change, and each lab remembers your cheapest 3-star design, with a lean medal where a cheaper one exists.
 
-Once a design holds, turn on **chaos mode**: every run, the incidents strike at a random time and hit a random component, and three 3-star runs in a row earn the lab's chaos-proof badge. **Copy share link** packs your design into a link, so anyone who opens it gets the same board and can try to beat your cost. For a guided path, turn on **component locks**: a component from a chapter you haven't watched yet stays locked until you watch it, so your toolkit grows with the course. Locks are off by default.
+Once a design holds, turn on **chaos mode**: every run, the incidents strike at a random time and hit a random component, and three 3-star runs in a row earn the lab's chaos-proof badge. **Copy share link** packs your design into a link, so anyone who opens it gets the same board and can try to beat your cost. Components grow with the course: a component from a chapter you haven't watched yet stays locked until you watch it. Already know the material? Turn off **Lock components until I have watched their chapter** in any lab.
 
 Labs work with the keyboard too: digits add components, pressing two components' letters wires them, Delete removes the selection, and Enter runs the test. The status line reads the whole design aloud.
 

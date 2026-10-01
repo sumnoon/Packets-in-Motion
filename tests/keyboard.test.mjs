@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { loadPage, challenge } from './harness.mjs';
 
 const page = loadPage();
+// component locks off, as if each chapter had been watched (the lock test turns them back on)
+page.context.localStorage.setItem('pim-lab-locks', 'false');
 const CHAL = page.get('CHAL');
 const play = id => challenge(page, id);
 
