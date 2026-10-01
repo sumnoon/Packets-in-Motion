@@ -4,22 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Packets in Motion · System Design</title>
-<meta name="description" content="An animated, interactive system design course: watch requests flow through load balancers, caches, queues and databases, then solve a hands-on challenge for every lesson.">
+<meta name="description" content="An animated, interactive system design course: watch requests flow through load balancers, caches, queues and databases, solve a hands-on challenge for every lesson, and build systems yourself in architecture labs that load-test your design.">
 <meta name="theme-color" content="#0a0e16">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Packets in Motion">
 <meta property="og:title" content="Packets in Motion · System design, explained by watching it happen">
-<meta property="og:description" content="An animated, interactive course from packets and ports to consensus, sagas and a full URL-shortener design. Every lesson ends with a hands-on challenge.">
+<meta property="og:description" content="45 animated lessons from packets and ports to consensus and three full system designs. Every lesson ends with a hands-on challenge, and ten architecture labs let you build the system yourself, then crash it.">
 <meta property="og:url" content="https://sumnoon.github.io/Packets-in-Motion/">
 <meta property="og:image" content="https://sumnoon.github.io/Packets-in-Motion/assets/social-preview.png">
 <meta property="og:image:width" content="1280">
 <meta property="og:image:height" content="640">
-<meta property="og:image:alt" content="Packets in Motion: system design, explained by watching it happen. Requests flow from three users through a load balancer to three servers, one of them down.">
+<meta property="og:image:alt" content="Packets in Motion: system design, explained by watching it happen. An architecture lab under load: a load balancer spreads requests over four app servers, one of them crashed, which feed a cache and a click queue.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Packets in Motion · System design, explained by watching it happen">
-<meta name="twitter:description" content="An animated, interactive system design course with a hands-on challenge for every lesson.">
+<meta name="twitter:description" content="An animated, interactive system design course: a hands-on challenge for every lesson and ten labs where you build the system and load-test it.">
 <meta name="twitter:image" content="https://sumnoon.github.io/Packets-in-Motion/assets/social-preview.png">
-<meta name="twitter:image:alt" content="Packets in Motion: system design, explained by watching it happen. Requests flow from three users through a load balancer to three servers, one of them down.">
+<meta name="twitter:image:alt" content="Packets in Motion: system design, explained by watching it happen. An architecture lab under load: a load balancer spreads requests over four app servers, one of them crashed, which feed a cache and a click queue.">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAE3ElEQVR42u2Wa2wUVRTH/+femdnZbsv0wTa2CpTWGkwIgg9s4gN8ENEQQgwx8QXBhhBQRL8QiDFRiSZqjBLAINHELxi1ijFBKCDVYE3F8kxDQSCIbdNCS7vd7m53d2buPX7YSg1uYSuFL3q+zOTmnJzf/c85Zw7wXzfK1fHeD7no0jPHAdqiUbS0ReFMdBBdURgZU4BZ70cKRahwLZGeD83jtWYiyoQQAa4CbJII20BCAX1ptMtpjfvc8pY9TVUrtl8VwEMboiWemf+9XSCmR/uBtDvsTQA8DZQGgRfm9qNDdmCS5WDXzxOwJxlBsKYOths4rNLpNQdnLNv9rwDu3+RtDjjGskiPn5o5kcyHq0EGZSIIQEppVDgmdsm9eLPtF8wqLscHxc9yY4en9+btoGbVbThGEBxPvXTozuXrR8ojsx3OXH9hnCWDm2ODwp41WcsX7yGx73dQZwx8PsZ8LgbuiIFdT3JxuI87dYRrikrZ6Z2CzoRHi24Jy6lGWO2JnNYBp+CxsiVzW7s+2t6aswL3beHJwvdPDKSFtXEB688Og+pPMIodg1j8jZ6AhbcBxQ4AH9h2CDh5w35YZU36vRvn0aB29equH8mBecGl0JSWaU//o0iNkaRhDbINQGvgQpx1eYmUFqsGKbGFNUgQtAKwqQGQkHAVUFp1Nj5+0sEn0nAWLz/7nfqyeqGYF6rw6/lcaUEi+QyADTkDEAGsh24qSWtJkpXcvHsp1Y0U05557Lj76CcDgfy8lR93H/KfLJlKO893MIPmZQMQIyqA4YIDAGKASQVzaS1TYZ2d0rHWVK8MShNhBMhlVZnNV4yqRTjDdSVrvL22R/rUlZYgpZmDMKBY26MCoL9UAMCceRc6x8nJS8KJvFRZAGAymQaECwMils01aw2wnyLAGJZ/iDQt4eWSf1XdyrUyPq7grtKQb4UM9gcDLMzUsZwBLlVCE+ACmORh/DfreEIPYAT8pAIAywjykfok9cdJ3DxDhssr5VK0iKU6BvXIKsgj38Kfb82hz2dv/WrUAARAEWAzGw92+VyV5Hd7fP0OAKSGQtPk4YFaE3khINZv2N1nAEWenrOcRFs7qz86TbMiUHjs+JSXv8gZIGjY7Hk+wAATUNPNsCJA0WQRMC0Cc6ZNPRcoqwRCDtB5CqiYpnR5FevyaiHPnWH/wE5hBvOUpxRqR7pkVoCknyIDBlgAZhqozidU1BICFpTvaU0EEBErDyi5CWjYymhtYtgFRFXTCT9t05zoNs1gSA+m095Tz71l7x8VQACAGqp+aQI1CwiNOzXajxsyGCB5UYF0RoE7ZgOVtwKFYWD/10A0IhAK6d2JhL+69m376OU+c1YA17BZej6UD+SNI5xq1nzyAFFBker1gXowlAYgLKD9NDAQBfKLgBPN8JJx43RRETU8vkb8mkvHXLYIhQSSccb536CKSwxTKe+1RW9YG8dyJRMjzQEemkLaz/yQGAAL0TfWO6HIbWfizDRUV54bYwzAFykIAInc/gVXDUCGzcNpARr7vDkqQJlWvJYIWQEMTgmizCAw5cV9QGut5HUBEK7bD4LLQqq+BHylWJOEEFJ0XxeAvSudXmKxPlQIubFZWh6ZATftNy1+3dxx3Wrgh+flK25CLfI8/Wn/oHo1pGKP4n+7BvYnP1IYtmcjgZUAAAAASUVORK5CYII=">
 <style>
 :root{--bg:#0a0e16;--side:#0c111b;--panel:#121a29;--line:#222d44;--text:#e7ecf5;--text-2:#d0d8e6;--dim:#8b96ab;--faint:#5d6880;--strong:#fff;--accent:#a78bfa;--accent-hover:#b9a3ff;--on-accent:#0a0e16;--blue:#4ea1ff;--green:#34d399;--red:#f87171;--amber:#fbbf24;--hover-bg:#172136;--hover-line:#3a4866;--star-off:#2a3450;--stage:#04060d;color-scheme:dark}

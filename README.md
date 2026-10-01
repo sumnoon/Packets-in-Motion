@@ -6,9 +6,9 @@
 
 <p align="center"><strong>System design, explained by watching it happen.</strong></p>
 
-An animated, interactive course that takes you from "how do two computers talk?" to consensus, distributed transactions and three full system designs: a URL shortener, a chat app and a news feed. Every concept is taught through motion: glowing requests leave light trails between servers, caches fill up, servers fail and traffic reroutes. Then you solve a hands-on challenge for each lesson.
+An animated, interactive course that takes you from "how do two computers talk?" to consensus, distributed transactions and three full system designs: a URL shortener, a chat app and a news feed. Every concept is taught through motion: glowing requests leave light trails between servers, caches fill up, servers fail and traffic reroutes. Then you solve a hands-on challenge for each lesson, and in ten **architecture labs** you build the system yourself, wire it up and watch it survive (or not) a crash, a spike or an attack.
 
-![Packets in Motion: system design, explained by watching it happen](assets/social-preview.png)
+![Packets in Motion: system design, explained by watching it happen. An architecture lab under load: a load balancer spreads requests over four app servers, one of them crashed, which feed a cache and a click queue.](assets/social-preview.png)
 
 ## Run it
 
@@ -48,6 +48,8 @@ The rest use the same kinds of mechanics: sort cards into boxes, put steps in or
 
 ### Architecture labs
 
+![The URL shortener lab mid-run: users pass a rate limiter and a load balancer to four app servers, one just crashed, which read from a cache, write to a database and send clicks through a queue to a worker. The palette of components sits under the board.](assets/lab-screenshot.png)
+
 Ten challenges are **architecture labs**: you design the system yourself. Drag components (load balancers, app servers, caches, databases, queues, gateways, pub/sub and so on) from a palette onto the board, drag from a component's ● to another to wire them, then run a load test. Traffic flows along the wires you drew, every component has its own capacity, and a crash, a spike or an attack hits whatever you built. The results name the weakest part of your design.
 
 - **Survive launch day**: one giant machine or several smaller ones behind a load balancer? Traffic climbs and the busiest machine crashes.
@@ -65,7 +67,7 @@ After a run that falls short, the board marks the weak spots: the component that
 
 Once a design holds, turn on **chaos mode**: every run, the incidents strike at a random time and hit a random component, and three 3-star runs in a row earn the lab's chaos-proof badge. **Copy share link** packs your design into a link, so anyone who opens it gets the same board and can try to beat your cost. Components grow with the course: a component from a chapter you haven't watched yet stays locked until you watch it. Already know the material? Turn off **Lock components until I have watched their chapter** in any lab.
 
-Labs work with the keyboard too: digits add components, pressing two components' letters wires them, Delete removes the selection, and Enter runs the test. The status line reads the whole design aloud.
+Labs work with the keyboard too: digits add components, pressing two components' letters wires them, Delete removes the selection, Ctrl+Z undoes, and Enter runs the test. The status line reads the whole design aloud, including the weak spots from the last run.
 
 Each section with more than one chapter ends with a **section quiz**: six multiple-choice questions with an explanation for every answer, scored with stars like the challenges. A miss names the chapter worth rewatching.
 
@@ -74,12 +76,12 @@ Each section with more than one chapter ends with a **section quiz**: six multip
 - **Search** the sidebar (press `/`) by title, caption or trade-off: "stampede", "429" or "leader" all find the right chapters.
 - **Glossary:** key terms in captions, the transcript and the trade-offs are underlined; hover, focus or tap one for a one-line definition. Press G for the full glossary, with links to every chapter that uses each term.
 - **Before this / Related:** the trade-offs card links to the chapters a lesson builds on and the ones that go further.
-- **Export / import progress** from the sidebar. Progress lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost.
+- **Export / import progress** from the sidebar. Progress (chapters watched, stars, your cheapest lab designs and chaos-proof badges) lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost.
 - **Sound cues** (off by default): soft tones for right and wrong moves, new steps and results. They are synthesized in the browser; nothing is downloaded.
 
 ## Visual language
 
-The project logo traces a **P** with a routing path and two traveling packets, using the course's blue, mint, and violet palette. Transparent logo assets and usage notes are in [assets/BRAND.md](assets/BRAND.md).
+The project logo traces a **P** with a routing path and two traveling packets, using the course's blue, mint, and violet palette. Transparent logo assets, the social preview and how to refresh both are in [assets/BRAND.md](assets/BRAND.md).
 
 - Servers are rounded rectangles, databases are cylinders, users are circles, and requests are glowing dots.
 - **Blue** = request · **green** = success / response · **red** = failure · **amber** = cached / queued.
@@ -109,7 +111,7 @@ On phones the course runs in landscape. Held upright, it asks you to rotate the 
 - **Screen readers:** each step is announced as it plays (title and caption), the stage is labelled with the current step, and the transcript (S) lists every step as text. The sidebar reads each chapter's number, title, whether you've watched it and your stars.
 - **Keyboard only:** every lesson control and every challenge works without a mouse. Challenge status lines name the cards, slots and targets so you know which key does what.
 - **Themes:** pick Dark, Light or High contrast at the bottom of the sidebar. The stage stays dark in Light (it's the video); High contrast also brightens labels and lines on the stage. High contrast is chosen for you if your system asks for more contrast.
-- **Reduced motion** stills the drifting background and tones down the particle bursts.
+- **Reduced motion** stills the drifting background, tones down the particle bursts and turns off the labs' screen shake and slow motion.
 
 ## How it works
 
@@ -125,7 +127,7 @@ Everything is drawn on a `<canvas>` by code. Each chapter is a pure `draw(t)` fu
 | `src/styles.css` | All styles |
 | `src/engine.js` | Drawing primitives: servers, databases, packets, easing |
 | `src/chapters/<id>.js` | One lesson each: beats, trade-offs and `draw(t)` |
-| `src/challenges/<id>.js` | One challenge each. `_mechanics.js` holds the shared game types. |
+| `src/challenges/<id>.js` | One challenge each. `_mechanics.js` holds the shared game types; `_lab.js` is the architecture-lab engine (board, wiring, load tests, hints, weak spots, chaos mode, share links). |
 | `src/quizzes/<section>.js` | One quiz per section: questions, answers (right one first) and explanations |
 | `src/glossary.js` | Glossary terms, definitions and other spellings |
 | `src/player.js` | The player: controls, sidebar, progress, challenge mode |
@@ -142,7 +144,7 @@ npm test
 
 `npm run build` writes `index.html` and inlines the logo and favicon from `assets/` as data URLs. Commit the rebuilt `index.html` with your change; CI fails if it is out of date (`npm run check`).
 
-`npm test` runs the page in Node with a stand-in canvas. Every lesson is drawn from start to finish and seeked back and forth to prove `draw(t)` is pure. Every challenge is played with random input, and the player is driven through every chapter by keyboard. The stand-in canvas throws wherever a browser would: negative radii, bad gradient stops, unparsable colours.
+`npm test` runs the page in Node with a stand-in canvas. Every lesson is drawn from start to finish and seeked back and forth to prove `draw(t)` is pure. Every challenge is played with random input, and the player is driven through every chapter by keyboard. Every lab's 3-star outline is built and load-tested, in normal and chaos mode, and the tempting shortcuts are checked to score lower. The stand-in canvas throws wherever a browser would: negative radii, bad gradient stops, unparsable colours.
 
 To add a chapter, create `src/chapters/<id>.js` (and `src/challenges/<id>.js`), add an include line for each in `src/page.html`, then build and test. Give it `needs` and `related` chapter ids for the trade-offs card links. The tests check that every link points at a real chapter, every quiz question names one, and every glossary term appears somewhere in the course.
 
