@@ -9,7 +9,7 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
   make:labGame({id:'capstone-chat',budget:22,dur:16,scale:400,
     intro:'Drag components onto the board and wire them from People. A message goes phone → gateway → chat service → store, then out to the recipient’s gateway or phone.',
     fixedKinds:{users:{label:'People',shape:'user',w:44,h:44}},
-    fixed:[{kind:'users',x:190,y:290,label:'100k online'}],
+    fixed:[{kind:'users',x:70,y:250,label:'100k online'}],
     kinds:{
       lb:{label:'Load balancer',short:'LB',cost:1,max:2,shape:'box',c:C.accent,w:100,h:48,sub:'health checks'},
       gateway:{label:'WebSocket gateway',short:'Gateway',cost:2,max:5,shape:'server',w:100,h:48,sub:'40k sockets',clone:true},
@@ -17,7 +17,7 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
       store:{label:'Message store shard',short:'Shard',cost:3,max:4,shape:'db',w:80,h:62,sub:'3k writes/s',clone:true},
       pubsub:{label:'Pub/Sub',short:'Pub/Sub',cost:1,max:1,shape:'box',c:C.amber,w:96,h:46,sub:'channel per chat'},
       push:{label:'Push notifications',short:'Push',cost:1,max:1,shape:'box',c:C.green,w:96,h:46,sub:'offline phones'}},
-    columns:{lb:300,gateway:440,chat:610,store:820,pubsub:610,push:820},
+    columns:{lb:200,gateway:350,chat:540,store:760,pubsub:540,push:760},
     links:{users:['lb','gateway'],lb:['gateway'],gateway:['chat'],chat:['store','pubsub','gateway','push'],pubsub:['gateway']},
     toggles:[{key:'resume',label:'Clients resume from their last sequence number',val:false}],
     check(G){const u=G.of('users')[0];if(!G.out(u).length)return['wire People to a load balancer or a gateway.'];

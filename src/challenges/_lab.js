@@ -18,7 +18,8 @@
      hud(S,G) → [[label,value,colour]];  score(S,G) → {stars,title,msg};  check(G) → [problem]
    ============================================================ */
 const LAB_SAVE={};
-const LAB_BOARD={x:150,y:62,w:836,h:456};
+const LAB_BOARD={x:14,y:62,w:972,h:380};
+const LAB_PAL_Y=LAB_BOARD.y+LAB_BOARD.h+16;   // the palette is a row of tiles under the board
 function labGame(o){return api=>{
   const id=o.id,K=o.kinds,PAL=Object.keys(K);
   // ---------- the graph ----------
@@ -47,8 +48,8 @@ function labGame(o){return api=>{
   const snap=v=>Math.round(v/10)*10;
   const clampIn=(n,x,y)=>{const[w,h]=sizeOf(n);return[clamp(snap(x),LAB_BOARD.x+w/2,LAB_BOARD.x+LAB_BOARD.w-w/2),clamp(snap(y),LAB_BOARD.y+h/2+14,LAB_BOARD.y+LAB_BOARD.h-h/2-16)];};
   const free=(x,y,ign)=>G.nodes.every(n=>n===ign||Math.abs(n.x-x)>120||Math.abs(n.y-y)>70);
-  function slotFor(kind){const col=o.columns&&o.columns[kind]||520;for(let d=0;d<8;d++)for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx+d*0,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y))return[x,y];}return[560,290];}
-  function add(kind,x,y){if(!canAdd(kind)){FX.text(x||560,(y||290)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
+  function slotFor(kind){const col=o.columns&&o.columns[kind]||520;for(let d=0;d<8;d++)for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx+d*0,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
+  function add(kind,x,y){if(!canAdd(kind)){FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
     const twin=K[kind].clone&&G.of(kind)[0];   // a new copy of a stateless server joins the pool with the same wires
     const n={id:'n'+(++G.seq),kind,x:0,y:0};G.nodes.push(n);if(x==null)[x,y]=slotFor(kind);[n.x,n.y]=clampIn(n,x,y);
     if(twin)G.edges.filter(e=>e.a===twin.id||e.b===twin.id).forEach(e=>G.edges.push({a:e.a===twin.id?n.id:e.a,b:e.b===twin.id?n.id:e.b}));
@@ -74,7 +75,8 @@ function labGame(o){return api=>{
   function start(){if(running)return;sel=null;drag=null;S=o.init(G);running=true;done=false;res=null;api.lock(true);t0=api.now();last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
   // ---------- pointer ----------
   let sel=null,drag=null,hover=null,pal=-1;
-  const TILE=k=>({x:10,y:LAB_BOARD.y+k*Math.min(56,(LAB_BOARD.h)/PAL.length),w:126,h:Math.min(50,(LAB_BOARD.h)/PAL.length-6)});
+  const TW=Math.min(150,(LAB_BOARD.w+12-(PAL.length-1)*8)/PAL.length),TX0=LAB_BOARD.x-6+(LAB_BOARD.w+12-(PAL.length*TW+(PAL.length-1)*8))/2;
+  const TILE=k=>({x:TX0+k*(TW+8),y:LAB_PAL_Y,w:TW,h:50});
   const nodeAt=(x,y)=>{for(let i=G.nodes.length-1;i>=0;i--){const n=G.nodes[i],[w,h]=sizeOf(n);if(Math.abs(x-n.x)<=w/2+4&&Math.abs(y-n.y)<=h/2+4)return n;}return null;};
   const portAt=(x,y)=>G.nodes.find(n=>(o.links[n.kind]||[]).length&&Math.hypot(x-port(n)[0],y-port(n)[1])<12)||null;
   const edgeAt=(x,y)=>G.edges.find(e=>{const[[x0,y0],[x1,y1]]=seg(e),L=Math.hypot(x1-x0,y1-y0)||1,u=clamp(((x-x0)*(x1-x0)+(y-y0)*(y1-y0))/(L*L));return Math.hypot(x-(x0+u*(x1-x0)),y-(y0+u*(y1-y0)))<7;})||null;
@@ -94,9 +96,9 @@ function labGame(o){return api=>{
         g.save();g.globalAlpha=running?.45:ok?1:.5;rr(T.x,T.y,T.w,T.h,10);g.fillStyle=hot?hexA(kk.c||C.accent,.18):C.panel;g.fill();g.strokeStyle=hot?kk.c||C.accent:C.line;g.lineWidth=1.3;g.stroke();g.restore();
         icon(kk,T.x+28,T.y+T.h/2,running?.45:1);keycap(String(i+1),T.x+11,T.y+11,{a:running?.45:1});
         tx(kk.short||kk.label,T.x+52,T.y+T.h/2-7,{z:12.5,wt:700,al:'left',a:running?.45:1});tx(`$${kk.cost}`+(kk.max?` · max ${kk.max}`:''),T.x+52,T.y+T.h/2+9,{z:10.5,c:C.dim,al:'left',f:MONO,a:running?.45:1});});
-      tx('drag onto the board',73,LAB_BOARD.y+LAB_BOARD.h+18,{z:11,c:C.dim});
+      if(!running)tx('drag a component up onto the board · drag one back down here to remove it',W/2,LAB_PAL_Y+68,{z:11,c:C.dim});
       // empty-board coaching
-      if(G.nodes.length===o.fixed.length&&!running)textBlock(o.intro||'Drag components from the left onto the board, then drag from a component’s ● to another to wire them.',LAB_BOARD.x+LAB_BOARD.w/2+40,LAB_BOARD.y+LAB_BOARD.h/2,420,{z:14,wt:500,c:C.dim});
+      if(G.nodes.length===o.fixed.length&&!running)textBlock(o.intro||'Drag components from the row below onto the board, then drag from a component’s ● to another to wire them.',LAB_BOARD.x+LAB_BOARD.w/2+40,LAB_BOARD.y+LAB_BOARD.h/2,420,{z:14,wt:500,c:C.dim});
       // wires
       G.edges.forEach(e=>{const s=seg(e),on=sel&&sel.e===e,bad=V_&&V_.badEdges&&V_.badEdges.has(e.a+'>'+e.b);ln(s,{c:on?C.accent:bad?hexA(C.red,.7):hexA(C.edge,.9),w:on?3:2,arrow:true});});
       if(drag&&drag.type==='wire'){const a=drag.from,[px,py]=port(a),tgt=nodeAt(drag.x,drag.y),okT=tgt&&allowed(a,tgt);ln([[px,py],tgt?anchor(tgt,px,py):[drag.x,drag.y]],{c:tgt?(okT?C.green:C.red):C.accent,w:2,dash:[5,5],arrow:true});}
@@ -112,7 +114,7 @@ function labGame(o){return api=>{
       // delete button on the selection
       const d=!running&&delBtn();if(d){g.save();g.beginPath();g.arc(d[0],d[1],9,0,7);g.fillStyle=C.red;g.fill();g.restore();tx('×',d[0],d[1]+.5,{z:14,wt:800,c:'#fff'});}
       // dragging a new component
-      if(drag&&drag.type==='new'){const kk=K[drag.kind],over=drag.x>LAB_BOARD.x;g.save();g.globalAlpha=over?.85:.5;drawKind({x:drag.x,y:drag.y,kind:drag.kind},kk,kk.w||110,kk.h||52,'ok',null);g.restore();}
+      if(drag&&drag.type==='new'){const kk=K[drag.kind],over=drag.y<LAB_BOARD.y+LAB_BOARD.h;g.save();g.globalAlpha=over?.85:.5;drawKind({x:drag.x,y:drag.y,kind:drag.kind},kk,kk.w||110,kk.h||52,'ok',null);g.restore();}
       // top bar: budget and phase
       if(!running){const c=cost();tx(`budget $${c} / $${o.budget}`,LAB_BOARD.x+6,LAB_BOARD.y-24,{z:13,wt:800,c:c<=o.budget?C.green:C.red,al:'left',f:MONO});}
       if(running&&V_){tx(V_.phase||'',LAB_BOARD.x+6,LAB_BOARD.y-24,{al:'left',z:16,wt:800,c:/die|attack|storm|spike|star/i.test(V_.phase||'')?C.red:C.accent});const f=clamp((now-t0)/o.dur);meter(LAB_BOARD.x,H-12,LAB_BOARD.w,4,f,C.accent);
@@ -126,11 +128,11 @@ function labGame(o){return api=>{
       const e=edgeAt(x,y);if(e){sel={e};say(`Selected the wire ${nameOf(node(e.a))} → ${nameOf(node(e.b))}. Press Delete or × to remove it.`);return;}
       sel=null;say();},
     move(x,y){pal=PAL.findIndex((k,i)=>inBox(x,y,TILE(i)));hover=portAt(x,y)||nodeAt(x,y);if(!drag)return;drag.x=x;drag.y=y;
-      if(drag.type==='move'&&!drag.n.fixed||drag.type==='move'&&drag.n.fixed){[drag.n.x,drag.n.y]=clampIn(drag.n,x-drag.dx,y-drag.dy);}},
+      if(drag.type==='move'&&!drag.n.fixed||drag.type==='move'&&drag.n.fixed){[drag.n.x,drag.n.y]=clampIn(drag.n,x-drag.dx,y-drag.dy);if(!drag.n.fixed&&y>LAB_BOARD.y+LAB_BOARD.h+6)drag.n.y=snap(y-drag.dy);}},
     up(x,y){if(!drag)return;const d=drag;drag=null;
-      if(d.type==='new'){if(x>LAB_BOARD.x-20){if(cost()+K[d.kind].cost>o.budget+20){FX.text(x,y-30,'way over budget',C.red,13);return;}add(d.kind,x,y);}return;}
+      if(d.type==='new'){if(y<LAB_BOARD.y+LAB_BOARD.h+10){if(cost()+K[d.kind].cost>o.budget+20){FX.text(x,y-30,'way over budget',C.red,13);return;}add(d.kind,x,y);}return;}
       if(d.type==='wire'){const tgt=nodeAt(x,y);if(tgt&&tgt!==d.from)toggleEdge(d.from,tgt);return;}
-      if(d.type==='move'){if(x<LAB_BOARD.x-10&&!d.n.fixed){removeNode(d.n);FX.text(x+60,y,'removed',C.dim,13);return;}save();}},
+      if(d.type==='move'){if(y>LAB_BOARD.y+LAB_BOARD.h+6&&!d.n.fixed){removeNode(d.n);FX.text(x,LAB_BOARD.y+LAB_BOARD.h-14,'removed',C.dim,13);return;}save();}},
     key(k){if(running)return;
       if(k==='Enter'){start();return;}
       if(/^[1-9]$/.test(k)){const kind=PAL[+k-1];if(kind){const n=add(kind);if(n){sel=null;say(`Added ${K[kind].label.toLowerCase()} ${letterOf(n)}${G.edges.some(e=>e.a===n.id||e.b===n.id)?', wired like the first one':''}.`);}}return;}

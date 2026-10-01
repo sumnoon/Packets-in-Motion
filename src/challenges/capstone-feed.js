@@ -12,7 +12,7 @@ chal('capstone-feed',{title:'Build the news feed',goal:'Build it yourself: ordin
   make:labGame({id:'capstone-feed',budget:18,dur:14,scale:5000,
     intro:'Two kinds of traffic: Posters write posts, Readers open their feed. Build a path for each, then decide how posts reach followers’ feeds.',
     fixedKinds:{readers:{label:'Readers',shape:'user',w:44,h:44},posters:{label:'Posters',shape:'user',w:44,h:44}},
-    fixed:[{kind:'posters',x:190,y:170,label:'Posters + a star'},{kind:'readers',x:190,y:410,label:'Readers'}],
+    fixed:[{kind:'posters',x:70,y:150,label:'Posters + a star'},{kind:'readers',x:70,y:360,label:'Readers'}],
     kinds:{
       postsvc:{label:'Post service',short:'Post svc',cost:1,max:1,shape:'server',w:100,h:48,sub:'accepts posts'},
       postdb:{label:'Posts database',short:'Posts DB',cost:2,max:1,shape:'db',w:86,h:66,sub:'sharded'},
@@ -21,7 +21,7 @@ chal('capstone-feed',{title:'Build the news feed',goal:'Build it yourself: ordin
       feedcache:{label:'Feed cache',short:'Feed cache',cost:2,max:1,shape:'box',c:C.green,w:108,h:48,sub:'a list per user'},
       feedsvc:{label:'Feed service',short:'Feed svc',cost:2,max:1,shape:'server',w:104,h:50,sub:'merge · rank'},
       pagecache:{label:'Page cache',short:'Page cache',cost:3,max:1,shape:'box',c:C.accent,w:108,h:46,sub:'first page'}},
-    columns:{postsvc:330,postdb:520,fanq:520,fanw:700,feedcache:870,feedsvc:400,pagecache:600},
+    columns:{postsvc:220,postdb:440,fanq:440,fanw:640,feedcache:840,feedsvc:290,pagecache:520},
     links:{posters:['postsvc'],readers:['feedsvc'],postsvc:['postdb','fanq'],fanq:['fanw'],fanw:['feedcache'],feedsvc:['feedcache','postdb','pagecache']},
     toggles:[{key:'skipStars',label:'Skip fan-out for accounts with over 1 M followers',val:false}],
     check(G){const P=G.of('posters')[0],R=G.of('readers')[0];

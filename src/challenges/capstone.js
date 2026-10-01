@@ -9,9 +9,9 @@ const APP=1000,DBOPS=600,WORKER=4000;
 chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survive the load test: launch traffic, a viral link at 3,000 req/s, the busiest app server crashing, then a bot attack. Serve ≥99% of real users, p95 ≤ 80 ms, count every click, and spend ≤ $20/h.',
   hint:'Users → rate limiter → load balancer → several app servers (one spare). Each app server talks to a cache and the database, and sends click events to a queue that a worker writes to the database. New app servers copy the first one\'s wires.',
   make:labGame({id:'capstone',budget:20,dur:18,scale:120,
-    intro:'Drag components from the left onto the board. Then drag from a component’s ● to another to wire them, starting from Users. Press Run when your design is ready.',
+    intro:'Drag components from the row below onto the board. Then drag from a component’s ● to another to wire them, starting from Users. Press Run when your design is ready.',
     fixedKinds:{users:{label:'Users',shape:'user',w:44,h:44}},
-    fixed:[{kind:'users',x:190,y:290,label:'Users + bots'}],
+    fixed:[{kind:'users',x:70,y:250,label:'Users + bots'}],
     kinds:{
       limiter:{label:'Rate limiter',short:'Limiter',cost:1,max:2,shape:'box',c:C.amber,w:104,h:48,sub:'blocks bots'},
       lb:{label:'Load balancer',short:'LB',cost:1,max:2,shape:'box',c:C.accent,w:100,h:48,sub:'health checks'},
@@ -21,7 +21,7 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
       replica:{label:'Read replica',short:'Replica',cost:2,max:3,shape:'db',w:72,h:58,sub:'+600 reads'},
       queue:{label:'Queue',short:'Queue',cost:1,max:1,shape:'box',c:C.amber,w:96,h:46,sub:'click events'},
       worker:{label:'Worker',short:'Worker',cost:1,max:3,shape:'server',w:94,h:46,sub:'counts clicks',clone:true}},
-    columns:{limiter:300,lb:410,app:540,cache:700,db:850,replica:950,queue:700,worker:850},
+    columns:{limiter:190,lb:310,app:450,cache:620,db:790,replica:920,queue:620,worker:790},
     links:{users:['limiter','lb','app'],limiter:['lb','app'],lb:['app'],app:['cache','db','queue'],db:['replica'],queue:['worker'],worker:['db']},
     check(G){const u=G.of('users')[0];if(!G.out(u).length)return['wire Users to something (a limiter, load balancer or app server).'];
       if(!G.of('app').length)return['add at least one app server.'];
