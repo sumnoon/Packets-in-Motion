@@ -108,22 +108,52 @@ const runWith = (id, set, seconds) => {
   r.click(/run|ship|chaos/i).step(seconds);
   return r.result;
 };
+// capstones are architecture labs: build the design with keys (digits add, letter pairs wire), then load-test it
+const LAB_SAVE = page.get('LAB_SAVE');
+const lab = (id, keys, opts, seconds) => {
+  for (const k in LAB_SAVE) delete LAB_SAVE[k];
+  const r = challenge(page, id);
+  r.press(...keys);
+  for (const [label, v] of opts) r.control(label).set(v);
+  r.press('Enter').step(seconds);
+  return r.result;
+};
 test('capstone: URL shortener needs every building block', () => {
-  const ideal = [[/app servers/i, 4], [/cache/i, true], [/queue/i, true], [/limiter/i, true]];
-  assert.equal(runWith('capstone', ideal, 19).stars, 3);
-  const without = re => ideal.filter(([l]) => l.source !== re.source);
-  assert.ok(runWith('capstone', without(/queue/i), 19).stars < 3, 'click counts written synchronously swamp the database');
-  assert.ok(runWith('capstone', without(/limiter/i), 19).stars < 3, 'the bot attack gets through without a limiter');
-  assert.ok(runWith('capstone', without(/cache/i), 19).stars < 3, 'viral reads need a cache');
-  assert.ok(runWith('capstone', [[/app servers/i, 3], ...ideal.slice(1)], 19).stars < 3, 'no spare server when one dies');
+  // 1 limiter · 2 LB · 3 app · 4 cache · 5 DB · 7 queue · 8 worker; A is Users
+  const base = ['1', '2', '3', '4', '5', '7', '8', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', 'd', 'f', 'd', 'g', 'g', 'h', 'h', 'f'];
+  assert.equal(lab('capstone', [...base, '3', '3', '3'], [], 19).stars, 3);
+  assert.ok(lab('capstone', [...base, '3', '3'], [], 19).stars < 3, 'no spare server when one dies');
+  assert.ok(lab('capstone', ['2', '3', '4', '5', '7', '8', 'a', 'b', 'b', 'c', 'c', 'd', 'c', 'e', 'c', 'f', 'f', 'g', 'g', 'e', '3', '3', '3'], [], 19).stars < 3, 'the bot attack gets through without a limiter');
+  assert.ok(lab('capstone', ['1', '3', '4', '5', '7', '8', 'a', 'b', 'b', 'c', 'c', 'd', 'c', 'e', 'c', 'f', 'f', 'g', 'g', 'd', '3', '3', '3'], [], 19).stars < 3, 'without a load balancer traffic keeps hitting the crashed server');
+  assert.ok(lab('capstone', ['1', '2', '3', '5', '7', '8', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', 'd', 'f', 'f', 'g', 'g', 'e', '3', '3', '3'], [], 19).stars < 3, 'viral reads need a cache');
+  assert.ok(lab('capstone', ['1', '2', '3', '4', '5', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', 'd', 'f', '3', '3', '3'], [], 19).stars < 3, 'click counts written synchronously swamp the database');
+});
+test('capstone: lab keys add, wire and describe the design', () => {
+  for (const k in LAB_SAVE) delete LAB_SAVE[k];
+  const r = challenge(page, 'capstone');
+  assert.match(r.state.status, /<kbd>1<\/kbd> Rate limiter/);
+  r.press('2', '3', 'a', 'b', 'b', 'c');
+  assert.match(r.state.status, /A<\/b> Users \+ bots → B · <b>B<\/b> Load balancer → C/);
+  r.press('3');
+  assert.match(r.state.status, /wired like the first one/);
+  r.press('d', 'Delete');
+  assert.doesNotMatch(r.state.status, /<b>D<\/b> App server/);
+  r.press('c', 'a');
+  assert.match(r.state.status, /can't send to/);
 });
 test('capstone: chat app has a 3-star design', () => {
-  assert.equal(runWith('capstone-chat', [[/gateways/i, 4], [/shards/i, 3], [/pub\/sub/i, true], [/push/i, true], [/resume/i, true]], 17).stars, 3);
-  assert.equal(runWith('capstone-chat', [[/gateways/i, 4], [/shards/i, 3], [/pub\/sub/i, true], [/push/i, true]], 17).stars, 2);
+  // 1 LB · 2 gateway · 3 chat · 4 store shard · 5 pub/sub · 6 push; A is People
+  const base = ['1', '2', '3', '4', '5', '6', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', 'd', 'f', 'f', 'c', 'd', 'g'];
+  assert.equal(lab('capstone-chat', [...base, '2', '2', '2', '4', '4'], [[/resume/i, true]], 17).stars, 3);
+  assert.equal(lab('capstone-chat', [...base, '2', '2', '2', '4', '4'], [], 17).stars, 2);
+  assert.ok(lab('capstone-chat', [...base, '2', '2', '4', '4'], [[/resume/i, true]], 17).stars < 3, 'no spare gateway');
 });
 test('capstone: news feed needs the hybrid', () => {
-  assert.equal(runWith('capstone-feed', [[/strategy/i, 'hybrid'], [/workers/i, 3], [/page cache/i, true]], 15).stars, 3);
-  assert.ok(runWith('capstone-feed', [[/strategy/i, 'write'], [/workers/i, 6], [/page cache/i, true]], 15).stars < 3);
+  // 1 post svc · 2 posts DB · 3 fan-out queue · 4 worker · 5 feed cache · 6 feed svc · 7 page cache; A posters, B readers
+  const base = ['1', '2', '3', '4', '5', '6', '7', 'a', 'c', 'c', 'd', 'c', 'e', 'e', 'f', 'f', 'g', 'b', 'h', 'h', 'g', 'h', 'd', 'h', 'i'];
+  assert.equal(lab('capstone-feed', [...base, '4', '4'], [[/skip/i, true]], 15).stars, 3);
+  assert.ok(lab('capstone-feed', [...base, '4', '4'], [], 15).stars < 3, 'pure fan-out on write drowns in the star');
+  assert.ok(lab('capstone-feed', ['1', '2', '6', '7', 'a', 'c', 'c', 'd', 'b', 'e', 'e', 'd', 'e', 'f'], [], 15).stars < 3, 'fan-out on read is too slow');
 });
 test('new chapters: intended answers earn 3 stars', () => {
   assert.equal(runWith('quorums', [[/replicas/i, 3], [/write/i, 2], [/read/i, 2]], 11).stars, 3);

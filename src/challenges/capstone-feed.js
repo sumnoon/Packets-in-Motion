@@ -1,33 +1,62 @@
-/* ---------------- 24. CAPSTONE: survive the big night ---------------- */
-// Ordinary posting needs 220,000 feed writes/s; a worker does 100,000/s. A star with 30 M
-// followers posts at 3 s, and feed loads jump 20× at 8 s.
-function feedModel(p){const NEED=220000,cap=p.workers*1e5;let q=0,fresh=0;
-  for(let t=0;t<14;t+=.1){if(p.mode!=='read'){q+=NEED*.1;if(p.mode==='write'&&t>=3&&t<3.1)q+=30e6;q=Math.max(0,q-cap*.1);fresh=Math.max(fresh,q/cap);}}
-  if(p.mode!=='read')fresh=Math.max(fresh,NEED/cap);
-  if(p.mode!=='read'&&cap<=NEED)fresh=Math.max(fresh,60);
-  const base=p.mode==='read'?820:p.mode==='write'?30:45,spike=p.mode==='read'?2400:p.cache?40:260;
-  return{fresh,p99:Math.max(base,spike),base,spike,cost:p.workers*2+(p.cache?3:0)};}
-chal('capstone-feed',{title:'Survive the big night',goal:'Ordinary posting needs 220,000 feed writes a second, a star with 30 million followers posts, then feed loads jump 20×. Keep p99 feed loads ≤ 200 ms, new posts visible within 10 s, and spend ≤ $12/h.',
-  hint:'Fan-out on read is too slow to load. Pure fan-out on write drowns in the star\'s 30 M writes. Hybrid needs a little more worker capacity than ordinary posting uses, and the spike needs cached pages.',
-  make:simGame({dur:14,defaults:{mode:'read',workers:1,cache:false},intro:'Pick a feed strategy and capacity, then press <b>Run it</b>.',
-    controls(api,p,re){api.seg('Strategy',[['read','fan-out on read'],['write','fan-out on write'],['hybrid','hybrid']],p.mode,v=>{p.mode=v;re();});
-      api.slider('Fan-out workers',1,6,1,p.workers,v=>`${v} × 100k/s`,v=>{p.workers=v;re();});api.toggle('Page cache',p.cache,v=>{p.cache=v;re();});},
-    build(p,api){const M=feedModel(p);let T=0,acc=0,q=0;const fl=[];const FS=[300,380],QQ=[470,170],WK=[650,170],FC=[850,170],DB=[650,400];
-      return{step(dt,t){T=t;const now=api.now();if(p.mode!=='read'){q+=220000*dt;if(p.mode==='write'&&t>=3&&t-dt<3){q+=30e6;FX.text(QQ[0],QQ[1]-50,'+30 M writes',C.red,15);}q=Math.max(0,q-p.workers*1e5*dt);}
-          const spike=t>=8;acc+=dt*(spike?24:8);while(acc>=1){acc--;const slow=p.mode==='read'||(spike&&!p.cache);
-            fl.push({t0:now,d:.5,pts:[[90,380],[FS[0]-60,FS[1]]],c:C.green,r:3});
-            fl.push({t0:now+.5,d:slow?.9:.4,pts:p.mode==='read'?[[FS[0]+60,FS[1]],[DB[0]-46,DB[1]]]:[[FS[0]+60,FS[1]-10],[FC[0]-80,FC[1]+20]],c:slow?C.amber:C.green,r:3});}
-          if(p.mode!=='read'&&Math.random()<dt*6)fl.push({t0:now,d:.5,pts:[[QQ[0]+64,QQ[1]],[WK[0]-55,WK[1]]],c:q>p.workers*1e5*10?C.red:C.amber,r:3.5});},
-        draw(now,running){flyers(now,fl);for(let i=0;i<4;i++)user(90,320+i*40,{r:11,c:C.green});user(90,150,{label:'posters',r:13});user(90,240,{label:'Star · 30 M',c:C.amber,r:15});
-          server(FS[0],FS[1],{label:'Feed service',w:120,h:54,st:running&&T>=8&&(p.mode==='read'||!p.cache)?'hot':'ok'});
-          if(p.mode!=='read'){box(QQ[0],QQ[1],{label:'Fan-out queue',sub:q>1e5?`${(q/1e6).toFixed(1)} M waiting`:'',c:q>p.workers*1e5*10?C.red:C.amber,w:128,h:52});
-            for(let k=0;k<p.workers;k++)server(WK[0]+(k%3)*14-14,WK[1]-16+Math.floor(k/3)*32+(k%3)*4,{label:k===p.workers-1?`${p.workers} workers`:'',w:100,h:40});
-            box(FC[0],FC[1],{label:'Feed cache',sub:'list per user',c:C.green,w:150,h:52});}
-          db(DB[0],DB[1],{label:'Posts',w:92,h:76,st:running&&p.mode==='read'?'hot':'ok'});if(p.cache)box(FS[0]+170,FS[1]+90,{label:'Page cache',c:C.accent,w:120,h:44});
-          if(running)tx(T<3?'Normal posting':T<8?'The star posts':'Everyone opens the app',W/2,40,{z:17,wt:800,c:T>=3?C.red:C.accent});
-          tx(`$${M.cost}/h`,90,520,{z:18,wt:800,c:M.cost<=12?C.green:C.red,f:MONO});},
-        hud(){const lat=T<8?M.base:M.p99,fr=p.mode==='read'?0:Math.min(M.fresh,q/(p.workers*1e5)+0);return[['p99 feed load',`${lat} ms`,lat<=200?C.green:C.red],['post visible after',`${(p.mode==='read'?0:Math.max(fr,0)).toFixed(1)} s`,fr<=10?C.green:C.red],['cost',`$${M.cost}/h`,M.cost<=12?C.green:C.red]];},
-        score(){const a=M.p99<=200,b=M.fresh<=10,c=M.cost<=12,n=[a,b,c].filter(Boolean).length;
-          if(n===3)return{stars:3,title:'The feed held up',msg:`Hybrid fan-out with ${p.workers} workers kept new posts visible within ${M.fresh.toFixed(1)} s, the star's post skipped fan-out entirely, and cached pages carried the spike at ${M.p99} ms.`};
-          const why=[!a&&(p.mode==='read'?'fan-out on read makes every feed load query hundreds of accounts':'the spike overwhelmed the feed service: cache the first page'),!b&&(p.mode==='write'?'the star\'s 30 M fan-out writes buried everyone else\'s posts':'workers could not keep up with ordinary posting: add a little headroom'),!c&&'over budget'].filter(Boolean).join('; ');
-          return{stars:n===2?2:n===1?1:0,title:`${n} of 3 goals`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
+/* ---------------- 24. CAPSTONE: build the news feed and survive the big night ---------------- */
+// You build it on the board. Ordinary posting needs 220,000 feed writes/s; a fan-out worker does
+// 100,000/s. A star with 30 M followers posts at 3 s, and feed loads jump 20× at 8 s.
+// The strategy follows from your wiring:
+//   post service → fan-out queue → workers → feed cache, read by the feed service   = fan-out on write
+//   feed service → posts database only                                                = fan-out on read
+//   both, with "skip fan-out for stars" on                                            = hybrid
+(function(){
+const NEED=220000,WORKER=1e5,STAR=30e6;
+chal('capstone-feed',{title:'Build the news feed',goal:'Build it yourself: ordinary posting needs 220,000 feed writes a second, a star with 30 million followers posts, then feed loads jump 20×. Keep p99 feed loads ≤ 200 ms, new posts visible within 10 s, and spend ≤ $18/h.',
+  hint:'Posters → post service → posts database and a fan-out queue → workers → feed cache. Readers → feed service → feed cache (fast), plus the posts database for stars, plus a page cache for the spike. Skip fan-out for stars, and give the workers a little headroom over 220k/s.',
+  make:labGame({id:'capstone-feed',budget:18,dur:14,scale:5000,
+    intro:'Two kinds of traffic: Posters write posts, Readers open their feed. Build a path for each, then decide how posts reach followers’ feeds.',
+    fixedKinds:{readers:{label:'Readers',shape:'user',w:44,h:44},posters:{label:'Posters',shape:'user',w:44,h:44}},
+    fixed:[{kind:'posters',x:190,y:170,label:'Posters + a star'},{kind:'readers',x:190,y:410,label:'Readers'}],
+    kinds:{
+      postsvc:{label:'Post service',short:'Post svc',cost:1,max:1,shape:'server',w:100,h:48,sub:'accepts posts'},
+      postdb:{label:'Posts database',short:'Posts DB',cost:2,max:1,shape:'db',w:86,h:66,sub:'sharded'},
+      fanq:{label:'Fan-out queue',short:'Fan-out Q',cost:1,max:1,shape:'box',c:C.amber,w:104,h:46,sub:'post → followers'},
+      fanw:{label:'Fan-out worker',short:'Worker',cost:2,max:6,shape:'server',w:94,h:46,sub:'100k writes/s',clone:true},
+      feedcache:{label:'Feed cache',short:'Feed cache',cost:2,max:1,shape:'box',c:C.green,w:108,h:48,sub:'a list per user'},
+      feedsvc:{label:'Feed service',short:'Feed svc',cost:2,max:1,shape:'server',w:104,h:50,sub:'merge · rank'},
+      pagecache:{label:'Page cache',short:'Page cache',cost:3,max:1,shape:'box',c:C.accent,w:108,h:46,sub:'first page'}},
+    columns:{postsvc:330,postdb:520,fanq:520,fanw:700,feedcache:870,feedsvc:400,pagecache:600},
+    links:{posters:['postsvc'],readers:['feedsvc'],postsvc:['postdb','fanq'],fanq:['fanw'],fanw:['feedcache'],feedsvc:['feedcache','postdb','pagecache']},
+    toggles:[{key:'skipStars',label:'Skip fan-out for accounts with over 1 M followers',val:false}],
+    check(G){const P=G.of('posters')[0],R=G.of('readers')[0];
+      if(!G.out(P).length)return['wire Posters to a post service.'];if(!G.out(R).length)return['wire Readers to a feed service.'];
+      const ps=G.of('postsvc')[0];if(ps&&!G.out(ps,['postdb']).length)return['the post service must save posts in the posts database.'];
+      const fs=G.of('feedsvc')[0];if(fs&&!G.out(fs,['feedcache','postdb']).length)return['the feed service needs somewhere to read feeds from.'];
+      return[];},
+    init(G){return{q:0,fresh:0,loads:[],why:{}};},
+    step(S,G,dt,t){const phase=t<3?'Normal posting':t<8?'The star posts':'Everyone opens the app';
+      const P=G.of('posters')[0],R=G.of('readers')[0],ps=G.out(P,['postsvc'])[0],fs=G.out(R,['feedsvc'])[0];
+      const saves=ps&&G.out(ps,['postdb']).length>0,q=ps&&G.out(ps,['fanq'])[0],ws=q?G.out(q,['fanw']):[],writers=ws.filter(w=>G.out(w,['feedcache']).length);
+      const fanOut=!!(q&&writers.length),fromCache=fs&&G.out(fs,['feedcache']).length>0,fromDb=fs&&G.out(fs,['postdb']).length>0,page=fs&&G.out(fs,['pagecache']).length>0,skip=G.opts.skipStars;
+      const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
+      // posting: fan-out writes pile into the queue; workers drain it
+      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=3&&!skip){S.q+=STAR;S.star=true;FX.text(q.x,q.y-46,'+30 M writes',C.red,15);}S.q=Math.max(0,S.q-cap*dt);
+        const wait=Math.max(NEED/cap,S.q/cap)+(cap<=NEED?60:0);S.fresh=Math.max(S.fresh,wait);load[q.id]=Math.min(1.5,S.q/(cap*10));writers.forEach(w=>load[w.id]=NEED/cap);}
+      else if(fromCache)S.fresh=Math.max(S.fresh,1e9);         // nothing fills the feed cache: new posts never show up
+      if(fromCache&&fanOut&&skip&&!fromDb)S.fresh=Math.max(S.fresh,1e9);   // stars skip fan-out, but nothing reads their posts
+      if(ps){F(P,ps,2000,!saves);if(saves)F(ps,G.out(ps,['postdb'])[0],2000,false,C.amber);if(q){F(ps,q,NEED,false,C.amber);writers.forEach(w=>{F(q,w,cap?NEED/writers.length:0,S.q>cap*10,C.amber);F(w,G.out(w,['feedcache'])[0],NEED/writers.length,false,C.amber);});}}
+      if(!ps||!saves)S.why.noSave=true;
+      // reading: latency depends on where the feed comes from
+      const spike=t>=8,loadsPerS=spike?40000:2000;let ms;
+      if(!fs||!(fromCache||fromDb))ms=5000;
+      else if(fromCache)ms=spike?(page?40:260):(skip&&fromDb?45:30);
+      else ms=spike?(page?820:2400):820;
+      S.loads.push([ms,loadsPerS*dt]);load[fs?fs.id:'']=ms/200;
+      if(fs){F(R,fs,loadsPerS,ms>200,C.green);if(fromCache)F(fs,G.out(fs,['feedcache'])[0],loadsPerS,false,C.green);if(fromDb)F(fs,G.out(fs,['postdb'])[0],fromCache?loadsPerS*.05:loadsPerS*30,!fromCache,C.blue);if(page)F(fs,G.out(fs,['pagecache'])[0],loadsPerS,false,C.accent);}
+      S.mode=fanOut&&fromCache?(skip&&fromDb?'hybrid':'write'):fromDb?'read':'none';
+      return{flows,load,phase,badEdges:bad};},
+    hud(S){const l=p99(S),f=S.fresh;return[['p99 feed load',`${l>=5000?'—':l+' ms'}`,l<=200?C.green:C.red],['post visible after',f>=1e8?'never':`${f.toFixed(1)} s`,f<=10?C.green:C.red]];},
+    score(S,G,cost){const l=p99(S),f=S.fresh,a=l<=200,b=f<=10&&!S.why.noSave,c=cost<=18,n=[a,b,c].filter(Boolean).length;
+      if(n===3)return{stars:3,title:'The feed held up',msg:`Posts visible within ${f.toFixed(1)} s, p99 ${l} ms, $${cost}/h. Fan-out on write for ordinary accounts, the star read at load time, and cached pages for the spike: the hybrid feed, built by you.`};
+      const why=[!a&&(S.mode==='read'?'Fan-out on read makes every feed load query hundreds of accounts: precompute feeds into a feed cache.':l>=5000?'Readers had nowhere to load a feed from.':'The spike overwhelmed the feed service: add a page cache.'),
+        !b&&(S.why.noSave?'Posts were never saved: wire the post service to the posts database.':f>=1e8?(G.opts.skipStars&&!G.of('feedsvc').some(s=>G.out(s,['postdb']).length)?'Stars skip fan-out, but the feed service never reads their posts from the database.':'Nothing ever fills the feed cache: fan posts out through a queue and workers.'):S.mode==='write'?'The star’s 30 M fan-out writes buried everyone else’s posts: skip fan-out for stars.':'The workers could not keep up with ordinary posting: add a little headroom over 220k/s.'),
+        !c&&`Over budget at $${cost}/h.`].filter(Boolean).join(' ');
+      return{stars:n===2?2:n===1?1:0,title:`${n} of 3 goals`,msg:why};}})});
+function p99(S){const a=S.loads.slice().sort((x,y)=>x[0]-y[0]),W_=a.reduce((s,x)=>s+x[1],0);let w=0;for(const[m,v]of a){w+=v;if(w>=W_*.99)return m;}return 0;}
+})();
