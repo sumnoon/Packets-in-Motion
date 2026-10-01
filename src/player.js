@@ -254,7 +254,7 @@ $('glossBtn').onclick=openGlossary;$('glClose').onclick=closeGlossary;$('glFind'
 /* ---------------- progress export / import ---------------- */
 const KNOWN=new Set(allIds().concat(chapters.map(c=>c.id)));
 const ioMsg=s=>{$('ioMsg').textContent=s;};
-function exportProgress(){const data={app:'packets-in-motion',version:1,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST};
+function exportProgress(){const data={app:'packets-in-motion',version:1,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS};
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));a.download='packets-in-motion-progress.json';
   document.body.appendChild(a);a.click();a.remove();ioMsg('Progress saved to packets-in-motion-progress.json.');return data;}
 // merges: a chapter stays watched, and each challenge keeps its best score
@@ -264,6 +264,7 @@ function importProgress(text){let d;try{d=JSON.parse(text);}catch(e){ioMsg('That
   Object.keys(d.seen).forEach(k=>{if(KNOWN.has(k)&&d.seen[k]&&!seen[k]){seen[k]=1;nSeen++;}});
   Object.entries(d.stars).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>=0&&n<=3&&n>(stars[k]||0)){nStars+=n-(stars[k]||0);stars[k]=n;}});
   if(d.labBest&&typeof d.labBest==='object')Object.entries(d.labBest).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>0&&(LAB_BEST[k]==null||n<LAB_BEST[k]))LAB_BEST[k]=n;});labSaveBest();
+  if(d.labChaos&&typeof d.labChaos==='object')Object.keys(d.labChaos).forEach(k=>{if(KNOWN.has(k)&&d.labChaos[k]===true)LAB_CHAOS[k]=true;});labPut('pim-lab-chaos',LAB_CHAOS);
   store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();
   ioMsg(nSeen||nStars?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.`:'Nothing new in that file: you already have all of it.');return true;}
 $('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
@@ -276,5 +277,9 @@ $('soundBtn').onclick=()=>{setSound(!SFX.on);SFX.play('good');};
 setSound(store.get('pim-sound')==='1');hideTip();
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
-load(start,!startQ);if(startQ)startQuiz(startQ);resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
+// a shared lab design: ?lab=<id>&d=<design> opens that lab with the design on the board
+const sp=typeof URLSearchParams!=='undefined'?new URLSearchParams(location.search||''):null,sLab=sp&&sp.get('lab'),sIdx=sLab?chapters.findIndex(c=>c.id===sLab):-1;
+const shared=sIdx>=0&&CHAL[sLab]&&labImport(sLab,sp.get('d')||'');
+if(shared){history.replaceState(null,'',location.pathname+'#'+sLab);load(sIdx,false);startChal();}
+else{load(start,!startQ);if(startQ)startQuiz(startQ);}resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();

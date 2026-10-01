@@ -33,7 +33,7 @@ chal('sync-async',{title:'Make checkout fast',goal:'Build it yourself: Checkout 
       return[];},
     sub(n,G,S){if(n.kind==='queue'&&S)return`${Math.round(S.backlog)} waiting`;if(n.kind==='email'&&S&&S.down)return'DOWN';if(n.kind==='checkout'&&S)return`replies in ${S.ms} ms`;return null;},
     init(){return{n:0,acc:0,ms:0,down:false,backlog:0,failed:0,misled:{},skipped:{},slow:0};},
-    step(S,G,dt,t){const down=t>=4&&t<7.5,phase=t<4?'Customers checking out':down?'The email service dies':'Email is back';S.down=down;
+    step(S,G,dt,t){const d0=labAt(S,'email',4,2,7),down=t>=d0&&t<d0+3.5,phase=t<d0?'Customers checking out':down?'The email service dies':'Email is back';S.down=down;
       const c=G.of('checkout')[0],q=G.out(c,['queue'])[0],job=k=>G.of(k)[0];
       const sync=IDS.filter(k=>job(k)&&G.out(c).includes(job(k))),later=q?IDS.filter(k=>job(k)&&G.out(q).includes(job(k))&&!sync.includes(k)):[];
       const ms=sync.reduce((a,k)=>a+JOBS[k].ms,0)+(q?5:0);S.ms=ms;

@@ -31,9 +31,9 @@ chal('replication',{title:'Keep it serving',goal:'Build it yourself: 150 request
       return[];},
     sub(n,G,S){if(S&&n.id===S.lead&&n.kind==='follower')return'promoted · writes';return null;},
     init(G){const L=G.of('leader')[0];return{lead:L?L.id:null,crashAt:null,dead:new Set(),total:0,fail:0,why:{nolead:0,reads:0,stale:0,leader:0}};},
-    step(S,G,dt,t){const phase=t<6?'Steady traffic':t<6+PROMOTE?'The leader dies':S.lead&&!S.dead.has(S.lead)?'Running on the new leader':'No leader';
+    step(S,G,dt,t){const tc=labAt(S,'crash',6,3,9),phase=t<tc?'Steady traffic':t<tc+PROMOTE?'The leader dies':S.lead&&!S.dead.has(S.lead)?'Running on the new leader':'No leader';
       const app=G.of('app')[0],L0=G.of('leader')[0],fm=G.of('failover')[0];
-      if(t>=6&&S.crashAt==null){S.crashAt=t;if(L0){S.dead.add(L0.id);FX.burst(L0.x,L0.y,C.red,30,220);labMark(L0,'crashed',C.red);}}
+      if(t>=tc&&S.crashAt==null){S.crashAt=t;if(L0){S.dead.add(L0.id);FX.burst(L0.x,L0.y,C.red,30,220);labMark(L0,'crashed',C.red);}}
       // the failover manager promotes a follower that was copying the leader
       if(S.crashAt!=null&&t>=S.crashAt+PROMOTE&&S.lead===(L0&&L0.id)){const cand=fm&&L0&&G.out(fm,['leader']).includes(L0)?G.out(fm,['follower']).find(f=>G.inn(f,['leader']).includes(L0)):null;
         if(cand){S.lead=cand.id;FX.burst(cand.x,cand.y,C.green,30,220);labMark(cand,'promoted',C.green);}else S.lead=null;}

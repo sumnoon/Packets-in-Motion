@@ -42,7 +42,7 @@ chal('event-driven',{title:'Wire up the events',goal:'Build it yourself: add the
       return[];},
     sub(n,G,S){if(n.kind==='email'&&S&&S.down)return`down · ${Math.round(S.held)} waiting`;return null;},
     init(){return{down:false,held:0,missed:{},wrong:{},ok:0};},
-    step(S,G,dt,t){const down=t>=5&&t<7,phase=t<5?'Events flowing':down?'Email service dies':'Email is back';S.down=down;
+    step(S,G,dt,t){const e0=labAt(S,'email',5,3,8),down=t>=e0&&t<e0+2,phase=t<e0?'Events flowing':down?'Email service dies':'Email is back';S.down=down;
       const flows=[],load={};
       Object.keys(TOPICS).forEach(tp=>{const src=G.of(tp)[0],r=TOPICS[tp].rate;
         Object.keys(NEEDS).forEach(k=>{const s=G.of(k)[0],sub=s&&G.out(src).includes(s),need=!!NEEDS[k][tp];

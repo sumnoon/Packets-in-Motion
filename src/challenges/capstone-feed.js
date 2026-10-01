@@ -33,20 +33,20 @@ chal('capstone-feed',{title:'Build the news feed',goal:'Build it yourself: ordin
       const fs=G.of('feedsvc')[0];if(fs&&!G.out(fs,['feedcache','postdb']).length)return['the feed service needs somewhere to read feeds from.'];
       return[];},
     init(G){return{q:0,fresh:0,loads:[],why:{}};},
-    step(S,G,dt,t){const phase=t<3?'Normal posting':t<8?'The star posts':'Everyone opens the app';
+    step(S,G,dt,t){const ts=labAt(S,'star',3,2,6),tp=labAt(S,'spike',8,7,10),phase=t<ts?'Normal posting':t<tp?'The star posts':'Everyone opens the app';
       const P=G.of('posters')[0],R=G.of('readers')[0],ps=G.out(P,['postsvc'])[0],fs=G.out(R,['feedsvc'])[0];
       const saves=ps&&G.out(ps,['postdb']).length>0,q=ps&&G.out(ps,['fanq'])[0],ws=q?G.out(q,['fanw']):[],writers=ws.filter(w=>G.out(w,['feedcache']).length);
       const fanOut=!!(q&&writers.length),fromCache=fs&&G.out(fs,['feedcache']).length>0,fromDb=fs&&G.out(fs,['postdb']).length>0,page=fs&&G.out(fs,['pagecache']).length>0,skip=G.opts.skipStars;
       const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       // posting: fan-out writes pile into the queue; workers drain it
-      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=3&&!skip){S.q+=STAR;S.star=true;labMark(q,'+30 M writes',C.red,15);}S.q=Math.max(0,S.q-cap*dt);
+      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=ts&&!skip){S.q+=STAR;S.star=true;labMark(q,'+30 M writes',C.red,15);}S.q=Math.max(0,S.q-cap*dt);
         const wait=Math.max(NEED/cap,S.q/cap)+(cap<=NEED?60:0);S.fresh=Math.max(S.fresh,wait);load[q.id]=Math.min(1.5,S.q/(cap*10));writers.forEach(w=>load[w.id]=NEED/cap);}
       else if(fromCache)S.fresh=Math.max(S.fresh,1e9);         // nothing fills the feed cache: new posts never show up
       if(fromCache&&fanOut&&skip&&!fromDb)S.fresh=Math.max(S.fresh,1e9);   // stars skip fan-out, but nothing reads their posts
       if(ps){F(P,ps,2000,!saves);if(saves)F(ps,G.out(ps,['postdb'])[0],2000,false,C.amber);if(q){F(ps,q,NEED,false,C.amber);writers.forEach(w=>{F(q,w,cap?NEED/writers.length:0,S.q>cap*10,C.amber);F(w,G.out(w,['feedcache'])[0],NEED/writers.length,false,C.amber);});}}
       if(!ps||!saves)S.why.noSave=true;
       // reading: latency depends on where the feed comes from
-      const spike=t>=8,loadsPerS=spike?40000:2000;let ms;
+      const spike=t>=tp,loadsPerS=spike?40000:2000;let ms;
       if(!fs||!(fromCache||fromDb))ms=5000;
       else if(fromCache)ms=spike?(page?40:260):(skip&&fromDb?45:30);
       else ms=spike?(page?820:2400):820;

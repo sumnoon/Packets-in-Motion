@@ -5,6 +5,8 @@ import assert from 'node:assert/strict';
 import { loadPage, challenge } from './harness.mjs';
 
 const page = loadPage();
+// every lab component unlocked, as if each chapter had been watched (the lock test turns this off)
+page.context.localStorage.setItem('pim-lab-unlock', 'true');
 const CHAL = page.get('CHAL');
 const FX = page.get('FX');
 const W = 1000, H = 560;
@@ -111,13 +113,14 @@ const runWith = (id, set, seconds) => {
 // capstones are architecture labs: build the design with keys (digits add, letter pairs wire), then load-test it
 const LAB_SAVE = page.get('LAB_SAVE');
 // a fresh start: no saved design, weak spots, hints, undo history, failures or best costs
-const labReset = () => ['LAB_SAVE', 'LAB_POST', 'LAB_HINT', 'LAB_UNDO', 'LAB_FAILS', 'LAB_BEST'].forEach(n => { const o = page.get(n); for (const k in o) delete o[k]; });
+const labReset = () => ['LAB_SAVE', 'LAB_POST', 'LAB_HINT', 'LAB_UNDO', 'LAB_FAILS', 'LAB_BEST', 'LAB_CHAOS', 'LAB_CHAOS_ON', 'LAB_STREAK', 'LAB_SHARED'].forEach(n => { const o = page.get(n); for (const k in o) delete o[k]; });
 const lab = (id, keys, opts, seconds) => {
   labReset();
   const r = challenge(page, id);
   r.press(...keys);
   for (const [label, v] of opts) r.control(label).set(v);
-  r.press('Enter').step(seconds);
+  // a little extra time: crashes slow the clock for a moment, and three stars glow before the result
+  r.press('Enter').step(seconds + 2);
   return r.result;
 };
 test('capstone: URL shortener needs every building block', () => {
@@ -209,25 +212,92 @@ test('lab: replication needs followers, automatic failover and a spare', () => {
   assert.equal(lab('replication', ['1', '2', 'a', 'b', 'b', 'c', 'a', 'c', '2', '2'], [], 15).stars, 1, 'no failover manager');
   assert.equal(lab('replication', ['1', 'a', 'b'], [], 15).stars, 0, 'one database');
 });
+// a lab's 3-star outline as a saved design: stateless servers without wires copy the first of their kind
+const outline = (id) => {
+  const o = page.get('LAB_DEFS')[id], F = o.fixed.length, kinds = [...o.fixed.map(f => f.kind), ...o.solution.nodes], es = o.solution.edges.map(e => e.slice());
+  kinds.forEach((k, i) => {
+    if (i < F || !o.kinds[k].clone || es.some(([a, b]) => a === i || b === i)) return;
+    const first = kinds.indexOf(k);
+    es.filter(([a, b]) => a === first || b === first).forEach(([a, b]) => es.push([a === first ? i : a, b === first ? i : b]));
+  });
+  const nodes = kinds.map((k, i) => i < F ? { ...o.fixed[i], id: 'f' + i, fixed: true } : { id: 'n' + i, kind: k, x: 400 + (i % 4) * 120, y: 120 + Math.floor(i / 4) * 80 });
+  return { nodes, edges: es.map(([a, b]) => ({ a: nodes[a].id, b: nodes[b].id })), seq: kinds.length, opts: { ...(o.solution.opts || {}) } };
+};
 test('lab: every outline shown by the third hint earns 3 stars', () => {
   const DEFS = page.get('LAB_DEFS');
   assert.ok(Object.keys(DEFS).length >= 10);
   for (const [id, o] of Object.entries(DEFS)) {
     labReset();
-    // build the outline the way the hint lays it out: stateless servers without wires copy the first of their kind
-    const F = o.fixed.length, kinds = [...o.fixed.map(f => f.kind), ...o.solution.nodes], es = o.solution.edges.map(e => e.slice());
-    kinds.forEach((k, i) => {
-      if (i < F || !o.kinds[k].clone || es.some(([a, b]) => a === i || b === i)) return;
-      const first = kinds.indexOf(k);
-      es.filter(([a, b]) => a === first || b === first).forEach(([a, b]) => es.push([a === first ? i : a, b === first ? i : b]));
-    });
-    const nodes = kinds.map((k, i) => i < F ? { ...o.fixed[i], id: 'f' + i, fixed: true } : { id: 'n' + i, kind: k, x: 500, y: 250 });
-    LAB_SAVE[id] = { nodes, edges: es.map(([a, b]) => ({ a: nodes[a].id, b: nodes[b].id })), seq: kinds.length, opts: { ...(o.solution.opts || {}) } };
+    LAB_SAVE[id] = outline(id);
     const r = challenge(page, id);
-    r.press('Enter').step(o.dur + 1);
+    r.press('Enter').step(o.dur + 3);
     assert.equal(r.result.stars, 3, `${id}: the outline should earn 3 stars`);
     assert.equal(o.hints.length, 2, `${id}: two hint levels before the outline`);
   }
+});
+test('lab: chaos mode moves the incidents, and every outline survives it', () => {
+  for (const [id, o] of Object.entries(page.get('LAB_DEFS'))) {
+    labReset();
+    for (let run = 0; run < 4; run++) {
+      LAB_SAVE[id] = outline(id);
+      const r = challenge(page, id);
+      if (run === 0) r.control(/chaos/i).set(true);
+      r.press('Enter').step(o.dur + 3);
+      assert.equal(r.result.stars, 3, `${id}: chaos run ${run + 1}`);
+      if (run === 2) assert.match(r.result.msg, /Chaos-proof badge earned/);
+    }
+    assert.equal(page.get('LAB_CHAOS')[id], true);
+  }
+});
+test('lab: chaos mode resets the streak on a miss', () => {
+  labReset();
+  const r = challenge(page, 'queues-pubsub');
+  r.control(/chaos/i).set(true);
+  r.press('1', '2', 'a', 'b', 'b', 'c', '2', 'Enter').step(17);
+  assert.ok(r.result.stars < 3);
+  assert.match(r.result.msg, /Chaos streak reset\./);
+});
+test('lab: a design survives a share link, and a tampered link is refused', () => {
+  labReset();
+  const r = challenge(page, 'capstone-chat');
+  r.press('1', '2', '3', 'a', 'b', 'b', 'c', 'c', 'd', '2');
+  r.control(/resume/i).set(true);
+  r.click(/share/i);
+  const url = r.state.status.match(/https?:\/\/\S+/)[0].replace(/&amp;/g, '&');   // the status line is HTML
+  assert.match(url, /\?lab=capstone-chat&d=1~[\d._~-]+#capstone-chat$/);
+  const code = decodeURIComponent(url.match(/&d=([^#]+)/)[1]);
+  labReset();
+  assert.equal(page.get('labImport')('capstone-chat', code), true);
+  const again = challenge(page, 'capstone-chat');
+  assert.match(again.state.status, /Someone shared this design with you: \$7\/h/);
+  assert.match(again.state.status, /<b>B<\/b> Load balancer → C, E/);
+  assert.match(again.state.status, /resume from their last sequence number: on/);
+  const decode = page.get('labDecode');
+  assert.equal(decode('capstone-chat', code.replace(/~0-1_/, '~1-0_')), null, 'a wire the lab does not allow');
+  assert.equal(decode('capstone-chat', '1~0.7.25_1.30.25_1.30.25_1.30.25~~0'), null, 'more load balancers than allowed');
+  assert.equal(decode('nope', code), null);
+});
+test('lab: components from chapters you have not watched stay locked', () => {
+  const ls = page.context.localStorage;
+  labReset();
+  ls.setItem('pim-lab-unlock', 'false');
+  try {
+    let r = challenge(page, 'spof');
+    assert.match(r.state.status, /<kbd>1<\/kbd> Load balancer \(locked: watch chapter 6\)/);
+    r.press('1');
+    assert.match(r.state.status, /Load balancer unlocks when you watch chapter 6, /);
+    assert.doesNotMatch(r.state.status, /<b>B<\/b>/);
+    ls.setItem('sdve-seen', JSON.stringify({ 'load-balancers': 1 }));
+    r = challenge(page, 'spof');
+    r.press('1');
+    assert.match(r.state.status, /<b>B<\/b> Load balancer/, 'watching the chapter unlocks it');
+    assert.match(r.state.status, /App server \(locked: watch chapter 2\)/);
+    r.click(/unlock all/i);
+    r.press('2');
+    assert.match(r.state.status, /<b>C<\/b> App server/);
+    assert.equal(ls.getItem('pim-lab-unlock'), 'true');
+    assert.equal(challenge(page, 'scaling').state.buttons.some(b => /unlock all/i.test(b.label)), false, 'the scaling lab teaches its own components');
+  } finally { ls.setItem('pim-lab-unlock', 'true'); ls.setItem('sdve-seen', '{}'); }
 });
 test('lab: hints go a level deeper with each press, then outline a design', () => {
   labReset();
@@ -259,7 +329,7 @@ test('lab: undo reverses adds, wires and removals', () => {
 test('lab: a failed run marks its weak spots on the board, until you change the design', () => {
   labReset();
   const r = challenge(page, 'scaling');
-  r.press('3', 'a', 'b', '3', '3', '3', 'Enter').step(19);
+  r.press('3', 'a', 'b', '3', '3', '3', 'Enter').step(21);
   assert.ok(r.result.stars < 3);
   assert.match(r.result.msg, /see where it broke on the board/);
   const again = challenge(page, 'scaling');
@@ -270,13 +340,13 @@ test('lab: a failed run marks its weak spots on the board, until you change the 
 test('lab: the cheapest 3-star cost is kept, with a lean medal to chase', () => {
   labReset();
   let r = challenge(page, 'scaling');
-  r.press('1', '3', 'a', 'b', 'b', 'c', '3', '3', '3', 'Enter').step(19);
+  r.press('1', '3', 'a', 'b', 'b', 'c', '3', '3', '3', 'Enter').step(21);
   assert.equal(r.result.stars, 3);
   assert.match(r.result.msg, /A 3-star design exists for \$10\/h\. Can you find it\?/);
   assert.equal(page.get('LAB_BEST').scaling, 13);
   for (const k in LAB_SAVE) delete LAB_SAVE[k];
   r = challenge(page, 'scaling');
-  r.press('1', '2', 'a', 'b', 'b', 'c', '2', '2', '2', '2', '2', '3', 'b', 'i', 'Enter').step(19);
+  r.press('1', '2', 'a', 'b', 'b', 'c', '2', '2', '2', '2', '2', '3', 'b', 'i', 'Enter').step(21);
   assert.equal(r.result.stars, 3);
   assert.match(r.result.msg, /New best: \$10\/h, down from \$13\/h\. Lean medal/);
   assert.match(challenge(page, 'scaling').state.status, /Your cheapest 3-star design: \$10\/h/);

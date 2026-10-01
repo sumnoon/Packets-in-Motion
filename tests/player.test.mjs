@@ -110,3 +110,15 @@ test('themes: picked from the sidebar, remembered, high contrast brightens the s
   assert.equal(page.document.documentElement.getAttribute('data-theme'), 'light');
   assert.deepEqual(page.errors, []);
 });
+
+test('a share link opens its lab with the design on the board', () => {
+  const base = loadPage();
+  const code = base.get('labEncode')('scaling', { nodes: [{ id: 'f0', kind: 'users', x: 70, y: 250 }, { id: 'n1', kind: 'lb', x: 260, y: 250 }, { id: 'n2', kind: 'medium', x: 560, y: 120 }], edges: [{ a: 'f0', b: 'n1' }, { a: 'n1', b: 'n2' }], opts: {} });
+  const page = loadPage({ player: true, search: '?lab=scaling&d=' + encodeURIComponent(code) });
+  assert.equal(page.document.body.classList.contains('play'), true, 'the challenge is open');
+  assert.match(page.document.getElementById('cStatus').innerHTML, /Someone shared this design with you: \$4\/h/);
+  assert.equal(page.context.location.hash, '#scaling', 'the link is tidied to the lab address');
+  const bad = loadPage({ player: true, search: '?lab=scaling&d=garbage' });
+  assert.equal(bad.document.body.classList.contains('play'), false, 'a broken link just opens the course');
+  assert.deepEqual(page.errors, []);
+});
