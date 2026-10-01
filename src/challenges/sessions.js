@@ -1,19 +1,73 @@
-/* ---------------- 3b. SESSIONS: keep them logged in ---------------- */
-chal('sessions',{title:'Keep everyone logged in',goal:'30 users click around. At 5 s Server A dies; at 9 s the session store\'s machine dies. Finish with zero forced re-logins.',
-  hint:'Memory on each server loses users to round robin; sticky sessions lose everyone on the dead server. A shared store fixes both, but the store must survive too.',
-  make:simGame({dur:13,defaults:{mode:'mem',rep:false},intro:'Choose where sessions live, then press <b>Run it</b>.',
-    controls(api,p,re){api.seg('Sessions live in',[['mem','server memory'],['sticky','memory + sticky cookie'],['shared','shared store (Redis)']],p.mode,v=>{p.mode=v;re();});api.toggle('Store has a replica',p.rep,v=>{p.rep=v;re();});},
-    build(p,api){const SV=['A','B','C'],users=Array.from({length:30},(_,i)=>({home:i%3,where:new Set([i%3]),n:0}));let relog=0,aDead=false,sDead=false,acc=0,rr_=0,T=0;const fl=[];const SY=k=>150+k*140;
-      return{step(dt,t){T=t;if(!aDead&&t>=5){aDead=true;FX.burst(560,SY(0),C.red,24);}if(!sDead&&t>=9&&p.mode==='shared'){sDead=true;FX.burst(840,290,C.red,24);if(!p.rep){relog+=30;FX.text(840,230,'all sessions lost',C.red);}else FX.text(840,230,'replica took over',C.green);}
-          acc+=dt*6;const now=api.now();while(acc>=1){acc--;const i=Math.floor(Math.random()*30),u=users[i];let k;
-            if(p.mode==='sticky'){k=u.home;if(aDead&&k===0){k=1+(i%2);if(!u.moved){u.moved=true;relog++;fl.push({t0:now,d:.6,pts:[[70,110+i*11],[300,290],[560-60,SY(k)]],c:C.red,r:3.5,label:'log in again'});continue;}}}
-            else{do{k=rr_++%3;}while(aDead&&k===0);}
-            let bad=false;if(p.mode==='mem'){if(!u.where.has(k)||(k===0&&aDead)){bad=true;relog++;u.where.add(k);}}
-            fl.push({t0:now,d:.6,pts:[[70,110+i*11],[300,290],[560-60,SY(k)]],c:bad?C.red:C.blue,r:3.5});if(p.mode==='shared')fl.push({t0:now+.6,d:.4,pts:[[620,SY(k)],[790,290]],c:C.amber,r:3});}},
-        draw(now){flyers(now,fl);for(let i=0;i<30;i++)dot(70,110+i*11,C.blue,3.2);tx('30 users',70,460,{z:12,c:C.dim});box(300,290,{label:'Load balancer',sub:p.mode==='sticky'?'sticky':'round robin',w:140,h:52});
-          SV.forEach((n,k)=>server(560,SY(k),{label:`Server ${n}`,sub:p.mode==='shared'?'stateless':'sessions in RAM',w:130,h:54,st:k===0&&aDead?'fail':'ok'}));
-          if(p.mode==='shared'){db(840,290,{label:'Session store',sub:sDead?(p.rep?'replica now':'DOWN'):'Redis',w:120,h:86,st:sDead&&!p.rep?'fail':'ok'});if(p.rep)db(840,420,{label:'Replica',w:90,h:64,st:sDead?'good':'ok'});}},
-        hud(){return[['forced re-logins',`${relog}`,relog===0?C.green:C.red]];},
-        score(){if(relog===0)return{stars:3,title:'Nobody noticed a thing',msg:'Stateless servers plus a replicated session store: a server died and so did the store\'s machine, and every user stayed logged in.'};
-          if(relog<=12)return{stars:2,title:`${relog} users logged out`,msg:p.mode==='sticky'?'Sticky sessions kept most users happy, but everyone pinned to Server A lost their session when it died.':'Close. Make the session store itself survive a failure.'};
-          return{stars:1,title:`${relog} forced re-logins`,msg:p.mode==='mem'?'With sessions in each server\'s memory, round robin keeps sending users to servers that do not know them.':'The session store was a single point of failure: when it died, every session went with it. Give it a replica.'};}};}})});
+/* ---------------- 3b. SESSIONS: keep everyone logged in ---------------- */
+// You build it on the board: users → (load balancer) → app servers → (session store → replica).
+// 30 logged-in users click around, 10 requests a second. At 5 s the busiest server dies; at 9 s the
+// session store's machine dies. Where a session lives follows from your wiring: a server wired to
+// the store keeps sessions there, otherwise in its own memory. Sticky sessions pin each user to one server.
+(function(){
+const N=30,RATE=10;
+chal('sessions',{title:'Keep everyone logged in',goal:'Build it yourself: 30 users click around, then a server dies, then the session store\'s machine dies. Finish with zero forced re-logins and spend at most $7/h.',
+  hint:'A session kept in one server\'s memory is lost when the load balancer sends you elsewhere or that server dies. Wire every server to a shared session store, and give the store a replica so its machine can die too.',
+  make:labGame({id:'sessions',budget:7,dur:13,scale:.6,
+    intro:'30 users are logged in. Build a path from Users to your servers and decide where their sessions live, then press Run.',
+    fixedKinds:{users:{label:'Users',shape:'user',w:44,h:44}},
+    fixed:[{kind:'users',x:70,y:250,label:'30 users'}],
+    kinds:{
+      lb:{label:'Load balancer',short:'LB',cost:1,max:1,shape:'box',c:C.accent,w:110,h:50,sub:'round robin'},
+      app:{label:'App server',short:'Server',cost:1,max:4,shape:'server',w:110,h:50,sub:'sessions in RAM',clone:true},
+      store:{label:'Session store',short:'Store',cost:2,max:1,shape:'db',w:96,h:72,sub:'Redis'},
+      replica:{label:'Store replica',short:'Replica',cost:1,max:1,shape:'db',w:84,h:62,sub:'a live copy'}},
+    columns:{lb:260,app:490,store:730,replica:900},
+    links:{users:['lb','app'],lb:['app'],app:['store'],store:['replica']},
+    toggles:[{key:'sticky',label:'Sticky sessions: the load balancer pins each user to one server',val:false}],
+    check(G){const u=G.of('users')[0];if(!G.out(u).length)return['wire Users to a load balancer or a server.'];
+      const lb=G.out(u,['lb'])[0];if(lb&&!G.out(lb).length)return['wire the load balancer to your servers.'];
+      const st=G.of('store')[0];if(st&&!G.inn(st).length)return['wire your servers to the session store, or it holds nothing.'];
+      if(G.of('replica').length&&!(st&&G.out(st,['replica']).length))return['wire the session store to its replica so it keeps a copy.'];
+      return[];},
+    sub(n,G,S){if(n.kind==='app')return G.out(n,['store']).length?'sessions in the store':'sessions in RAM';
+      if(n.kind==='lb')return G.opts.sticky?'sticky':'round robin';
+      if(n.kind==='store'&&S&&S.storeHit)return G.out(n,['replica']).length?'replica took over':'restarted empty';return null;},
+    init(){return{ema:{},badT:{},k:0,acc:0,rr:0,relog:0,dead:new Set(),killed:false,storeHit:false,hits:{},stranded:new Set(),why:{mem:0,dead:0,store:0,direct:0,none:0},
+      users:Array.from({length:N},()=>({seen:false,mem:new Set(),last:null,pin:null}))};},
+    step(S,G,dt,t){const phase=t<5?'Users clicking around':t<9?'A server dies':'The store\'s machine dies';
+      const U=G.of('users')[0],lb=G.out(U,['lb'])[0],direct=G.out(U,['app']),store=G.of('store')[0];
+      if(t>=5&&!S.killed){S.killed=true;const apps=G.of('app');if(apps.length){const b=apps.reduce((a,c)=>((S.hits[c.id]||0)>(S.hits[a.id]||0)?c:a));S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
+      if(t>=9&&!S.storeHit&&store){S.storeHit=true;const rep=G.out(store,['replica'])[0];FX.burst(store.x,store.y,C.red,30,220);
+        if(rep)labMark(rep,'replica took over',C.green,14);
+        else{const lost=S.users.filter(u=>u.seen&&u.inStore).length;S.relog+=lost;S.why.store+=lost;labMark(store,'all sessions lost',C.red,15);}}
+      const edges={},E=(a,b,isBad)=>{const key=a.id+'>'+b.id,e=edges[key]||(edges[key]={a:a.id,b:b.id,n:0,bad:false});e.n++;e.bad=e.bad||isBad;};
+      const kick=why=>{S.relog++;S.why[why]++;};
+      S.acc+=RATE*dt;
+      while(S.acc>=1){S.acc--;const i=(S.k++*7)%N,u=S.users[i];let srv=null,from=lb||U;
+        if(lb){const live=G.out(lb,['app']).filter(a=>!S.dead.has(a.id));E(U,lb,!live.length);
+          if(!live.length){S.why.none++;continue;}
+          if(G.opts.sticky){if(!u.pin||!live.includes(u.pin))u.pin=live[i%live.length];srv=u.pin;}else srv=live[S.rr++%live.length];}
+        else if(direct.length){srv=direct[i%direct.length];
+          if(S.dead.has(srv.id)){E(U,srv,true);if(!S.stranded.has(i)){S.stranded.add(i);kick('direct');}continue;}}
+        else{S.why.none++;continue;}
+        S.hits[srv.id]=(S.hits[srv.id]||0)+1;
+        // does this server know the user?
+        const st=G.out(srv,['store'])[0];let bad=false;
+        if(!u.seen){u.seen=true;if(st)u.inStore=true;else u.mem.add(srv.id);}
+        else if(st){if(!u.inStore){bad=true;kick('mem');u.inStore=true;}}
+        else if(!u.mem.has(srv.id)){bad=true;kick(u.last&&S.dead.has(u.last)?'dead':'mem');u.mem.add(srv.id);}
+        u.last=srv.id;E(from,srv,bad);if(st)E(srv,st,false);}
+      // smooth the request counts into rates so packets flow steadily along each wire
+      for(const key in S.ema)S.ema[key].r*=Math.max(0,1-dt*1.5);
+      Object.values(edges).forEach(e=>{const key=e.a+'>'+e.b;(S.ema[key]||(S.ema[key]={a:e.a,b:e.b,r:0})).r+=e.n*1.5;if(e.bad)S.badT[key]=t;});
+      const flows=Object.entries(S.ema).filter(([key,e])=>!(S.dead.has(e.a)||S.dead.has(e.b))||t-(S.badT[key]??-9)<.4).map(([key,e])=>({a:e.a,b:e.b,rate:e.r,bad:t-(S.badT[key]??-9)<.4,c:node_kind(G,e.b)==='store'?C.amber:undefined}));
+      return{flows,load:{},dead:S.dead,phase,badEdges:new Set(flows.filter(f=>f.bad).map(f=>f.a+'>'+f.b))};},
+    hud(S){return[['forced re-logins',`${S.relog}`,S.relog===0?C.green:C.red]];},
+    score(S,G,cost){const r=S.relog,top=Object.entries(S.why).sort((a,b)=>b[1]-a[1])[0][0];
+      const advice={mem:'Sessions lived in each server\'s memory, so whenever someone landed on a different server they were logged out. Wire every server to a shared session store.',
+        dead:'Everyone whose session lived on the server that died was logged out. Keep sessions in a shared store, not in a server\'s memory.',
+        store:'The session store was a single point of failure: when its machine died, every session went with it. Give it a replica.',
+        direct:'Users were wired straight to servers, so the ones on the dead server were stranded. Put a load balancer in front.',
+        none:'Requests had nowhere to go: wire Users to a load balancer, and the load balancer to your servers.'}[top];
+      if(S.why.none>RATE*2)return{stars:0,title:'Nobody got in',msg:advice};
+      if(r===0&&cost<=7)return{stars:3,title:'Nobody noticed a thing',msg:`Stateless servers and a replicated session store for $${cost}/h: a server died, then the store's machine died, and every user stayed logged in.`};
+      if(r===0)return{stars:2,title:`Nobody logged out, at $${cost}/h`,msg:'It works, but costs more than it needs to. Two or three servers are enough when sessions live in the store.'};
+      if(r<=12)return{stars:2,title:`${r} forced re-login${r>1?'s':''}`,msg:advice};
+      return{stars:1,title:`${r} forced re-logins`,msg:advice};}})});
+function node_kind(G,id){const n=G.nodes.find(m=>m.id===id);return n&&n.kind;}
+})();

@@ -32,7 +32,7 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
     init(){return{tot:0,bad:0,lat:[],dead:new Set(),killed:null,qb:{},lost:{deadEnd:0,deadApp:0,overload:0,overBot:0,db:0,dbSync:0,noDb:0},appIn:{}};},
     step(S,G,dt,t){const legit=t<6?1000:t<12?3000:2000,bot=t>=12?2000:0;
       const phase=t<6?'Launch':t<9?'A link goes viral':t<12?'Viral, and an app server dies':'Bot attack';
-      if(t>=9&&!S.killed){const apps=G.of('app');if(apps.length){const b=apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);FX.text(b.x,b.y-46,'crashed',C.red,15);}}
+      if(t>=9&&!S.killed){const apps=G.of('app');if(apps.length){const b=apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
       const flows=[],load={},bad=new Set(),F=(a,b,rate,isBad,c)=>{flows.push({a:a.id,b:b.id,rate,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       const appIn={};let lost=0;
       // front tier: traffic follows the wires to the app servers

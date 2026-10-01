@@ -155,6 +155,35 @@ test('capstone: news feed needs the hybrid', () => {
   assert.ok(lab('capstone-feed', [...base, '4', '4'], [], 15).stars < 3, 'pure fan-out on write drowns in the star');
   assert.ok(lab('capstone-feed', ['1', '2', '6', '7', 'a', 'c', 'c', 'd', 'b', 'e', 'e', 'd', 'e', 'f'], [], 15).stars < 3, 'fan-out on read is too slow');
 });
+test('lab: launch day rewards scaling out behind a load balancer', () => {
+  // 1 LB · 2 small · 3 medium · 4 large · 5 XL; A is Users
+  assert.equal(lab('scaling', ['1', '3', 'a', 'b', 'b', 'c', '3', '3', '3'], [], 19).stars, 3);
+  assert.ok(lab('scaling', ['1', '3', 'a', 'b', 'b', 'c', '3', '3'], [], 19).stars < 3, 'no room for a crash');
+  assert.ok(lab('scaling', ['3', 'a', 'b', '3', '3', '3'], [], 19).stars < 3, 'without a load balancer users keep hitting the dead server');
+  assert.equal(lab('scaling', ['5', 'a', 'b'], [], 19).stars, 0, 'one giant machine');
+  assert.ok(lab('scaling', ['1', '4', 'a', 'b', 'b', 'c', '4'], [], 19).stars < 3, 'scaling up costs too much');
+});
+test('lab: sessions need a shared, replicated store', () => {
+  // 1 LB · 2 app server · 3 session store · 4 replica; A is Users
+  const full = ['1', '2', '3', '4', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', '2'];
+  assert.equal(lab('sessions', full, [], 14).stars, 3);
+  assert.ok(lab('sessions', ['1', '2', 'a', 'b', 'b', 'c', '2', '2'], [], 14).stars < 2, 'memory sessions and round robin');
+  assert.equal(lab('sessions', ['1', '2', 'a', 'b', 'b', 'c', '2', '2'], [[/sticky/i, true]], 14).stars, 2, 'sticky sessions lose the dead server\'s users');
+  assert.ok(lab('sessions', ['1', '2', '3', 'a', 'b', 'b', 'c', 'c', 'd', '2', '2'], [], 14).stars < 2, 'the store alone is a single point of failure');
+});
+test('lab: a queue absorbs the order surge', () => {
+  // 1 queue · 2 worker; A is the web shop
+  assert.equal(lab('queues-pubsub', ['1', '2', 'a', 'b', 'b', 'c', '2', '2', '2'], [], 15).stars, 3);
+  assert.equal(lab('queues-pubsub', ['1', '2', 'a', 'b', 'b', 'c', '2', '2'], [], 15).stars, 1, 'too few workers to drain');
+  assert.equal(lab('queues-pubsub', ['2', 'a', 'b', '2', '2', '2', '2', '2'], [], 15).stars, 1, 'no queue loses orders');
+});
+test('lab: the chaos monkey finds every single point of failure', () => {
+  // 1 LB · 2 app · 3 database · 4 standby; A is DNS
+  assert.equal(lab('spof', ['1', '2', '3', '4', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', '1', '2'], [], 14).stars, 3);
+  assert.equal(lab('spof', ['1', '2', '3', '4', 'a', 'b', 'b', 'c', 'c', 'd', 'd', 'e', '2'], [], 14).stars, 2, 'one load balancer');
+  assert.equal(lab('spof', ['1', '2', '3', 'a', 'b', 'b', 'c', 'c', 'd', '1', '2'], [], 14).stars, 2, 'no standby database');
+  assert.equal(lab('spof', ['1', '2', '3', 'a', 'b', 'b', 'c', 'c', 'd'], [], 14).stars, 1, 'nothing has a twin');
+});
 test('new chapters: intended answers earn 3 stars', () => {
   assert.equal(runWith('quorums', [[/replicas/i, 3], [/write/i, 2], [/read/i, 2]], 11).stars, 3);
   assert.equal(runWith('bloom-filters', [[/bits/i, 10], [/hash/i, 7]], 9).stars, 3);

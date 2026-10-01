@@ -28,7 +28,7 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
       return[];},
     init(){return{sent:0,ok:0,dead:new Set(),killed:null,deadShare:0,deadAt:null,gwIn:{},lost:{noConn:0,noChat:0,store:0,route:0,fan:0,offline:0,crash:0}};},
     step(S,G,dt,t){const rate=t>=5&&t<12?8000:4000,phase=t<5?'Normal traffic':t<9?'Message storm':t<12?'Storm, and a gateway dies':'Recovering';
-      if(t>=9&&!S.killed){const gws=G.of('gateway');if(gws.length){const b=gws.reduce((a,c)=>((S.gwIn[c.id]||0)>(S.gwIn[a.id]||0)?c:a));S.killed=b.id;S.dead.add(b.id);S.deadAt=t;S.deadShare=Math.min(S.gwIn[b.id]||0,SOCK)/ONLINE;FX.burst(b.x,b.y,C.red,30,220);FX.text(b.x,b.y-44,'crashed',C.red,15);}}
+      if(t>=9&&!S.killed){const gws=G.of('gateway');if(gws.length){const b=gws.reduce((a,c)=>((S.gwIn[c.id]||0)>(S.gwIn[a.id]||0)?c:a));S.killed=b.id;S.dead.add(b.id);S.deadAt=t;S.deadShare=Math.min(S.gwIn[b.id]||0,SOCK)/ONLINE;FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
       const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       // connections: people → (LB) → gateways. The LB sends reconnects only to live gateways;
       // people wired straight to a gateway stay stuck on it when it dies.
