@@ -6,7 +6,13 @@
 const WORKER=25;
 chal('queues-pubsub',{title:'Survive the order surge',goal:'Build it yourself: orders triple for 4 seconds, then the workers restart. Lose zero orders, clear the backlog by the end, and spend at most $5/h.',
   hint:'Wire the shop to a queue and the queue to the workers. The queue turns "too many right now" into "a bit later", but it needs enough workers (25 orders/s each) to catch up afterwards.',
-  make:labGame({id:'queues-pubsub',budget:5,dur:14,scale:8,
+  make:labGame({id:'queues-pubsub',
+    hints:['When orders arrive faster than the workers can take them, where do the extra ones wait?','Shop → Queue → Workers. Then count: the queue has to be empty again by the end.'],
+    solution:{nodes:['queue','worker','worker','worker','worker'],edges:[[0,1],[1,2]]},
+    loadNote:n=>n.kind==='queue'?'orders piling up':null,
+    blame(S,G,gen){const q=G.of('queue')[0],m=[];
+      if(q&&S.backlog>=1)m.push({id:q.id,note:`${Math.round(S.backlog)} orders still waiting at the end`});
+      return m.concat(gen.filter(x=>!(q&&x.id===q.id)));},budget:5,dur:14,scale:8,
     intro:'The web shop takes orders on the left. Workers process them, 25 a second each. Wire the shop to your workers, directly or through a queue, then press Run.',
     fixedKinds:{shop:{label:'Web shop',shape:'server',w:110,h:54,sub:'takes orders'}},
     fixed:[{kind:'shop',x:90,y:250,label:'Web shop'}],

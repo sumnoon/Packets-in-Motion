@@ -7,7 +7,11 @@
 const KILLS=[['app',3],['lb',6.5],['db',10]],REBOOT=2.5,R=60;
 chal('spof',{title:'Survive the chaos monkey',goal:'Build it yourself, then let the chaos monkey kill an app server, a load balancer and the database. Stay up the whole time and spend at most $7/h.',
   hint:'Every box that stands alone is a single point of failure: two load balancers, two app servers, and a standby that the database replicates to. DNS is a managed service and already redundant.',
-  make:labGame({id:'spof',budget:7,dur:13,scale:6,runLabel:'Unleash chaos',
+  make:labGame({id:'spof',
+    hints:['Picture each box dying on its own. Which ones take everything down with them?','Every box needs a twin: a second load balancer, a second app server, and a standby that the database copies to. DNS is already redundant.'],
+    solution:{nodes:['lb','lb','app','app','db','standby'],edges:[[0,1],[1,3],[3,5],[5,6]]},lean:5,
+    blame(S,G){return Object.keys(S.deadAt).map(id=>{const n=G.nodes.find(x=>x.id===id);if(!n||!(S.why[n.kind]>.5))return null;
+      return{id,note:n.kind==='db'?'no standby: down while it rebooted':'stood alone: down while it rebooted'};}).filter(Boolean);},budget:7,dur:13,scale:6,runLabel:'Unleash chaos',
     intro:'Requests arrive through DNS on the left. Build a path from DNS to a database, then press Unleash chaos: it kills one box of each kind.',
     fixedKinds:{dns:{label:'DNS',shape:'box',c:C.blue,w:120,h:52,sub:'managed · redundant'}},
     fixed:[{kind:'dns',x:84,y:250,label:'DNS'}],

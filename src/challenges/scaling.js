@@ -8,7 +8,9 @@ const CAP={small:200,medium:450,large:800,xl:1100},SERVERS=Object.keys(CAP);
 const traffic=t=>100+1100*(x=>x*x*(3-2*x))(clamp(t/16));
 chal('scaling',{title:'Survive launch day',goal:'Build it yourself: traffic climbs to 1,200 requests/s and the busiest machine crashes on the way up. Drop under 1% of requests and spend at most $13/h.',
   hint:'One huge machine is expensive and dies alone. Put a load balancer in front of several medium machines: they cost less and keep serving when one fails.',
-  make:labGame({id:'scaling',budget:13,dur:18,scale:60,runLabel:'Open the doors',
+  make:labGame({id:'scaling',
+    hints:['Watch the moment a server crashes: where does the traffic it was carrying go?','Put a load balancer between Users and your servers, and keep enough capacity to lose your biggest server at peak.'],
+    solution:{nodes:['lb','medium','medium','medium','medium'],edges:[[0,1],[1,2]]},lean:10,budget:13,dur:18,scale:60,runLabel:'Open the doors',
     intro:'Your users are on the left. Drag servers from the row below onto the board, then drag from the ● on Users to a server to wire them. Press Open the doors when you are ready.',
     fixedKinds:{users:{label:'Users',shape:'user',w:44,h:44}},
     fixed:[{kind:'users',x:70,y:250,label:'Your users'}],

@@ -11,7 +11,15 @@ const JOBS={cart:{label:'Cart check',ms:50,must:'You cannot accept an invalid ca
 const IDS=Object.keys(JOBS),RATE=5;
 chal('sync-async',{title:'Make checkout fast',goal:'Build it yourself: Checkout must get seven jobs done for every order. Wire a job straight from Checkout to do it before replying, or through a queue to do it afterwards. Reply within 600 ms, never mislead a customer, and survive the email service going down.',
   hint:'Only what the customer must know before the page says "Order placed" belongs on a direct wire: checking the cart, charging the card and saving the order. Everything else goes through the queue.',
-  make:labGame({id:'sync-async',budget:8,dur:12,scale:1,runLabel:'Open checkout',
+  make:labGame({id:'sync-async',
+    hints:['Ask of each job: does the customer need its result before the page says "Order placed"?','Cart check, payment and the orders database go straight from Checkout. Everything else goes through the queue.'],
+    solution:{nodes:['queue','cart','pay','save','email','recs','invoice','warehouse'],edges:[[0,1],[0,2],[0,3],[0,4],[1,5],[1,6],[1,7],[1,8]]},
+    loadNote:n=>n.kind==='checkout'?'customers kept waiting':n.kind==='queue'?false:null,
+    blame(S,G,gen){const c=G.of('checkout')[0],q=G.of('queue')[0],m=[];
+      Object.keys(S.misled).forEach(k=>{const j=G.of(k)[0];if(q&&j)m.push({edge:q.id+'>'+j.id,note:'customers misled'});});
+      if(S.failed>.5){const em=G.of('email')[0];if(em)m.push({edge:c.id+'>'+em.id,note:'checkouts failed while email was down'});}
+      Object.keys(S.skipped).forEach(k=>{const j=G.of(k)[0];if(j)m.push({id:j.id,note:'never happens'});});
+      return m.concat(gen.filter(x=>x.id===c.id));},budget:8,dur:12,scale:1,runLabel:'Open checkout',
     intro:'Checkout is on the left. A job wired straight from it happens before the customer sees "Order placed". A job wired from a queue happens a moment later. Every job must be wired somewhere.',
     fixedKinds:{checkout:{label:'Checkout',shape:'server',w:116,h:56,sub:'5 orders/s'}},
     fixed:[{kind:'checkout',x:96,y:250,label:'Checkout'}],

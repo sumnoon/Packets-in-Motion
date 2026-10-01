@@ -9,7 +9,10 @@
 const NEED=220000,WORKER=1e5,STAR=30e6;
 chal('capstone-feed',{title:'Build the news feed',goal:'Build it yourself: ordinary posting needs 220,000 feed writes a second, a star with 30 million followers posts, then feed loads jump 20×. Keep p99 feed loads ≤ 200 ms, new posts visible within 10 s, and spend ≤ $18/h.',
   hint:'Posters → post service → posts database and a fan-out queue → workers → feed cache. Readers → feed service → feed cache (fast), plus the posts database for stars, plus a page cache for the spike. Skip fan-out for stars, and give the workers a little headroom over 220k/s.',
-  make:labGame({id:'capstone-feed',budget:18,dur:14,scale:5000,
+  make:labGame({id:'capstone-feed',
+    hints:['One star with 30 million followers posts. What does copying that post into 30 million feeds cost?','Fan out on write for ordinary accounts, skip fan-out for stars and read their posts from the database at load time, and cache first pages for the spike.'],
+    solution:{nodes:['postsvc','postdb','fanq','fanw','feedcache','feedsvc','pagecache','fanw','fanw'],edges:[[0,2],[2,3],[2,4],[4,5],[5,6],[1,7],[7,6],[7,3],[7,8]],opts:{skipStars:true}},lean:17,
+    loadNote:(n,u)=>n.kind==='feedsvc'?`feed loads took ${Math.round(u*200)} ms`:n.kind==='fanq'?'fan-out writes piling up':n.kind==='fanw'?'more writes than the workers do':null,budget:18,dur:14,scale:5000,
     intro:'Two kinds of traffic: Posters write posts, Readers open their feed. Build a path for each, then decide how posts reach followers’ feeds.',
     fixedKinds:{readers:{label:'Readers',shape:'user',w:44,h:44},posters:{label:'Posters',shape:'user',w:44,h:44}},
     fixed:[{kind:'posters',x:70,y:150,label:'Posters + a star'},{kind:'readers',x:70,y:360,label:'Readers'}],

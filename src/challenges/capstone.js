@@ -8,7 +8,10 @@
 const APP=1000,DBOPS=600,WORKER=4000;
 chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survive the load test: launch traffic, a viral link at 3,000 req/s, the busiest app server crashing, then a bot attack. Serve ≥99% of real users, p95 ≤ 80 ms, count every click, and spend ≤ $20/h.',
   hint:'Users → rate limiter → load balancer → several app servers (one spare). Each app server talks to a cache and the database, and sends click events to a queue that a worker writes to the database. New app servers copy the first one\'s wires.',
-  make:labGame({id:'capstone',budget:20,dur:18,scale:120,
+  make:labGame({id:'capstone',
+    hints:['Three things will hit you: a viral spike, a crashed server and bots. Which component handles each one?','A rate limiter for the bots, a load balancer with a spare app server for the crash, a cache for viral reads, and a queue with a worker for the click counts.'],
+    solution:{nodes:['limiter','lb','app','cache','db','queue','worker','app','app','app'],edges:[[0,1],[1,2],[2,3],[3,4],[3,5],[3,6],[6,7],[7,5]]},
+    loadNote:n=>n.kind==='queue'?'clicks piling up':null,budget:20,dur:18,scale:120,
     intro:'Drag components from the row below onto the board. Then drag from a component’s ● to another to wire them, starting from Users. Press Run when your design is ready.',
     fixedKinds:{users:{label:'Users',shape:'user',w:44,h:44}},
     fixed:[{kind:'users',x:70,y:250,label:'Users + bots'}],

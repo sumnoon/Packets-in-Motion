@@ -131,7 +131,7 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[];ctl.innerHTML='';run
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
 function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;quizG=gname||null;setPlaying(false);showCard(false);hideResult();mode='play';document.body.classList.add('play');
   $('cTitle').textContent=d.title;$('cGoal').textContent=d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
-  FX.clear();ct=0;api=makeApi();inst=d.make(api);$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
+  FX.clear();ct=0;api=makeApi();inst=d.make(api);$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
   $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
 function exitChal(quiet){const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;inst=null;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
 function showResult(st,title,msg){const c=chapters[cur],id=quizG?QUIZ[quizG].id:c.id;if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
@@ -153,7 +153,8 @@ cv.addEventListener('pointermove',e=>{if(mode!=='play'||!inst)return;const[x,y]=
 cv.addEventListener('pointerup',e=>{if(mode!=='play'||!inst)return;const[x,y]=toWorld(e);if(inst.up)inst.up(x,y,ct);if(pdown&&Math.hypot(x-pdown.x,y-pdown.y)<8&&inst.click)inst.click(x,y,ct);pdown=null;});
 $('chalBtn').onclick=()=>{if(mode==='play')exitChal();else startChal();};
 $('cardChal').onclick=()=>startChal();$('cRestart').onclick=()=>startChal(quizG);$('cBack').onclick=()=>exitChal();
-$('cHintBtn').onclick=()=>{$('cHint').hidden=!$('cHint').hidden;};
+// a lab's hints go a level deeper with each press; other challenges show their one hint
+$('cHintBtn').onclick=()=>{if(inst&&inst.hint){const d=quizG?QUIZ[quizG]:CHAL[chapters[cur].id],r=inst.hint(d.hint);$('cHint').hidden=!r.text;if(r.text)$('cHint').textContent=r.text;$('cHintBtn').textContent=r.label;return;}$('cHint').hidden=!$('cHint').hidden;};
 $('resRetry').onclick=()=>startChal(quizG);
 $('resWatch').onclick=()=>{if(quizG){const g=quizG;exitChal(true);load(firstOf(g),false);return;}exitChal();seek(0);setPlaying(true);};
 $('resNext').onclick=()=>{if(quizG){const i=afterQuiz(quizG);exitChal(true);load(i,true);return;}load(cur+1,true);};
@@ -172,7 +173,7 @@ window.addEventListener('keydown',e=>{if($('glossary').open)return;if(e.key==='E
   if(mode!=='play'&&(e.target.tagName==='BUTTON'||e.target.tagName==='A')&&(e.key===' '||e.key==='Enter'))return;   // the focused control handles it
   if(mode==='play'){if(e.key==='Escape'){if($('result').classList.contains('show'))hideResult();else exitChal();}
     else if(e.key===']')load(cur+1,true);else if(e.key==='[')load(cur-1,true);
-    else if(!(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))&&inst&&inst.key){if(e.key===' ')e.preventDefault();inst.key(e.key,ct);}
+    else if(!(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))&&inst&&inst.key){if(e.key===' ')e.preventDefault();inst.key(e.key,ct,e);}
     return;}
   if(e.key==='p'||e.key==='P'){startChal();return;}
   if(e.key==='/'){e.preventDefault();document.body.classList.add('menu');$('find').focus();return;}
@@ -253,7 +254,7 @@ $('glossBtn').onclick=openGlossary;$('glClose').onclick=closeGlossary;$('glFind'
 /* ---------------- progress export / import ---------------- */
 const KNOWN=new Set(allIds().concat(chapters.map(c=>c.id)));
 const ioMsg=s=>{$('ioMsg').textContent=s;};
-function exportProgress(){const data={app:'packets-in-motion',version:1,exported:new Date().toISOString(),seen,stars};
+function exportProgress(){const data={app:'packets-in-motion',version:1,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST};
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));a.download='packets-in-motion-progress.json';
   document.body.appendChild(a);a.click();a.remove();ioMsg('Progress saved to packets-in-motion-progress.json.');return data;}
 // merges: a chapter stays watched, and each challenge keeps its best score
@@ -262,6 +263,7 @@ function importProgress(text){let d;try{d=JSON.parse(text);}catch(e){ioMsg('That
   let nSeen=0,nStars=0;
   Object.keys(d.seen).forEach(k=>{if(KNOWN.has(k)&&d.seen[k]&&!seen[k]){seen[k]=1;nSeen++;}});
   Object.entries(d.stars).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>=0&&n<=3&&n>(stars[k]||0)){nStars+=n-(stars[k]||0);stars[k]=n;}});
+  if(d.labBest&&typeof d.labBest==='object')Object.entries(d.labBest).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>0&&(LAB_BEST[k]==null||n<LAB_BEST[k]))LAB_BEST[k]=n;});labSaveBest();
   store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();
   ioMsg(nSeen||nStars?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.`:'Nothing new in that file: you already have all of it.');return true;}
 $('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
