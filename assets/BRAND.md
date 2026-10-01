@@ -12,7 +12,7 @@ The mark combines the project's initial **P** with a routing path. Two rounded p
 | `favicon-32.png` | 32 × 32 | Browser tab icon |
 | `social-preview.png` | 1280 × 640 | Repository social preview (Settings → General → Social preview), README hero and the page's `og:image` |
 | `social-preview.html` | 1280 × 640 | Source of `social-preview.png` |
-| `lab-screenshot.png` | 1400 × 783 | README image of an architecture lab; the social preview crops it |
+| `lab-screenshot.png` | 1400 × 783 | README image of an architecture lab |
 
 Every logo file keeps its transparency. The visible mark fills about two thirds of the square canvas (roughly 18% padding left, 16% right, 9% top, 7% bottom). Keep the square aspect ratio and that padding. Use on the course's navy background (`#0a0e16`) or a plain light background; avoid placing it over busy imagery. Pair the mark with live text, **Packets in Motion**, rather than baking lettering into the image.
 
@@ -22,7 +22,13 @@ Every logo file keeps its transparency. The visible mark fills about two thirds 
 
 `lab-screenshot.png` is a real frame of the URL shortener lab, 9.6 s into a load test, just after an app server crashed. It was captured from the built `index.html` in headless Chrome at 2× and downscaled to 1400 px wide. The design was loaded from a share link, and the run was started with the Run load test button, so no keyboard shortcut letters show.
 
-`social-preview.html` lays out the preview: the title, the tagline, three pills, and a crop of `lab-screenshot.png`. To refresh it (for example when the lesson count changes), edit the HTML, open it in Chrome at exactly 1280 × 640 and save a screenshot as `social-preview.png`. Then upload it again under the repository's Settings → General → Social preview. The page's `og:image` points at the deployed copy, so it updates on the next deploy.
+`social-preview.html` draws the preview on a canvas with the course's colours: the title, the tagline, three pills, and users sending requests through a load balancer to three servers, one of them down. To refresh it (for example when the lesson count changes, which is the pill text `'45 animated lessons'`), edit the HTML and take a 1280 × 640 headless screenshot from the `assets` folder:
+
+```bash
+msedge --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 --virtual-time-budget=3000 --window-size=1280,640 --screenshot=social-preview.png social-preview.html
+```
+
+Chrome takes the same flags. Then upload it again under the repository's Settings → General → Social preview. The page's `og:image` points at the deployed copy, so it updates on the next deploy.
 
 ## Creation
 

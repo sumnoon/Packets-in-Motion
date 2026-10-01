@@ -1,48 +1,53 @@
 <!doctype html>
 <html><head><meta charset="utf-8">
-<!-- Source of social-preview.png (1280 × 640). See BRAND.md for how to re-render it. -->
-<style>
-  *{box-sizing:border-box;margin:0;padding:0}
-  html,body{width:1280px;height:640px;overflow:hidden}
-  body{background:#04060d;font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:#e7ecf5;position:relative}
-  .fog{position:absolute;border-radius:50%;filter:blur(10px)}
-  .stars{position:absolute;inset:0;background-image:
-    radial-gradient(1.4px 1.4px at 7% 12%,#ffffff55 50%,transparent 51%),radial-gradient(1.2px 1.2px at 22% 80%,#ffffff44 50%,transparent 51%),
-    radial-gradient(1.6px 1.6px at 38% 8%,#ffffff40 50%,transparent 51%),radial-gradient(1.2px 1.2px at 46% 92%,#ffffff40 50%,transparent 51%),
-    radial-gradient(1.4px 1.4px at 3% 58%,#ffffff35 50%,transparent 51%),radial-gradient(1.2px 1.2px at 30% 66%,#ffffff30 50%,transparent 51%),
-    radial-gradient(1.5px 1.5px at 52% 30%,#ffffff40 50%,transparent 51%),radial-gradient(1.2px 1.2px at 62% 5%,#ffffff40 50%,transparent 51%),
-    radial-gradient(1.4px 1.4px at 97% 9%,#ffffff40 50%,transparent 51%),radial-gradient(1.2px 1.2px at 94% 95%,#ffffff35 50%,transparent 51%),
-    radial-gradient(1.3px 1.3px at 16% 35%,#ffffff30 50%,transparent 51%),radial-gradient(1.3px 1.3px at 50% 55%,#ffffff2a 50%,transparent 51%)}
-  .left{position:absolute;left:70px;top:168px;width:640px}
-  h1{font-size:68px;font-weight:700;letter-spacing:-1.5px;line-height:1;white-space:nowrap}
-  .sub{margin-top:20px;font-size:29px;line-height:1.3;color:#c9d2e3;font-weight:400}
-  .pills{display:flex;flex-wrap:nowrap;gap:10px;margin-top:32px}
-  .pill{font-size:15px;font-weight:600;padding:7px 13px;border-radius:999px;border:1.5px solid}
-  .v{color:#c4b5fd;border-color:#a78bfa88;background:#a78bfa1f}
-  .a{color:#fcd34d;border-color:#fbbf2488;background:#fbbf241a}
-  .b{color:#7cbcff;border-color:#4ea1ff88;background:#4ea1ff1a}
-  .foot{margin-top:30px;font-size:16px;color:#8f9ab0}
-  .shot{position:absolute;left:722px;top:118px;width:500px;border-radius:18px;overflow:hidden;border:1px solid #3b4a69;
-    box-shadow:0 0 0 1px #00000060,0 24px 70px #000000aa,0 0 80px #4ea1ff22}
-  /* a crop of lab-screenshot.png: the load balancer, the app servers (one crashed), the cache and the queue */
-  .shot{height:354px}
-  .shot img{display:block;width:1004px;margin:-68px 0 0 -250px}
-  .tag{position:absolute;left:722px;top:86px;font-size:15px;font-weight:700;letter-spacing:.4px;color:#f87171;font-family:ui-sans-serif,system-ui,"Segoe UI",sans-serif}
-  .tag span{color:#8f9ab0;font-weight:600}
-  .legend{position:absolute;left:732px;top:500px;display:flex;gap:26px;font-size:15px;color:#a9b3c7}
-  .legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:8px;vertical-align:-1px}
-</style></head>
-<body>
-  <div class="fog" style="left:-120px;top:-160px;width:620px;height:520px;background:radial-gradient(closest-side,rgba(90,64,150,.30),transparent)"></div>
-  <div class="fog" style="left:560px;top:120px;width:820px;height:620px;background:radial-gradient(closest-side,rgba(44,66,130,.34),transparent)"></div>
-  <div class="stars"></div>
-  <div class="left">
-    <h1>Packets in Motion</h1>
-    <p class="sub">System design, explained<br>by watching it happen.</p>
-    <div class="pills"><span class="pill v">45 animated lessons</span><span class="pill a">a challenge for each</span><span class="pill b">10 build-it-yourself labs</span></div>
-    <p class="foot">One offline HTML file · no install</p>
-  </div>
-  <div class="tag">ARCHITECTURE LAB <span>· your design, under load</span></div>
-  <div class="shot"><img src="lab-screenshot.png" alt=""></div>
-  <div class="legend"><span><i style="background:#4ea1ff"></i>request</span><span><i style="background:#34d399"></i>response</span><span><i style="background:#f87171"></i>failure</span><span><i style="background:#fbbf24"></i>cached / queued</span></div>
-</body></html>
+<!-- Source of social-preview.png (1280 × 640), drawn on a canvas in the course's own style. See BRAND.md to re-render it. --><title>Social Preview</title>
+<style>html,body{margin:0;background:#04060d}canvas{display:block}</style></head>
+<body><canvas id="c" width="1280" height="640"></canvas>
+<script>
+const cv=document.getElementById('c'),g=cv.getContext('2d'),W=1280,H=640;
+const C={bg:'#04060d',panel:'#131b2b',panel2:'#1a2338',edge:'#3b4a69',line:'#27334d',text:'#e7ecf5',dim:'#8f9ab0',accent:'#a78bfa',blue:'#4ea1ff',green:'#34d399',red:'#f87171',amber:'#fbbf24'};
+const SANS='"Segoe UI Variable Display","Segoe UI",system-ui,sans-serif',MONO='"Cascadia Mono",Consolas,monospace';
+const rnd=i=>{const s=Math.sin(i*127.1+311.7)*43758.5453;return s-Math.floor(s);};
+const hexA=(h,a)=>{const n=parseInt(h.slice(1),16);return `rgba(${n>>16},${n>>8&255},${n&255},${a})`;};
+function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath();}
+function tx(s,x,y,{z=16,c=C.text,wt=500,al='left',f=SANS}={}){g.font=`${wt} ${z}px ${f}`;g.fillStyle=c;g.textAlign=al;g.textBaseline='middle';g.fillText(s,x,y);}
+// void
+g.fillStyle=C.bg;g.fillRect(0,0,W,H);
+const fog=(x,y,r,c)=>{const gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,c);gr.addColorStop(1,'rgba(4,6,13,0)');g.fillStyle=gr;g.fillRect(0,0,W,H);};
+fog(1010,300,520,'rgba(44,66,130,.42)');fog(200,120,380,'rgba(90,64,150,.26)');fog(1010,330,300,'rgba(40,56,110,.35)');
+for(let i=0;i<150;i++){const x=rnd(i+1)*W,y=rnd(i+201)*H,r=.5+rnd(i+401)*1.8;g.fillStyle=`rgba(236,242,255,${.1+rnd(i+801)*.45})`;g.beginPath();g.arc(x,y,r,0,7);g.fill();}
+const v=g.createRadialGradient(W/2,H/2,H*.45,W/2,H/2,W*.75);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.6)');g.fillStyle=v;g.fillRect(0,0,W,H);
+// diagram
+const U=[[840,190],[840,320],[840,450]],LB=[1000,320],S=[[1178,170],[1178,320],[1178,470]];
+const link=(a,b)=>{g.strokeStyle=hexA(C.edge,.55);g.lineWidth=2;g.beginPath();g.moveTo(a[0],a[1]);g.lineTo(b[0],b[1]);g.stroke();};
+U.forEach(u=>link([u[0]+20,u[1]],[LB[0]-64,LB[1]]));S.forEach(s=>link([LB[0]+64,LB[1]],[s[0]-66,s[1]]));
+function streak(a,b,p0,p1,c,r){const x0=a[0]+(b[0]-a[0])*p0,y0=a[1]+(b[1]-a[1])*p0,x1=a[0]+(b[0]-a[0])*p1,y1=a[1]+(b[1]-a[1])*p1;
+  const gr=g.createLinearGradient(x0,y0,x1,y1);gr.addColorStop(0,hexA(c,0));gr.addColorStop(.7,hexA(c,.65));gr.addColorStop(1,'rgba(255,250,240,.95)');
+  g.save();g.lineCap='round';g.lineWidth=r*1.3;g.strokeStyle=gr;g.shadowColor=c;g.shadowBlur=r*3;g.beginPath();g.moveTo(x0,y0);g.lineTo(x1,y1);g.stroke();g.restore();
+  g.save();g.shadowColor=c;g.shadowBlur=r*3.4;g.fillStyle=c;g.beginPath();g.arc(x1,y1,r,0,7);g.fill();g.restore();g.fillStyle='rgba(255,255,255,.75)';g.beginPath();g.arc(x1-r*.3,y1-r*.3,r*.38,0,7);g.fill();}
+function box(x,y,w,h,label,sub,c,st){g.save();if(st){g.shadowColor=c;g.shadowBlur=26;}rr(x-w/2,y-h/2,w,h,12);g.fillStyle=st==='fail'?'#2a141a':C.panel;g.fill();g.restore();
+  rr(x-w/2,y-h/2,w,h,12);g.fillStyle=hexA(c,.09);g.fill();g.strokeStyle=c;g.lineWidth=2;g.stroke();
+  for(let i=0;i<3;i++){g.beginPath();g.arc(x-w/2+13+i*9,y-h/2+12,2.6,0,7);g.fillStyle=st==='fail'?C.red:i?hexA(C.green,.3):C.green;g.fill();}
+  tx(label,x,y+(sub?3:6),{z:17,wt:650,al:'center'});if(sub)tx(sub,x,y+22,{z:12.5,c:C.dim,al:'center',f:MONO});}
+function user(x,y){g.beginPath();g.arc(x,y,18,0,7);g.fillStyle=C.panel2;g.fill();g.strokeStyle=hexA(C.blue,.85);g.lineWidth=2;g.stroke();g.fillStyle=C.blue;g.beginPath();g.arc(x,y-4,5.5,0,7);g.fill();g.beginPath();g.arc(x,y+12,9,Math.PI,0);g.fill();}
+streak([U[0][0]+20,U[0][1]],[LB[0]-64,LB[1]],.15,.72,C.blue,6.5);
+streak([U[2][0]+20,U[2][1]],[LB[0]-64,LB[1]],.1,.55,C.blue,6);
+streak([LB[0]+64,LB[1]],[S[0][0]-66,S[0][1]],.2,.8,C.blue,6.5);
+streak([S[1][0]-66,S[1][1]],[LB[0]+64,LB[1]],.1,.62,C.green,6.5);
+streak([LB[0]-64,LB[1]],[U[1][0]+20,U[1][1]],.05,.6,C.green,6);
+U.forEach(u=>user(u[0],u[1]));
+box(LB[0],LB[1],128,62,'Load balancer','least-conn',C.accent,'glow');
+box(S[0][0],S[0][1],126,62,'Server 1','42%',C.edge);
+box(S[1][0],S[1][1],126,62,'Server 2','cache hit',C.amber,'glow');
+box(S[2][0],S[2][1],126,62,'Server 3','',C.red,'fail');
+rr(S[2][0]-28,S[2][1]-58,56,22,11);g.fillStyle=hexA(C.red,.18);g.fill();g.strokeStyle=hexA(C.red,.7);g.lineWidth=1.2;g.stroke();tx('DOWN',S[2][0],S[2][1]-46,{z:12,wt:700,c:C.red,al:'center'});
+// text
+tx('Packets in Motion',80,242,{z:76,wt:750});
+tx('System design, explained',82,322,{z:34,wt:400,c:'#cfd7e6'});
+tx('by watching it happen.',82,366,{z:34,wt:400,c:'#cfd7e6'});
+const chips=[['45 animated lessons',C.accent],['a hands-on challenge for each',C.amber],['packets → consensus',C.blue]];let cx=82;
+chips.forEach(([s,c])=>{g.font=`600 17px ${SANS}`;const w=g.measureText(s).width+32;rr(cx,436,w,40,20);g.fillStyle=hexA(c,.14);g.fill();g.strokeStyle=hexA(c,.6);g.lineWidth=1.4;g.stroke();tx(s,cx+16,457,{z:17,wt:600,c});cx+=w+12;});
+tx('One offline HTML file · no install',82,540,{z:17,c:C.dim});
+[[C.blue,'request'],[C.green,'response'],[C.red,'failure'],[C.amber,'cached']].forEach(([c,s],k)=>{const x=820+k*112;g.save();g.shadowColor=c;g.shadowBlur=10;g.fillStyle=c;g.beginPath();g.arc(x,572,6,0,7);g.fill();g.restore();tx(s,x+14,573,{z:15,c:C.dim});});
+document.title='ready';
+</script></body></html>

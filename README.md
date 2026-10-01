@@ -8,7 +8,7 @@
 
 An animated, interactive course that takes you from "how do two computers talk?" to consensus, distributed transactions and three full system designs: a URL shortener, a chat app and a news feed. Every concept is taught through motion: glowing requests leave light trails between servers, caches fill up, servers fail and traffic reroutes. Then you solve a hands-on challenge for each lesson, and in ten **architecture labs** you build the system yourself, wire it up and watch it survive (or not) a crash, a spike or an attack.
 
-![Packets in Motion: system design, explained by watching it happen. An architecture lab under load: a load balancer spreads requests over four app servers, one of them crashed, which feed a cache and a click queue.](assets/social-preview.png)
+![Packets in Motion: system design, explained by watching it happen. Requests flow from three users through a load balancer to three servers, one of them down.](assets/social-preview.png)
 
 ## Run it
 
