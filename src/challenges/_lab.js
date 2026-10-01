@@ -74,7 +74,7 @@ function labGame(o){return api=>{
   const clear=api.button('Clear board',()=>{if(running)return;G.nodes=G.nodes.filter(n=>n.fixed);G.edges=[];sel=null;save();say('Board cleared.');});
   function start(){if(running)return;sel=null;drag=null;S=o.init(G);running=true;done=false;res=null;api.lock(true);t0=api.now();last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
   // ---------- pointer ----------
-  let sel=null,drag=null,hover=null,pal=-1;
+  let sel=null,drag=null,hover=null,pal=-1,kb=false;   // kb: shortcut keycaps show once the player uses the keyboard
   const TW=Math.min(150,(LAB_BOARD.w+12-(PAL.length-1)*8)/PAL.length),TX0=LAB_BOARD.x-6+(LAB_BOARD.w+12-(PAL.length*TW+(PAL.length-1)*8))/2;
   const TILE=k=>({x:TX0+k*(TW+8),y:LAB_PAL_Y,w:TW,h:50});
   const nodeAt=(x,y)=>{for(let i=G.nodes.length-1;i>=0;i--){const n=G.nodes[i],[w,h]=sizeOf(n);if(Math.abs(x-n.x)<=w/2+4&&Math.abs(y-n.y)<=h/2+4)return n;}return null;};
@@ -94,9 +94,9 @@ function labGame(o){return api=>{
       // palette
       PAL.forEach((k,i)=>{const T=TILE(i),kk=K[k],ok=canAdd(k)&&cost()+kk.cost<=o.budget+20,hot=pal===i&&!running;
         g.save();g.globalAlpha=running?.45:ok?1:.5;rr(T.x,T.y,T.w,T.h,10);g.fillStyle=hot?hexA(kk.c||C.accent,.18):C.panel;g.fill();g.strokeStyle=hot?kk.c||C.accent:C.line;g.lineWidth=1.3;g.stroke();g.restore();
-        icon(kk,T.x+28,T.y+T.h/2,running?.45:1);keycap(String(i+1),T.x+11,T.y+11,{a:running?.45:1});
+        icon(kk,T.x+28,T.y+T.h/2,running?.45:1);if(kb)keycap(String(i+1),T.x+11,T.y+11,{a:running?.45:1});
         tx(kk.short||kk.label,T.x+52,T.y+T.h/2-7,{z:12.5,wt:700,al:'left',a:running?.45:1});tx(`$${kk.cost}`+(kk.max?` · max ${kk.max}`:''),T.x+52,T.y+T.h/2+9,{z:10.5,c:C.dim,al:'left',f:MONO,a:running?.45:1});});
-      if(!running)tx('drag a component up onto the board · drag one back down here to remove it',W/2,LAB_PAL_Y+68,{z:11,c:C.dim});
+      if(!running)tx(kb?'keys: a number adds a component · press two letters to wire them (again to unwire) · Delete removes · Enter runs':'drag a component up onto the board · drag one back down here to remove it · press Tab for keyboard shortcuts',W/2,LAB_PAL_Y+68,{z:11,c:C.dim});
       // empty-board coaching
       if(G.nodes.length===o.fixed.length&&!running)textBlock(o.intro||'Drag components from the row below onto the board, then drag from a component’s ● to another to wire them.',LAB_BOARD.x+LAB_BOARD.w/2+40,LAB_BOARD.y+LAB_BOARD.h/2,420,{z:14,wt:500,c:C.dim});
       // wires
@@ -107,7 +107,7 @@ function labGame(o){return api=>{
       G.nodes.forEach(n=>{const k=kindOf(n),[w,h]=sizeOf(n),util=V_&&V_.load?V_.load[n.id]:null,dead=V_&&V_.dead&&V_.dead.has(n.id);
         const st=dead?'fail':util==null?(k.st||'ok'):util>1.02?'fail':util>.85?'hot':'ok';
         drawKind(n,k,w,h,st,util);
-        keycap(letterOf(n),n.x-w/2-1,n.y-h/2-1,{c:sel&&sel.n===n?C.accent:C.edge});
+        if(kb)keycap(letterOf(n),n.x-w/2-1,n.y-h/2-1,{c:sel&&sel.n===n?C.accent:C.edge});
         if((o.links[n.kind]||[]).length&&!running){const[px,py]=port(n),hv=hover===n||sel&&sel.n===n;g.save();g.beginPath();g.arc(px,py,hv?6.5:4.5,0,7);g.fillStyle=hv?C.accent:C.panel2;g.fill();g.strokeStyle=C.accent;g.lineWidth=1.5;g.stroke();g.restore();}
         if(sel&&sel.n===n){g.save();g.strokeStyle=C.accent;g.lineWidth=2;g.setLineDash([4,4]);rr(n.x-w/2-6,n.y-h/2-6,w+12,h+12,14);g.stroke();g.restore();}
         if(util!=null&&!dead)meter(n.x-w/2,n.y+h/2+5,w,4,Math.min(util,1),util>1?C.red:util>.85?C.amber:C.green);});
@@ -133,7 +133,7 @@ function labGame(o){return api=>{
       if(d.type==='new'){if(y<LAB_BOARD.y+LAB_BOARD.h+10){if(cost()+K[d.kind].cost>o.budget+20){FX.text(x,y-30,'way over budget',C.red,13);return;}add(d.kind,x,y);}return;}
       if(d.type==='wire'){const tgt=nodeAt(x,y);if(tgt&&tgt!==d.from)toggleEdge(d.from,tgt);return;}
       if(d.type==='move'){if(y>LAB_BOARD.y+LAB_BOARD.h+6&&!d.n.fixed){removeNode(d.n);FX.text(x,LAB_BOARD.y+LAB_BOARD.h-14,'removed',C.dim,13);return;}save();}},
-    key(k){if(running)return;
+    key(k){kb=true;if(running)return;
       if(k==='Enter'){start();return;}
       if(/^[1-9]$/.test(k)){const kind=PAL[+k-1];if(kind){const n=add(kind);if(n){sel=null;say(`Added ${K[kind].label.toLowerCase()} ${letterOf(n)}${G.edges.some(e=>e.a===n.id||e.b===n.id)?', wired like the first one':''}.`);}}return;}
       if(k==='Delete'||k==='Backspace'){if(sel&&sel.n)removeNode(sel.n);else if(sel&&sel.e){G.edges=G.edges.filter(e=>e!==sel.e);sel=null;save();say('Wire removed.');}return;}
