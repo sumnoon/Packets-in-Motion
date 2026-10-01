@@ -6,7 +6,7 @@
 
 <p align="center"><strong>System design, explained by watching it happen.</strong></p>
 
-An animated, interactive course that takes you from "how do two computers talk?" to consensus, distributed transactions and a full URL-shortener design. Every concept is taught through motion: glowing requests leave light trails between servers, caches fill up, servers fail and traffic reroutes. Then you solve a hands-on challenge for each lesson.
+An animated, interactive course that takes you from "how do two computers talk?" to consensus, distributed transactions and three full system designs: a URL shortener, a chat app and a news feed. Every concept is taught through motion: glowing requests leave light trails between servers, caches fill up, servers fail and traffic reroutes. Then you solve a hands-on challenge for each lesson.
 
 ![Packets in Motion: system design, explained by watching it happen](assets/social-preview.png)
 
@@ -18,7 +18,7 @@ Or run it offline: `index.html` is a single self-contained file with no dependen
 
 ## What's inside
 
-43 chapters in 10 sections, from zero to advanced:
+45 chapters in 10 sections, from zero to advanced:
 
 | Section | Chapters |
 | --- | --- |
@@ -31,7 +31,7 @@ Or run it offline: `index.html` is a single self-contained file with no dependen
 | Reliability | SPOFs & redundancy · Timeouts & deadlines · Health checks, failover, circuit breakers, retries · Idempotency · Safe deploys: blue-green, canary & feature flags |
 | Architecture | Monolith vs microservices · Event-driven · Observability |
 | Advanced | Consensus & leader election (Raft) · Distributed locks, leases & fencing tokens · Conflict resolution: vector clocks & CRDTs · Two-phase commit & sagas · Snowflake IDs · Back-pressure & load shedding |
-| Capstone | Design a URL shortener, end to end |
+| Capstone | Design a URL shortener · Design a chat app · Design a news feed, each end to end |
 
 Each chapter has a 28–62 s animation, play/pause/replay, a scrubber with step markers, synced captions, and a "When to use it / Trade-offs" card at the end.
 
@@ -46,6 +46,8 @@ Every lesson ends with a hands-on challenge played on the same stage, scored wit
 - **Stop the retry storm**: tune retries, backoff, jitter and a circuit breaker through an outage.
 - **Find the culprit**: use metrics, logs and a trace to find a slow service.
 - **Launch the shortener**: build the whole system and survive a viral spike, a dead server and a bot attack.
+- **Launch the chat app**: size gateways and shards, then survive a message storm, a gateway crash and offline members.
+- **Survive the big night**: pick a feed strategy that handles a celebrity post and a 20× spike in feed loads.
 
 The rest use the same kinds of mechanics: sort cards into boxes, put steps in order, or tune a system and run it.
 

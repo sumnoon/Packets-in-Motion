@@ -2952,6 +2952,157 @@ cons:['301 (permanent) redirects are cached by browsers: great for speed, but cl
   const TAGS=[[DNS[0],DNS[1]+44,ns('client-server')],[GW[0],GW[1]+48,ns('proxy-gateway','rate-limiting')],[LB[0],LB[1]+48,ns('load-balancers','resilience')],[AP[0][0],AP[0][1]-50,ns('scaling','spof')],[AP[1][0],AP[1][1]+50,ns('scaling','microservices')],[CA[0]-106,CA[1],ns('cdn','caching')],[800,356,`Ch ${n('sql-nosql')} – ${n('sharding')}`],[QU[0],QU[1]+48,ns('queues-pubsub','sync-async')],[AN[0],AN[1]+48,ns('observability')]];
   TAGS.forEach(([x,y,s],i)=>pill(s,x,y,{c:C.accent,z:12,a:V(t,56.3+i*.25),wt:700}));
 }});})();
+
+/* ---------------- 23. CAPSTONE: CHAT APP ---------------- */
+(function(){
+const ANA=[70,170],BEN=[70,330],CY=[930,480],LB=[185,250],G1=[330,170],G2=[330,330],CH=[515,250],S1=[700,95],S2=[815,95],PS=[700,265],PR=[515,440],PU=[780,420];
+const sock=(u,g)=>[[u[0]+16,u[1]],[LB[0]-46,LB[1]],[LB[0]+46,LB[1]],[g[0]-58,g[1]]];
+const g2c=g=>[[g[0]+58,g[1]],[CH[0]-62,CH[1]]];
+const c2s=s=>[[CH[0]+62,CH[1]-14],[s[0]-46,s[1]+12]];
+const c2p=[[CH[0]+62,CH[1]+8],[PS[0]-60,PS[1]]],p2g=g=>[[PS[0]-60,PS[1]+10],[g[0]+58,g[1]+12]];
+const c2pr=[[CH[0],CH[1]+30],[PR[0],PR[1]-26]],g2pr=g=>[[g[0],g[1]+28],[PR[0]-60,PR[1]]];
+const c2pu=[[CH[0]+62,CH[1]+20],[PU[0]-60,PU[1]-8]],pu2cy=[[PU[0]+60,PU[1]+10],[CY[0]-16,CY[1]]];
+const G2DEAD=43.6,BEN_ON=t=>t<G2DEAD?G2:t>=45.6?G1:null;
+ch({id:'capstone-chat',group:'Capstone',title:'Capstone: Design a Chat App',dur:58,needs:['rest-grpc-ws','queues-pubsub','sharding'],related:['capstone','capstone-feed','idempotency'],
+beats:[
+[0,'The goal: fast, ordered, never lost','Messages should arrive within a second, in order, and never get lost, whether the other person is online or not.'],
+[5,'Assemble the building blocks','WebSocket gateways keep a connection open to each online user. Behind them: a chat service, a sharded message store, pub/sub, a presence store and push notifications.'],
+[11,'Connect and stay connected','Ana and Ben each open a WebSocket. The load balancer spreads them across gateways, and presence records which gateway holds whom.'],
+[17,'Send: store it first','Ana sends "lunch?". The chat service gives it the next sequence number in the conversation and writes it to the message store, sharded by conversation.'],
+[24,'Deliver through pub/sub','The chat service publishes the message on the conversation\'s channel. Ben\'s gateway is subscribed and pushes it down his open socket.'],
+[31,'Offline: push, then catch up','Presence says Cy is offline, so a push notification goes to his phone. When he opens the app, he fetches every message after the last sequence number he saw.'],
+[38,'Receipts ride the same path','Ben\'s app sends "read #42" back the same way, and Ana sees two ticks. Small events like typing and receipts are not stored for long.'],
+[43,'A gateway dies','Gateway 2 crashes. Ben\'s app reconnects to gateway 1 and asks for everything after #42. Sequence numbers make the resume exact, and duplicates are ignored.'],
+[50,'Every chapter, one system','Open connections, pub/sub, sharding, presence and idempotent resumes: the building blocks you have watched, working together.']],
+use:['Sequence numbers per conversation give ordering and an exact resume point','Pub/sub lets any gateway reach any other without knowing who is where','Shard messages by conversation, so a chat\'s history lives together'],
+cons:['Millions of open sockets: gateways hold memory per connection and need careful draining on deploys','Group chats with huge memberships need fan-out limits, like the celebrity problem','End-to-end encryption moves ordering, search and spam checks to the clients'],
+draw(t){
+  // intro: a chat thread
+  if(t<5.2){const a=V(t,.3,4.8);draw(500,280,{a},()=>{rr(-170,-150,340,300,22);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=2;g.stroke();});
+    tx('Lunch crew · 3 people',500,155,{z:13,wt:700,c:C.dim,a});
+    pill('Ana: lunch?',430,205,{c:C.blue,z:14,a:a*V(t,.8)});pill('Ben: yes! 12:30',560,255,{c:C.green,z:14,a:a*V(t,1.8)});pill('Cy is offline…',470,305,{c:C.dim,z:13,a:a*V(t,2.8)});
+    pill('within a second · in order · never lost',500,375,{c:C.accent,z:13,a:a*V(t,3.4)});return;}
+  const L=(pts,t0,o={})=>ln(pts,{a:V(t,t0)*.4,...o});
+  // links
+  L([[ANA[0]+16,ANA[1]],[LB[0]-46,LB[1]]],5.6);L([[BEN[0]+16,BEN[1]],[LB[0]-46,LB[1]]],5.6);L([[LB[0]+46,LB[1]],[G1[0]-58,G1[1]]],5.9);L([[LB[0]+46,LB[1]],[G2[0]-58,G2[1]]],5.9,t>=G2DEAD?{dash:[4,6]}:{});
+  [G1,G2].forEach((gw,k)=>{L(g2c(gw),6.3,k&&t>=G2DEAD?{dash:[4,6]}:{});L(p2g(gw),7.2,k&&t>=G2DEAD?{dash:[4,6]}:{});L(g2pr(gw),7.6,k&&t>=G2DEAD?{dash:[4,6]}:{});});
+  L(c2s(S1),6.8);L(c2s(S2),6.8);L(c2p,7.2);L(c2pr,7.6);L(c2pu,8);L(pu2cy,8,{dash:[4,6]});
+  // nodes
+  user(ANA[0],ANA[1],{label:'Ana',...A(t,5.2)});user(BEN[0],BEN[1],{label:'Ben',c:C.green,...A(t,5.3)});
+  draw(CY[0],CY[1],A(t,8),()=>{rr(-16,-26,32,52,7);g.fillStyle=C.panel2;g.fill();g.strokeStyle=C.edge;g.lineWidth=1.8;g.stroke();});tx(t>=35.4?'Cy (back)':'Cy · offline',CY[0],CY[1]+42,{z:12,c:C.dim,a:V(t,8)});
+  box(LB[0],LB[1],{label:'LB',w:92,h:48,...A(t,5.6)});
+  server(G1[0],G1[1],{label:'Gateway 1',sub:'WebSockets',w:116,h:54,...A(t,5.9)});server(G2[0],G2[1],{label:'Gateway 2',sub:'WebSockets',w:116,h:54,st:t>=G2DEAD?'fail':'ok',...A(t,6.1)});
+  server(CH[0],CH[1],{label:'Chat service',sub:'orders · stores',w:124,h:58,...A(t,6.4)});
+  db(S1[0],S1[1],{label:'Shard 1',sub:'conv 1–5k',w:92,h:72,...A(t,6.8)});db(S2[0],S2[1],{label:'Shard 2',sub:'conv 5k–10k',w:92,h:72,...A(t,7)});
+  box(PS[0],PS[1],{label:'Pub/Sub',sub:'channel per chat',c:C.amber,w:124,h:52,...A(t,7.2)});
+  box(PR[0],PR[1],{label:'Presence',sub:'who is on which gateway',c:C.accent,w:180,h:52,...A(t,7.6)});
+  box(PU[0],PU[1],{label:'Push',sub:'notifications',c:C.green,w:124,h:52,...A(t,8)});
+  // presence contents
+  const pres=[t>=13&&['Ana → gw 1',C.blue],t>=15.4&&(t<G2DEAD?['Ben → gw 2',C.green]:t>=46.4?['Ben → gw 1',C.green]:['Ben → ?',C.red]),t>=35.4&&['Cy → gw 1',C.dim]].filter(Boolean);
+  pres.forEach(([s,c],i)=>tx(s,PR[0]+100,PR[1]-14+i*16,{z:11.5,f:MONO,c,al:'left',a:V(t,13)}));
+  // 11–17: connect
+  pk(t,11.4,1.2,sock(ANA,G1),C.blue,{label:'open WebSocket'});pk(t,12.6,.6,g2pr(G1),C.accent,{r:4.5});
+  pk(t,13.6,1.2,sock(BEN,G2),C.green,{label:'open WebSocket'});pk(t,14.8,.6,g2pr(G2),C.accent,{r:4.5});
+  if(t>=12.6)ln(sock(ANA,G1),{c:hexA(C.blue,.55),w:2.5,a:V(t,12.6)});
+  const bg=BEN_ON(t);if(t>=14.8&&bg)ln(sock(BEN,bg),{c:hexA(C.green,.55),w:2.5,a:V(t,t<G2DEAD?14.8:45.6)});
+  // 17–24: send and store
+  pk(t,17.4,1.2,sock(ANA,G1),C.blue,{label:'"lunch?"'});pk(t,18.6,.7,g2c(G1),C.blue,{r:5});
+  if(t>19.3&&t<24)pill('conv 7 · seq #42',CH[0],CH[1]-56,{c:C.accent,z:12.5,f:MONO,a:V(t,19.3,23.8)});
+  pk(t,20.2,.7,c2s(S1),C.amber,{label:'store #42'});ring(t,20.9,S1[0],S1[1],C.green,36);
+  pk(t,21.4,.7,rev(g2c(G1)),C.green,{r:4.5});pk(t,22.1,1.1,rev(sock(ANA,G1)),C.green,{label:'✓ sent'});
+  // 24–31: publish and deliver
+  pk(t,24.4,.7,c2p,C.amber,{label:'publish conv:7'});pk(t,25.2,.8,p2g(G2),C.amber,{r:5});pk(t,25.2,.8,p2g(G1),C.amber,{r:4,a:.5});
+  pk(t,26.1,1.2,rev(sock(BEN,G2)),C.green,{label:'"lunch?" #42'});
+  if(t>27.3&&t<31)pill('Ana: lunch?',BEN[0]+20,BEN[1]+48,{c:C.blue,z:12.5,al:'left',a:V(t,27.3,30.8)});
+  // 31–38: offline user
+  pk(t,31.4,.6,c2pr,C.accent,{label:'Cy online?'});pk(t,32,.6,rev(c2pr),C.red,{label:'no'});
+  pk(t,32.8,.7,c2pu,C.green,{r:5});pk(t,33.5,1,pu2cy,C.green,{label:'🔔 Ana: lunch?'});
+  if(t>35.4&&t<38)pill('opens app → fetch after #41 → gets #42',CY[0]-150,CY[1]-50,{c:C.green,z:12,a:V(t,35.4,37.8)});
+  // 38–43: read receipt
+  pk(t,38.4,1.1,sock(BEN,G2),C.green,{label:'read #42'});pk(t,39.5,.6,g2c(G2),C.green,{r:4.5});pk(t,40.1,.6,c2p,C.amber,{r:4.5});pk(t,40.7,.8,p2g(G1),C.amber,{r:4.5});
+  pk(t,41.5,1.1,rev(sock(ANA,G1)),C.green,{label:'✓✓ read'});
+  // 43–50: gateway dies, Ben resumes on gateway 1
+  if(t>G2DEAD&&t<45.6)pill('connection lost',BEN[0]+90,BEN[1]+40,{c:C.red,z:12,a:V(t,G2DEAD,45.4)});
+  pk(t,44.4,1.2,sock(BEN,G1),C.green,{label:'reconnect · resume after #42'});pk(t,45.6,.6,g2c(G1),C.green,{r:4.5});pk(t,46.2,.6,c2s(S1),C.amber,{r:4.5});
+  pk(t,46.8,.6,rev(c2s(S1)),C.green,{r:4.5});pk(t,47.4,.6,rev(g2c(G1)),C.green,{r:4.5});pk(t,48,1,rev(sock(BEN,G1)),C.green,{label:'nothing missed'});
+  // chapter tags
+  const n=id=>chapters.findIndex(c=>c.id===id)+1,ns=(...ids)=>'Ch '+ids.map(n).join(' · ');
+  [[LB[0],LB[1]+44,ns('load-balancers')],[G1[0],G1[1]-48,ns('rest-grpc-ws')],[G2[0],G2[1]+48,ns('resilience')],[CH[0],CH[1]+48,ns('unique-ids','idempotency')],
+   [(S1[0]+S2[0])/2,S1[1]+56,ns('sharding','storage-engines')],[PS[0],PS[1]+46,ns('queues-pubsub')],[PR[0]-150,PR[1],ns('sessions')],[PU[0],PU[1]+46,ns('sync-async')]]
+    .forEach(([x,y,s],i)=>pill(s,x,y,{c:C.accent,z:12,a:V(t,50.4+i*.3),wt:700}));
+}});})();
+
+/* ---------------- 24. CAPSTONE: NEWS FEED ---------------- */
+(function(){
+const ANA=[70,140],BEN=[70,300],STAR=[70,460],PS=[245,140],FS=[245,300],PDB=[440,70],GR=[620,70],Q=[455,225],WK=[640,225],FC=[845,190],PC=[455,345];
+const a2ps=[[ANA[0]+16,ANA[1]],[PS[0]-60,PS[1]]],s2ps=[[STAR[0]+18,STAR[1]-8],[PS[0]-40,PS[1]+28]],b2fs=[[BEN[0]+16,BEN[1]],[FS[0]-60,FS[1]]];
+const ps2db=[[PS[0]+60,PS[1]-12],[PDB[0]-46,PDB[1]+8]],ps2q=[[PS[0]+60,PS[1]+12],[Q[0]-60,Q[1]]],q2wk=[[Q[0]+60,Q[1]],[WK[0]-58,WK[1]]],wk2gr=[[WK[0],WK[1]-28],[GR[0],GR[1]+36]],wk2fc=[[WK[0]+58,WK[1]],[FC[0]-90,FC[1]]];
+const fs2gr=[[FS[0]+60,FS[1]-20],[GR[0]-46,GR[1]+20]],fs2db=[[FS[0]+60,FS[1]-14],[PDB[0]-30,PDB[1]+34]],fs2fc=[[FS[0]+60,FS[1]-6],[FC[0]-90,FC[1]+14]],fs2pc=[[FS[0]+60,FS[1]+10],[PC[0]-64,PC[1]]];
+// Ben's precomputed feed: post ids, newest first
+const FEED=t=>t<16.6?['p88','p85','p80','p77']:['p91','p88','p85','p80'];
+ch({id:'capstone-feed',group:'Capstone',title:'Capstone: Design a News Feed',dur:58,needs:['caching','queues-pubsub','hot-keys'],related:['capstone','capstone-chat','backpressure'],
+beats:[
+[0,'The goal: a fast home feed','Show each person the newest posts from everyone they follow, in well under a second. Feeds are read about a hundred times more often than people post.'],
+[5,'Fan-out on read','Build the feed when someone opens the app: look up who they follow, fetch each account\'s recent posts and merge them. Posting is cheap, but every feed load does dozens of queries.'],
+[13,'Fan-out on write','Flip it: when Ana posts, a worker adds the post id to each follower\'s precomputed feed, a short list in a cache. Opening the feed becomes one fast lookup.'],
+[21,'The celebrity problem','A star with 30 million followers posts. Fan-out on write now means 30 million cache writes for a single post, and the queue backs up for minutes.'],
+[28,'Hybrid: push for most, pull for stars','Fan out on write for ordinary accounts. For the few huge ones, skip the fan-out and merge their latest posts in when the feed is read.'],
+[36,'Rank, fill in, cache','The feed service merges both sources, ranks by recency and engagement, swaps ids for full posts, and caches the first page.'],
+[44,'Survive the spike','A big event: everyone opens the app at once. Precomputed feeds and cached pages answer almost every request, and the database stays calm.'],
+[50,'Every chapter, one system','Queues, caches, sharding, hot keys and back-pressure: the same building blocks as before, arranged for a read-heavy feed.']],
+use:['Precompute what is read often; compute at read time what is too big to precompute','A queue between posting and fan-out absorbs bursts and lets workers catch up','Treat very large accounts (hot keys) as a special case, not the common path'],
+cons:['Fan-out on write spends storage on feeds nobody opens; cap their length and expire inactive users','Hybrid feeds need two code paths and a merge step','Ranking models add latency: cache pages, and rank in the background where you can'],
+draw(t){
+  if(t<5.2){const a=V(t,.3,4.8);draw(500,280,{a},()=>{rr(-150,-160,300,320,22);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=2;g.stroke();});
+    tx('Home',500,148,{z:14,wt:750,a});[['Ana · just now','new trail photos'],['Dev · 4 min','shipping v2 today'],['Star · 10 min','new album out!']].forEach(([h,b],k)=>{const y=200+k*72,v=a*V(t,.8+k*.6);
+      draw(500,y,{a:v},()=>{rr(-125,-28,250,56,10);g.fillStyle=C.panel2;g.fill();});tx(h,390,y-10,{z:12,c:C.dim,al:'left',a:v});tx(b,390,y+10,{z:14,wt:650,al:'left',a:v});});
+    pill('reads ≈ 100 × posts',500,470,{c:C.accent,z:13,a:a*V(t,2.8)});return;}
+  const L=(pts,t0,o={})=>ln(pts,{a:V(t,t0)*.38,...o});
+  L(a2ps,5.4);L(b2fs,5.4);L(s2ps,5.4);L(ps2db,5.8);L(ps2q,6.4);L(q2wk,6.8);L(wk2gr,7);L(wk2fc,7.2);L(fs2gr,5.8);L(fs2db,5.8);L(fs2fc,7.2);L(fs2pc,7.6);
+  user(ANA[0],ANA[1],{label:'Ana · 200 followers',...A(t,5.2)});user(BEN[0],BEN[1],{label:'Ben · reads',c:C.green,...A(t,5.3)});user(STAR[0],STAR[1],{label:'Star · 30 M followers',c:C.amber,r:18,...A(t,5.4)});
+  server(PS[0],PS[1],{label:'Post service',w:120,h:54,...A(t,5.6)});server(FS[0],FS[1],{label:'Feed service',sub:'merge · rank',w:120,h:54,...A(t,5.7)});
+  db(PDB[0],PDB[1],{label:'Posts',sub:'sharded',w:92,h:70,...A(t,5.8)});db(GR[0],GR[1],{label:'Follows',sub:'graph',w:92,h:70,...A(t,6)});
+  const backlog=t>=22.2&&t<28.2?Math.min(30e6,Math.floor((t-22.2)*6e6)):0;
+  box(Q[0],Q[1],{label:'Fan-out queue',sub:backlog?`${(backlog/1e6).toFixed(0)} M waiting`:'',c:backlog?C.red:C.amber,w:130,h:52,glow:backlog>0,...A(t,6.4)});
+  server(WK[0],WK[1],{label:'Workers',sub:'fan-out',w:110,h:52,st:backlog?'hot':'ok',...A(t,6.8)});
+  // feed cache: one short list per follower
+  const fa=A(t,7.2);box(FC[0],FC[1]-62,{label:'Feed cache',sub:'a list per user',c:C.green,w:180,h:48,...fa});
+  if(fa.a>0)draw(FC[0],FC[1]+18,{a:fa.a},()=>{rr(-90,-36,180,94,10);g.fillStyle=C.panel;g.fill();g.strokeStyle=hexA(C.green,.6);g.lineWidth=1.5;g.stroke();});
+  tx('feed:ben',FC[0]-78,FC[1]-6,{z:11.5,f:MONO,c:C.dim,al:'left',a:fa.a});FEED(t).forEach((id,i)=>pill(id,FC[0]-56+i*38,FC[1]+22,{c:id==='p91'&&t<21?C.amber:C.green,z:11,f:MONO,a:fa.a}));
+  box(PC[0],PC[1],{label:'Page cache',sub:'first page, ranked',c:C.accent,w:128,h:50,...A(t,36.4)});
+  // 5–13: fan-out on read
+  if(t>5.6&&t<13){pk(t,5.8,.8,b2fs,C.green,{label:'open feed'});pk(t,6.7,.7,fs2gr,C.blue,{label:'Ben follows 300'});pk(t,7.4,.7,rev(fs2gr),C.blue,{r:4});
+    each(t,8.1,10.3,.1,.8,(i,s)=>pk(t,s,.7,fs2db,C.blue,{r:3.2}));each(t,8.8,11,.1,.8,(i,s)=>pk(t,s,.7,rev(fs2db),C.green,{r:3.2}));
+    pk(t,11.2,.9,rev(b2fs),C.green,{label:'feed · 820 ms'});if(t>8.4)pill('300 queries for one feed load',PDB[0]+70,PDB[1]+62,{c:C.red,z:12,a:V(t,8.4,12.8)});}
+  // 13–21: fan-out on write
+  pk(t,13.4,.8,a2ps,C.blue,{label:'post p91'});pk(t,14.2,.6,ps2db,C.amber,{r:4.5});pk(t,14.4,.7,ps2q,C.amber,{label:'fan out p91'});pk(t,15.1,.5,q2wk,C.amber,{r:4.5});
+  pk(t,15.6,.5,wk2gr,C.blue,{label:'Ana\'s 200 followers'});each(t,16,16.8,.08,.6,(i,s)=>pk(t,s,.5,wk2fc,C.green,{r:3}));
+  pk(t,18.2,.7,b2fs,C.green,{label:'open feed'});pk(t,18.9,.5,fs2fc,C.green,{r:4.5});pk(t,19.4,.5,rev(fs2fc),C.green,{r:4.5});pk(t,19.9,.8,rev(b2fs),C.green,{label:'feed · 30 ms'});
+  // 21–28: the star posts, the queue drowns
+  pk(t,21.4,.8,s2ps,C.amber,{label:'new album out!'});pk(t,22.2,.7,ps2q,C.red,{label:'fan out to 30 M'});
+  each(t,22.9,27.8,.06,.5,(i,s)=>pk(t,s,.45,wk2fc,C.red,{r:2.8}));
+  if(t>23&&t<28)pill('Ana\'s next post waits behind 30 M writes',Q[0]+90,Q[1]+60,{c:C.red,z:12,a:V(t,23,27.8)});
+  // 28–36: hybrid
+  if(t>28.4&&t<36)pill('stars: no fan-out',PS[0],PS[1]-50,{c:C.amber,z:12,a:V(t,28.4,35.8)});
+  pk(t,28.8,.8,s2ps,C.amber,{label:'next post'});pk(t,29.6,.6,ps2db,C.amber,{label:'store only'});
+  pk(t,30.8,.7,b2fs,C.green,{label:'open feed'});pk(t,31.5,.5,fs2fc,C.green,{label:'precomputed'});pk(t,31.5,.6,fs2db,C.amber,{label:'+ Star\'s latest'});
+  pk(t,32.2,.5,rev(fs2fc),C.green,{r:4.5});pk(t,32.2,.6,rev(fs2db),C.amber,{r:4.5});pk(t,33,.8,rev(b2fs),C.green,{label:'merged · 45 ms'});
+  if(t>33.8&&t<36)pill('push for most accounts, pull for the 0.01%',W/2,520,{c:C.green,z:12.5,a:V(t,33.8,35.8)});
+  // 36–44: rank, hydrate, cache the page
+  if(t>36.2&&t<44){const a=V(t,36.6,43.8);draw(FS[0],FS[1]+110,{a},()=>{rr(-110,-44,220,88,10);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=1.2;g.stroke();});
+    const order=t<38.6?['p91','Star p95','p88','p85']:['Star p95','p91','p85','p88'];order.forEach((s,i)=>tx(`${i+1}. ${s}`,FS[0]-96,FS[1]+80+i*18,{z:12,f:MONO,al:'left',c:s.startsWith('Star')?C.amber:C.text,a}));
+    tx(t<38.6?'merge':'rank: recent + engaging',FS[0]+20,FS[1]+80,{z:11.5,c:C.dim,al:'left',a});
+    pk(t,39.6,.7,fs2db,C.blue,{label:'ids → posts'});pk(t,40.3,.7,rev(fs2db),C.green,{r:4.5});pk(t,41.2,.6,fs2pc,C.accent,{label:'cache page 1'});}
+  // 44–50: the spike
+  if(t>44.2&&t<50){const a=V(t,44.2,49.8);
+    each(t,44.4,49.6,.05,.9,(i,s)=>{const y=260+((i*37)%9)*10;pk(t,s,.45,[[BEN[0]+16,y],[FS[0]-60,FS[1]]],C.green,{r:3,a});pk(t,s+.45,.35,fs2pc,C.accent,{r:3,a});});
+    pill('feed loads ×20 · page cache hits 97% · database calm',W/2,520,{c:C.green,z:12.5,a});meter(PDB[0]-46,PDB[1]+42,92,6,.12,C.green);}
+  // chapter tags
+  const n=id=>chapters.findIndex(c=>c.id===id)+1,ns=(...ids)=>'Ch '+ids.map(n).join(' · ');
+  [[Q[0],Q[1]+44,ns('queues-pubsub','backpressure')],[WK[0],WK[1]+44,ns('autoscaling')],[FC[0],FC[1]+86,ns('caching','hot-keys')],[PDB[0]-90,PDB[1],ns('sharding')],
+   [GR[0]+80,GR[1],ns('sql-nosql')],[FS[0],FS[1]+44,ns('search')],[PC[0],PC[1]+44,ns('cache-invalidation')],[STAR[0]+120,STAR[1],ns('hot-keys')]]
+    .forEach(([x,y,s],i)=>pill(s,x,y,{c:C.accent,z:12,a:V(t,50.4+i*.3),wt:700}));
+}});})();
 </script>
 <script>
 const reduceMQ=matchMedia('(prefers-reduced-motion: reduce)');
@@ -3813,6 +3964,18 @@ quiz('Advanced',{title:'Advanced recap',goal:'Eight questions on consensus, lock
     {q:'A worker pauses, its lock lease expires and another worker takes over. What stops the paused worker\'s stale write?',a:['Storage rejects writes with an older fencing token','A longer timeout on the paused worker','Retrying the write','A bigger server'],why:'The paused worker cannot know it lost the lease. The storage can, by comparing tokens.',ch:'locks'},
     {q:'Version X has clock [A:2, B:0] and version Y has [A:1, B:1]. What are they?',a:['Concurrent: a real conflict','X happened first','Y happened first','The same version'],why:'X is ahead on A and Y is ahead on B, so neither saw the other.',ch:'conflicts'}]})});
 
+/* ---------------- QUIZ: CAPSTONE ---------------- */
+quiz('Capstone',{title:'Capstone recap',goal:'Seven design questions across the URL shortener, the chat app and the news feed. Answer with a click or keys 1–4.',
+  hint:'For each choice, ask: what is read most, what must never be lost, and what happens at the busiest minute?',
+  make:quizGame({title:'Capstone',questions:[
+    {q:'URL shortener: a link goes viral. What keeps the redirect fast and the database calm?',a:['Cache code → URL in memory','Add an index on the URL column','Make redirects synchronous','Use two-phase commit'],why:'Reads vastly outnumber writes, and one hot code is read again and again: exactly what a cache is for.',ch:'capstone'},
+    {q:'URL shortener: counting every click writes to the database on each redirect. What should you do?',a:['Send click events to a queue and count them in the background','Count clicks in the browser','Stop counting clicks','Use a bigger database'],why:'The redirect only needs the URL. Counting can happen just after, through a queue.',ch:'capstone'},
+    {q:'Chat app: how does a message reach a friend connected to a different gateway?',a:['The chat service publishes it; the friend\'s gateway is subscribed and pushes it','The sender\'s gateway opens a socket to the friend\'s phone','The friend polls the database every minute','The load balancer forwards it'],why:'Pub/sub decouples gateways: no one needs to know which gateway holds whom.',ch:'capstone-chat'},
+    {q:'Chat app: a phone reconnects after a gateway dies. How does it avoid missing or repeating messages?',a:['It asks for everything after the last sequence number it saw','It downloads the whole history again','It waits for the next message','It cannot avoid it'],why:'Per-conversation sequence numbers give an exact resume point, and repeats are easy to ignore.',ch:'capstone-chat'},
+    {q:'Chat app: why shard the message store by conversation id?',a:['A conversation\'s history lives together, so loading it is one shard\'s job','It makes every shard the same size forever','It lets messages skip the store','It removes the need for gateways'],why:'Reads load one conversation at a time; keeping it on one shard makes that cheap.',ch:'capstone-chat'},
+    {q:'News feed: why not fan out on write for an account with 30 million followers?',a:['One post would mean 30 million writes, backing up the queue for everyone','Followers would see the post twice','It would make reads slower','Celebrities post too rarely to matter'],why:'Treat huge accounts as hot keys: merge their posts at read time instead.',ch:'capstone-feed'},
+    {q:'News feed: everyone opens the app at once. What keeps feed loads fast?',a:['Precomputed feeds plus a cache of the first ranked page','Fan-out on read for everyone','More indexes on the posts table','Turning off ranking permanently'],why:'Almost every load is answered from memory, so the spike barely reaches the database.',ch:'capstone-feed'}]})});
+
 /* ---------------- 17. RESILIENCE: tune the client ---------------- */
 function resilSim(p){ // discrete-event model, also used by the challenge
   const CAP=60,load=[],att=[];let ok=0,gave=0,state='closed',openUntil=0,fails=[],id=0,peak=0;
@@ -4061,6 +4224,74 @@ chal('capstone',{title:'Launch the shortener',goal:'Build it, then survive the l
             if(s>=.95)return{stars:2,title:`${(s*100).toFixed(1)}% served`,msg:[p95>80?'Latency spiked: something was running hot.':'',cost>18?'Over budget.':'','Check which phase hurt most and add the one block that fixes it.'].filter(Boolean).join(' ')};
             if(s>=.7)return{stars:1,title:`${(s*100).toFixed(1)}% served`,msg:'Part of the load test broke you. Viral reads need a cache, click counting needs a queue, bots need a limiter.'};
             return{stars:0,title:'The launch crashed',msg:'Most users got errors. Start with a cache and enough app servers, then add the rest.'};}};}});})()});
+
+/* ---------------- 23. CAPSTONE: launch the chat app ---------------- */
+// 100,000 people online; a gateway holds 40,000 sockets; a store shard takes 3,000 messages/s.
+// A message storm runs from 5 s to 12 s, and one gateway dies at 9 s. 10% of members are offline.
+function chatModel(p){const ONLINE=100000,GW=40000,SHARD=3000,FAN=20000;let sent=0,ok=0,lost={store:0,sockets:0,fanout:0,offline:0,crash:0};
+  for(let t=0;t<16;t+=.1){const rate=t>=5&&t<12?8000:4000,dt=.1,gw=t>=9?p.gw-1:p.gw;sent+=rate*dt;
+    const stored=Math.min(rate,p.shards*SHARD);lost.store+=(rate-stored)*dt;
+    const conn=Math.min(1,gw*GW/ONLINE);lost.sockets+=stored*.9*(1-conn)*dt;
+    const fan=p.pubsub?1:Math.min(1,FAN/(stored*Math.max(1,gw)));lost.fanout+=stored*.9*conn*(1-fan)*dt;
+    if(!p.push)lost.offline+=stored*.1*dt;
+    if(t>=9&&t<10.5&&!p.resume)lost.crash+=stored*.9*conn*fan/Math.max(1,p.gw)*dt;}
+  const L=Object.values(lost).reduce((a,b)=>a+b,0);return{sent,lost,del:1-L/sent,cost:p.gw*2+p.shards*3+(p.pubsub?1:0)+(p.push?1:0)};}
+chal('capstone-chat',{title:'Launch the chat app',goal:'100,000 people online, a message storm, a gateway crash and 10% of members offline. Deliver at least 99.5% of messages and spend at most $20/h.',
+  hint:'Count sockets: you need room for everyone even after a gateway dies. Count writes for the storm. Pub/sub saves the chat service from calling every gateway. Offline members need push, and reconnecting members need to resume from a sequence number.',
+  make:simGame({dur:16,defaults:{gw:2,shards:1,pubsub:false,push:false,resume:false},intro:'Pick your building blocks, watch the cost, then press <b>Run load test</b>.',runLabel:'Run load test',
+    controls(api,p,re){api.slider('Gateways',1,5,1,p.gw,v=>`${v} × 40k sockets`,v=>{p.gw=v;re();});api.slider('Store shards',1,4,1,p.shards,v=>`${v} × 3,000/s`,v=>{p.shards=v;re();});
+      api.toggle('Pub/sub between gateways',p.pubsub,v=>{p.pubsub=v;re();});api.toggle('Push notifications',p.push,v=>{p.push=v;re();});api.toggle('Resume from last sequence number',p.resume,v=>{p.resume=v;re();});},
+    build(p,api){const M=chatModel(p);let T=0,acc=0;const fl=[];const GY=k=>300+(k-(p.gw-1)/2)*Math.min(84,380/p.gw),SY=k=>140+k*72;
+      return{step(dt,t){T=t;if(t>=9&&t-dt<9)FX.burst(330,GY(0),C.red,26);const now=api.now(),storm=t>=5&&t<12;acc+=dt*(storm?20:10);
+          while(acc>=1){acc--;const k=Math.floor(Math.random()*p.gw),dead=t>=9&&k===0,bad=Math.random()>M.del;
+            fl.push({t0:now,d:.5,pts:[[80,300],[330-58,GY(k)]],c:C.blue,r:3});
+            fl.push({t0:now+.5,d:.5,pts:[[330+58,GY(k)],[540-62,300]],c:dead?C.red:C.blue,r:3,drop:dead?.5:0});
+            fl.push({t0:now+1,d:.5,pts:[[540+62,300],[p.pubsub?700:330,p.pubsub?300:GY((k+1)%p.gw)]],c:bad?C.red:C.green,r:3,drop:bad?.8:0});}},
+        draw(now,running){flyers(now,fl);for(let i=0;i<4;i++)user(80,240+i*40,{r:11});tx('100k online',80,420,{z:12,c:C.dim});
+          for(let k=0;k<p.gw;k++)server(330,GY(k),{label:`Gateway ${k+1}`,sub:'40k sockets',w:116,h:46,st:running&&T>=9&&k===0?'fail':'ok'});
+          server(540,300,{label:'Chat service',w:124,h:56});
+          for(let k=0;k<p.shards;k++)db(870,SY(k),{label:`Shard ${k+1}`,w:84,h:58});ln([[602,290],[828,SY(0)]],{c:C.line});
+          if(p.pubsub)box(700,300,{label:'Pub/Sub',c:C.amber,w:104,h:46});if(p.push)box(700,440,{label:'Push',c:C.green,w:96,h:44});
+          if(running)tx(T<5?'Normal traffic':T<9?'Message storm':T<12?'Storm + a gateway dies':'Recovering',W/2,40,{z:17,wt:800,c:T>=5&&T<12?C.red:C.accent});
+          tx(`$${M.cost}/h`,90,500,{z:18,wt:800,c:M.cost<=20?C.green:C.red,f:MONO});},
+        hud(){const shown=T>=16?M.del:1-(1-M.del)*clamp(T/16);return[['delivered',`${(shown*100).toFixed(2)}%`,shown>=.995?C.green:C.red],['cost',`$${M.cost}/h`,M.cost<=20?C.green:C.red]];},
+        score(){const d=M.del,why=Object.entries(M.lost).filter(([,v])=>v>M.sent*.001).sort((a,b)=>b[1]-a[1]).map(([k])=>({store:'the store shards could not take the storm',sockets:'there were not enough gateway sockets for everyone (count them after the crash)',fanout:'without pub/sub the chat service could not call every gateway',offline:'offline members got nothing: turn on push',crash:'members on the dead gateway missed messages: resume from the last sequence number'})[k]);
+          if(d>=.995&&M.cost<=20)return{stars:3,title:'Every message delivered',msg:`${(d*100).toFixed(2)}% delivered for $${M.cost}/h. Enough sockets to lose a gateway, shards for the storm, pub/sub for fan-out, push for the offline, and exact resumes.`};
+          if(d>=.97)return{stars:2,title:`${(d*100).toFixed(2)}% delivered`,msg:(M.cost>20?'Over budget. ':'')+(why.length?'Biggest gap: '+why[0]+'.':'Trim the cost.')};
+          return{stars:d>=.85?1:0,title:`${(d*100).toFixed(1)}% delivered`,msg:'Messages went missing: '+why.slice(0,2).join('; ')+'.'};}};}})});
+
+/* ---------------- 24. CAPSTONE: survive the big night ---------------- */
+// Ordinary posting needs 220,000 feed writes/s; a worker does 100,000/s. A star with 30 M
+// followers posts at 3 s, and feed loads jump 20× at 8 s.
+function feedModel(p){const NEED=220000,cap=p.workers*1e5;let q=0,fresh=0;
+  for(let t=0;t<14;t+=.1){if(p.mode!=='read'){q+=NEED*.1;if(p.mode==='write'&&t>=3&&t<3.1)q+=30e6;q=Math.max(0,q-cap*.1);fresh=Math.max(fresh,q/cap);}}
+  if(p.mode!=='read'&&cap<=NEED)fresh=Math.max(fresh,60);
+  const base=p.mode==='read'?820:p.mode==='write'?30:45,spike=p.mode==='read'?2400:p.cache?40:260;
+  return{fresh,p99:Math.max(base,spike),base,spike,cost:p.workers*2+(p.cache?3:0)};}
+chal('capstone-feed',{title:'Survive the big night',goal:'Ordinary posting needs 220,000 feed writes a second, a star with 30 million followers posts, then feed loads jump 20×. Keep p99 feed loads ≤ 200 ms, new posts visible within 10 s, and spend ≤ $12/h.',
+  hint:'Fan-out on read is too slow to load. Pure fan-out on write drowns in the star\'s 30 M writes. Hybrid needs a little more worker capacity than ordinary posting uses, and the spike needs cached pages.',
+  make:simGame({dur:14,defaults:{mode:'read',workers:1,cache:false},intro:'Pick a feed strategy and capacity, then press <b>Run it</b>.',
+    controls(api,p,re){api.seg('Strategy',[['read','fan-out on read'],['write','fan-out on write'],['hybrid','hybrid']],p.mode,v=>{p.mode=v;re();});
+      api.slider('Fan-out workers',1,6,1,p.workers,v=>`${v} × 100k/s`,v=>{p.workers=v;re();});api.toggle('Page cache',p.cache,v=>{p.cache=v;re();});},
+    build(p,api){const M=feedModel(p);let T=0,acc=0,q=0;const fl=[];const FS=[300,380],QQ=[470,170],WK=[650,170],FC=[850,170],DB=[650,400];
+      return{step(dt,t){T=t;const now=api.now();if(p.mode!=='read'){q+=220000*dt;if(p.mode==='write'&&t>=3&&t-dt<3){q+=30e6;FX.text(QQ[0],QQ[1]-50,'+30 M writes',C.red,15);}q=Math.max(0,q-p.workers*1e5*dt);}
+          const spike=t>=8;acc+=dt*(spike?24:8);while(acc>=1){acc--;const slow=p.mode==='read'||(spike&&!p.cache);
+            fl.push({t0:now,d:.5,pts:[[90,380],[FS[0]-60,FS[1]]],c:C.green,r:3});
+            fl.push({t0:now+.5,d:slow?.9:.4,pts:p.mode==='read'?[[FS[0]+60,FS[1]],[DB[0]-46,DB[1]]]:[[FS[0]+60,FS[1]-10],[FC[0]-80,FC[1]+20]],c:slow?C.amber:C.green,r:3});}
+          if(p.mode!=='read'&&Math.random()<dt*6)fl.push({t0:now,d:.5,pts:[[QQ[0]+64,QQ[1]],[WK[0]-55,WK[1]]],c:q>p.workers*1e5*10?C.red:C.amber,r:3.5});},
+        draw(now,running){flyers(now,fl);for(let i=0;i<4;i++)user(90,320+i*40,{r:11,c:C.green});user(90,150,{label:'posters',r:13});user(90,240,{label:'Star · 30 M',c:C.amber,r:15});
+          server(FS[0],FS[1],{label:'Feed service',w:120,h:54,st:running&&T>=8&&(p.mode==='read'||!p.cache)?'hot':'ok'});
+          if(p.mode!=='read'){box(QQ[0],QQ[1],{label:'Fan-out queue',sub:q>1e5?`${(q/1e6).toFixed(1)} M waiting`:'',c:q>p.workers*1e5*10?C.red:C.amber,w:128,h:52});
+            for(let k=0;k<p.workers;k++)server(WK[0]+(k%3)*14-14,WK[1]-16+Math.floor(k/3)*32+(k%3)*4,{label:k===p.workers-1?`${p.workers} workers`:'',w:100,h:40});
+            box(FC[0],FC[1],{label:'Feed cache',sub:'list per user',c:C.green,w:150,h:52});}
+          db(DB[0],DB[1],{label:'Posts',w:92,h:76,st:running&&p.mode==='read'?'hot':'ok'});if(p.cache)box(FS[0]+170,FS[1]+90,{label:'Page cache',c:C.accent,w:120,h:44});
+          if(running)tx(T<3?'Normal posting':T<8?'The star posts':'Everyone opens the app',W/2,40,{z:17,wt:800,c:T>=3?C.red:C.accent});
+          tx(`$${M.cost}/h`,90,520,{z:18,wt:800,c:M.cost<=12?C.green:C.red,f:MONO});},
+        hud(){const lat=T<8?M.base:M.p99,fr=p.mode==='read'?0:Math.min(M.fresh,q/(p.workers*1e5)+0);return[['p99 feed load',`${lat} ms`,lat<=200?C.green:C.red],['post visible after',`${(p.mode==='read'?0:Math.max(fr,0)).toFixed(1)} s`,fr<=10?C.green:C.red],['cost',`$${M.cost}/h`,M.cost<=12?C.green:C.red]];},
+        score(){const a=M.p99<=200,b=M.fresh<=10,c=M.cost<=12,n=[a,b,c].filter(Boolean).length;
+          if(n===3)return{stars:3,title:'The feed held up',msg:`Hybrid fan-out with ${p.workers} workers kept new posts visible within ${M.fresh.toFixed(1)} s, the star's post skipped fan-out entirely, and cached pages carried the spike at ${M.p99} ms.`};
+          const why=[!a&&(p.mode==='read'?'fan-out on read makes every feed load query hundreds of accounts':'the spike overwhelmed the feed service: cache the first page'),!b&&(p.mode==='write'?'the star\'s 30 M fan-out writes buried everyone else\'s posts':'workers could not keep up with ordinary posting: add a little headroom'),!c&&'over budget'].filter(Boolean).join('; ');
+          return{stars:n===2?2:n===1?1:0,title:`${n} of 3 goals`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
 </script>
 <script>
 /* ============================================================
