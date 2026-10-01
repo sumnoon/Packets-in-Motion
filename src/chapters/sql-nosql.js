@@ -1,7 +1,7 @@
 /* ---------------- 7. SQL vs NoSQL ---------------- */
 (function(){
   const UR=[['1','Ada','London'],['2','Lin','Tokyo'],['3','Sam','Lagos']],OR=[['101','2','$30'],['102','1','$12'],['103','2','$55']];
-ch({id:'sql-nosql',group:'Data',title:'SQL vs NoSQL',dur:34,
+ch({id:'sql-nosql',group:'Data',title:'SQL vs NoSQL',dur:34,needs:['client-server'],related:['indexing','sharding','cap'],
 beats:[
 [0,'SQL: tables with fixed columns','Relational databases store data in tables. Every row has the same columns, defined up front by a schema.'],
 [5,'Relations and JOINs','Orders point to users by id. A JOIN stitches related rows together at query time, so each fact is stored exactly once.'],

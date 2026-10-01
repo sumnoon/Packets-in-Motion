@@ -37,8 +37,16 @@
   <aside id="side">
     <div class="brand"><div class="brand-heading"><img class="brand-mark" width="44" height="44" alt="" src="<!-- datauri: assets/logo-96.png -->"><b>Packets in Motion</b></div><span>Watch it, then solve it</span><span class="stars" id="starTotal"></span></div>
     <div class="prog"><i id="progBar"></i></div>
+    <div class="find"><input type="search" id="find" placeholder="Search chapters  ( / )" aria-label="Search chapters" aria-controls="toc" autocomplete="off" spellcheck="false"><p class="sr" id="findMsg" aria-live="polite"></p></div>
     <nav id="toc" aria-label="Chapters"></nav>
-    <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
+    <p class="nofind" id="noFind" hidden>No chapters match. Try another word.</p>
+    <div class="side-foot">
+      <button class="btn sm" id="glossBtn" title="Glossary (G)">Glossary</button>
+      <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button>
+      <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
+      <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+      <p class="io-msg" id="ioMsg" role="status"></p>
+    </div>
   </aside>
   <div class="scrim" id="scrim"></div>
   <main id="main" tabindex="-1">
@@ -63,6 +71,7 @@
             <div class="use"><h3>When to use it</h3><ul id="useList"></ul></div>
             <div class="con"><h3>Trade-offs</h3><ul id="conList"></ul></div>
           </div>
+          <div class="links" id="cardLinks"></div>
           <div class="acts">
             <button class="btn" id="cardReplay">↺ Replay</button>
             <button class="btn" id="cardClose">Keep watching</button>
@@ -77,7 +86,7 @@
         </div></div>
       </div>
       <div class="cpanel" id="cpanel" aria-label="Challenge">
-        <div class="chead"><span class="ctag">Challenge</span><b id="cTitle"></b></div>
+        <div class="chead"><span class="ctag" id="cTag">Challenge</span><b id="cTitle"></b></div>
         <p class="cgoal" id="cGoal"></p>
         <div class="cctl" id="cCtl"></div>
         <div class="cbar"><p class="cstatus" id="cStatus" aria-live="polite"></p><span id="cRun" class="cbar"></span>
@@ -103,11 +112,13 @@
         <span><i style="background:var(--green);box-shadow:0 0 8px var(--green)"></i>Success / response</span>
         <span><i style="background:var(--red);box-shadow:0 0 8px var(--red)"></i>Failure</span>
         <span><i style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></i>Cached / queued</span>
-        <span class="keys">Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge</span>
+        <span class="keys">Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary</span>
       </div>
     </div>
   </main>
 </div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<dialog class="gloss" id="glossary" aria-labelledby="glTitle"><div class="gh"><h2 id="glTitle">Glossary</h2><input type="search" id="glFind" placeholder="Filter terms" aria-label="Filter terms" autocomplete="off"><button class="btn sm" id="glClose">Close</button></div><dl id="glList"></dl></dialog>
 <script>
 <!-- include: engine.js -->
 </script>
@@ -228,6 +239,20 @@
 
 <!-- include: challenges/timeouts.js -->
 
+<!-- include: quizzes/foundations.js -->
+
+<!-- include: quizzes/traffic.js -->
+
+<!-- include: quizzes/data.js -->
+
+<!-- include: quizzes/communication.js -->
+
+<!-- include: quizzes/reliability.js -->
+
+<!-- include: quizzes/architecture.js -->
+
+<!-- include: quizzes/advanced.js -->
+
 <!-- include: challenges/resilience.js -->
 
 <!-- include: challenges/idempotency.js -->
@@ -247,6 +272,9 @@
 <!-- include: challenges/backpressure.js -->
 
 <!-- include: challenges/capstone.js -->
+</script>
+<script>
+<!-- include: glossary.js -->
 </script>
 <script>
 <!-- include: player.js -->

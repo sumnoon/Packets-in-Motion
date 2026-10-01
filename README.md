@@ -48,6 +48,16 @@ Every lesson ends with a hands-on challenge played on the same stage, scored wit
 
 The rest use the same kinds of mechanics: sort cards into boxes, put steps in order, or tune a system and run it.
 
+Each section with more than one chapter ends with a **section quiz**: six multiple-choice questions with an explanation for every answer, scored with stars like the challenges. A miss names the chapter worth rewatching.
+
+## Learning tools
+
+- **Search** the sidebar (press `/`) by title, caption or trade-off: "stampede", "429" or "leader" all find the right chapters.
+- **Glossary:** key terms in captions, the transcript and the trade-offs are underlined; hover, focus or tap one for a one-line definition. Press G for the full glossary, with links to every chapter that uses each term.
+- **Before this / Related:** the trade-offs card links to the chapters a lesson builds on and the ones that go further.
+- **Export / import progress** from the sidebar. Progress lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost.
+- **Sound cues** (off by default): soft tones for right and wrong moves, new steps and results. They are synthesized in the browser; nothing is downloaded.
+
 ## Visual language
 
 The project logo traces a **P** with a routing path and two traveling packets, using the course's blue, mint, and violet palette. Transparent logo assets and usage notes are in [assets/BRAND.md](assets/BRAND.md).
@@ -68,6 +78,8 @@ The project logo traces a **P** with a routing path and two traveling packets, u
 | S | Transcript: every step as text; click one to jump there |
 | T | Trade-offs card |
 | F | Fullscreen |
+| / | Search chapters |
+| G | Glossary |
 
 In a challenge, number keys (or letters, in the put-in-order games) do everything the mouse does; each target on the stage shows its key.
 
@@ -95,6 +107,8 @@ Everything is drawn on a `<canvas>` by code. Each chapter is a pure `draw(t)` fu
 | `src/engine.js` | Drawing primitives: servers, databases, packets, easing |
 | `src/chapters/<id>.js` | One lesson each: beats, trade-offs and `draw(t)` |
 | `src/challenges/<id>.js` | One challenge each. `_mechanics.js` holds the shared game types. |
+| `src/quizzes/<section>.js` | One quiz per section: questions, answers (right one first) and explanations |
+| `src/glossary.js` | Glossary terms, definitions and other spellings |
 | `src/player.js` | The player: controls, sidebar, progress, challenge mode |
 
 You need [Node.js](https://nodejs.org/) 22 or newer. There are no packages to install.
@@ -111,7 +125,7 @@ npm test
 
 `npm test` runs the page in Node with a stand-in canvas. Every lesson is drawn from start to finish and seeked back and forth to prove `draw(t)` is pure. Every challenge is played with random input, and the player is driven through every chapter by keyboard. The stand-in canvas throws wherever a browser would: negative radii, bad gradient stops, unparsable colours.
 
-To add a chapter, create `src/chapters/<id>.js` (and `src/challenges/<id>.js`), add an include line for each in `src/page.html`, then build and test.
+To add a chapter, create `src/chapters/<id>.js` (and `src/challenges/<id>.js`), add an include line for each in `src/page.html`, then build and test. Give it `needs` and `related` chapter ids for the trade-offs card links. The tests check that every link points at a real chapter, every quiz question names one, and every glossary term appears somewhere in the course.
 
 Every push to `main` deploys the site to GitHub Pages.
 

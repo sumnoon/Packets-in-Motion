@@ -10,7 +10,7 @@
   const CL=[];for(let s=33.2;s<60.6;s+=.72){const i=CL.length;const k=s<46.3?(i%2):1;CL.push({s,k,ev:s>=40});}
   const EV=[];{let last=0;CL.forEach(c=>{if(!c.ev)return;const e=c.s+1.6+.5+.55;const take=Math.max(e+.4,last+.95);last=take;EV.push({e,take,k:c.k,s:c.s});});}
   const FLOOD=[];for(let s=51.3;s<54.8;s+=.14)FLOOD.push({s,ok:FLOOD.length<3});
-ch({id:'capstone',group:'Capstone',title:'Capstone: Design a URL Shortener',dur:62,
+ch({id:'capstone',group:'Capstone',title:'Capstone: Design a URL Shortener',dur:62,needs:['caching','sharding','unique-ids','queues-pubsub'],related:['rate-limiting','resilience','load-balancers'],
 beats:[
 [0,'The goal: long URL → short link','A URL shortener turns a long link into a short code, then redirects everyone who opens it. Clicks (reads) outnumber new links (writes) about 100 to 1.'],
 [5,'Assemble the building blocks','DNS, an API gateway with rate limiting, a load balancer, two stateless app servers, a cache, a sharded database, and a queue for click analytics.'],

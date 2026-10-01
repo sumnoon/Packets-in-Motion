@@ -4,7 +4,7 @@
   const LEAVES=[['ana','bo','cy'],['dan','eve','ivy'],['kim','lee','max'],['raj','sam','zoe']],LX=[470,600,730,860],ROOT=[665,165];
   const rowOf=e=>EM.indexOf(e)+1,TX=60,TY=88,RH=31,rowY=i=>TY+RH*(i+1)+RH/2;
   const slot=(e)=>{for(let l=0;l<4;l++){const j=LEAVES[l].indexOf(e);if(j>=0)return[l,j];}};
-ch({id:'indexing',group:'Data',title:'Database Indexing',dur:28.5,
+ch({id:'indexing',group:'Data',title:'Database Indexing',dur:28.5,needs:['sql-nosql'],related:['sharding','caching'],
 beats:[
 [0,'Find one row in a big table','Query: find the user whose email is raj@mail.com. Rows are stored in the order they were inserted, not sorted by email.'],
 [2.5,'No index: check every row','The database scans row by row until it has checked them all, since there could be more matches. Work grows with table size: O(n).'],

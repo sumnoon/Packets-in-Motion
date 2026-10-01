@@ -24,6 +24,7 @@
 <style>
 :root{--bg:#0a0e16;--side:#0c111b;--panel:#121a29;--line:#222d44;--text:#e7ecf5;--text-2:#d0d8e6;--dim:#8b96ab;--faint:#5d6880;--strong:#fff;--accent:#a78bfa;--accent-hover:#b9a3ff;--on-accent:#0a0e16;--blue:#4ea1ff;--green:#34d399;--red:#f87171;--amber:#fbbf24;--hover-bg:#172136;--hover-line:#3a4866;--star-off:#2a3450;--stage:#04060d;color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0;height:100%;background:radial-gradient(60% 50% at 72% 30%,rgba(60,90,170,.10),transparent 70%),radial-gradient(45% 45% at 15% 85%,rgba(110,80,170,.07),transparent 70%),var(--bg);background-attachment:fixed;color:var(--text);font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit}
 #app{display:grid;grid-template-columns:290px minmax(0,1fr);height:100vh}
@@ -209,7 +210,7 @@ kbd{font:600 11.5px ui-monospace,Consolas,monospace;border:1px solid var(--line)
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .skip{position:fixed;left:12px;top:-60px;z-index:60;background:var(--accent);color:var(--on-accent);font-weight:650;padding:8px 14px;border-radius:10px;text-decoration:none}
 .skip:focus{top:12px}
-.theme{display:flex;align-items:center;gap:10px;margin:22px 10px 0;font-size:12px;color:var(--dim)}
+.theme{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--dim)}
 .theme select{flex:1;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:13px}
 .transcript{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 8px}
 .transcript[hidden]{display:none}
@@ -228,6 +229,46 @@ body.play .transcript{display:none}
 :root[data-theme="contrast"]{--bg:#000;--side:#05070b;--panel:#0b1018;--line:#6b7896;--text:#fff;--text-2:#f1f4fa;--dim:#c9d0dd;--faint:#aeb7c8;--accent:#c7b4ff;--accent-hover:#d8caff;--blue:#7cbcff;--green:#5ff0b8;--red:#ff9a9a;--amber:#ffd05a;--hover-bg:#151d2c;--hover-line:#9aa6bf;--star-off:#4a5570;--stage:#000}
 :root[data-theme="contrast"],:root[data-theme="contrast"] body{background:#000}
 :root[data-theme="contrast"] .btn,:root[data-theme="contrast"] .ic{border-width:1.5px}
+/* ---- learning tools: search, quizzes, links, glossary, progress ---- */
+.find{margin:14px 10px 0}
+.find input{width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font:inherit;font-size:13.5px}
+.find input::placeholder{color:var(--faint)}
+.nofind{margin:14px 10px;font-size:13px;color:var(--dim)}
+.ch[hidden],.qz[hidden],.grp[hidden]{display:none}
+.qz{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;padding:6px 10px;border-radius:9px;font-size:13px;line-height:1.3;cursor:pointer;color:var(--amber)}
+.qz:hover{background:var(--panel)}
+.qz.on{background:color-mix(in srgb,var(--amber) 13%,transparent)}
+.qz .n{width:24px;height:24px;display:grid;place-items:center;flex:none;font-size:13px}
+.qz .st{margin-left:auto;flex:none;font-size:11px;letter-spacing:1px;color:var(--faint)}
+.qz .st.got{color:var(--amber)}
+.side-foot{display:flex;flex-direction:column;gap:10px;margin:22px 10px 0;padding-top:16px;border-top:1px solid var(--line)}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+.side-foot>.btn{align-self:flex-start}
+.btn.tg[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.prog-io{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)}
+.prog-io span{margin-right:auto}
+.io-msg{margin:0;font-size:12px;color:var(--dim);min-height:1em}
+.links{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
+.links:empty{display:none}
+.links span{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
+.links button{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:3px 10px;font-size:12.5px;cursor:pointer;color:var(--text-2)}
+.links button:hover{border-color:var(--accent);color:var(--strong)}
+.term{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:help;text-decoration:underline dotted color-mix(in srgb,var(--accent) 70%,transparent);text-underline-offset:3px;text-decoration-thickness:1.5px}
+.term:hover,.term:focus-visible{color:var(--strong);text-decoration-color:var(--accent)}
+.tip{position:fixed;z-index:70;max-width:300px;background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:9px 12px;font-size:13.5px;line-height:1.45;color:var(--text);box-shadow:0 14px 30px -12px rgba(0,0,0,.6);pointer-events:none}
+.tip b{display:block;color:var(--accent);margin-bottom:2px}
+.tip[hidden]{display:none}
+dialog.gloss{width:min(720px,calc(100vw - 32px));max-height:min(80vh,760px);padding:0;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px}
+dialog.gloss::backdrop{background:rgba(4,6,13,.7)}
+.gloss .gh{position:sticky;top:0;display:flex;gap:10px;align-items:center;padding:16px 20px;background:var(--panel);border-bottom:1px solid var(--line)}
+.gloss h2{margin:0;font-size:18px;margin-right:auto}
+.gloss .gh input{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:inherit;font-size:13px;width:180px}
+.gloss dl{margin:0;padding:8px 20px 20px}
+.gloss dt{font-weight:700;margin-top:14px;color:var(--strong)}
+.gloss dd{margin:3px 0 0;color:var(--text-2);font-size:14.5px;line-height:1.5}
+.gloss dd .in{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.gloss dd .in button{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:2px 9px;font-size:12px;cursor:pointer;color:var(--dim)}
+.gloss dd .in button:hover{border-color:var(--accent);color:var(--strong)}
 </style>
 </head>
 <body>
@@ -242,8 +283,16 @@ body.play .transcript{display:none}
   <aside id="side">
     <div class="brand"><div class="brand-heading"><img class="brand-mark" width="44" height="44" alt="" src="data:image/png;base64,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"><b>Packets in Motion</b></div><span>Watch it, then solve it</span><span class="stars" id="starTotal"></span></div>
     <div class="prog"><i id="progBar"></i></div>
+    <div class="find"><input type="search" id="find" placeholder="Search chapters  ( / )" aria-label="Search chapters" aria-controls="toc" autocomplete="off" spellcheck="false"><p class="sr" id="findMsg" aria-live="polite"></p></div>
     <nav id="toc" aria-label="Chapters"></nav>
-    <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
+    <p class="nofind" id="noFind" hidden>No chapters match. Try another word.</p>
+    <div class="side-foot">
+      <button class="btn sm" id="glossBtn" title="Glossary (G)">Glossary</button>
+      <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button>
+      <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
+      <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+      <p class="io-msg" id="ioMsg" role="status"></p>
+    </div>
   </aside>
   <div class="scrim" id="scrim"></div>
   <main id="main" tabindex="-1">
@@ -268,6 +317,7 @@ body.play .transcript{display:none}
             <div class="use"><h3>When to use it</h3><ul id="useList"></ul></div>
             <div class="con"><h3>Trade-offs</h3><ul id="conList"></ul></div>
           </div>
+          <div class="links" id="cardLinks"></div>
           <div class="acts">
             <button class="btn" id="cardReplay">↺ Replay</button>
             <button class="btn" id="cardClose">Keep watching</button>
@@ -282,7 +332,7 @@ body.play .transcript{display:none}
         </div></div>
       </div>
       <div class="cpanel" id="cpanel" aria-label="Challenge">
-        <div class="chead"><span class="ctag">Challenge</span><b id="cTitle"></b></div>
+        <div class="chead"><span class="ctag" id="cTag">Challenge</span><b id="cTitle"></b></div>
         <p class="cgoal" id="cGoal"></p>
         <div class="cctl" id="cCtl"></div>
         <div class="cbar"><p class="cstatus" id="cStatus" aria-live="polite"></p><span id="cRun" class="cbar"></span>
@@ -308,11 +358,13 @@ body.play .transcript{display:none}
         <span><i style="background:var(--green);box-shadow:0 0 8px var(--green)"></i>Success / response</span>
         <span><i style="background:var(--red);box-shadow:0 0 8px var(--red)"></i>Failure</span>
         <span><i style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></i>Cached / queued</span>
-        <span class="keys">Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge</span>
+        <span class="keys">Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary</span>
       </div>
     </div>
   </main>
 </div>
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<dialog class="gloss" id="glossary" aria-labelledby="glTitle"><div class="gh"><h2 id="glTitle">Glossary</h2><input type="search" id="glFind" placeholder="Filter terms" aria-label="Filter terms" autocomplete="off"><button class="btn sm" id="glClose">Close</button></div><dl id="glList"></dl></dialog>
 <script>
 "use strict";
 /* ============================================================
@@ -458,7 +510,7 @@ const via=(...k)=>[[LP[0]+22,LP[1]],...k.map(q=>R[q]),[SV[0]-62,SV[1]]];
 const SENT=[{n:1,path:via('a','c','f'),t0:12.6,d:3.3},{n:2,path:via('b','e','g'),t0:13.1,d:2.7},{n:4,path:via('b','d','f'),t0:14.1,d:3.1}];
 const arr=n=>n===3?27.9:(p=>p.t0+p.d)(SENT.find(p=>p.n===n));
 const SLOT=k=>[790+k*46,165];
-ch({id:'packets',group:'Start Here',title:'How Computers Talk: Packets, IP Addresses & Ports',dur:34,
+ch({id:'packets',group:'Start Here',title:'How Computers Talk: Packets, IP Addresses & Ports',dur:34,needs:[],related:['client-server','rest-grpc-ws'],
 beats:[
 [0,'Two computers, one message','Your laptop wants to send a photo to a server far away. The internet only moves small pieces, so the photo is split into packets.'],
 [6,'Every packet carries an address','Each packet is labelled with the destination IP address (like a street address) and a port number (which door to knock on).'],
@@ -509,7 +561,7 @@ draw(t){
 }});})();
 
 /* ---------------- 1. CLIENT–SERVER & TYPING A URL ---------------- */
-ch({id:'client-server',group:'Foundations',title:'Client–Server & What Happens When You Type a URL',dur:31,
+ch({id:'client-server',group:'Foundations',title:'Client–Server & What Happens When You Type a URL',dur:31,needs:['packets'],related:['cdn','rest-grpc-ws','proxy-gateway'],
 beats:[
 [0,'Clients ask, servers answer','Every app is a conversation. Clients (phones, laptops, browsers) send requests; a server does the work and sends back responses.'],
 [6.5,'You type example.com','Your browser only knows a name. Networks route by numeric IP address, so first it has to find out where example.com lives.'],
@@ -578,7 +630,7 @@ draw(t){
 }});
 
 /* ---------------- 2. LATENCY vs THROUGHPUT, SCALING ---------------- */
-ch({id:'scaling',group:'Foundations',title:'Latency vs Throughput · Vertical vs Horizontal Scaling',dur:38,
+ch({id:'scaling',group:'Foundations',title:'Latency vs Throughput · Vertical vs Horizontal Scaling',dur:38,needs:['client-server'],related:['load-balancers','autoscaling','sharding'],
 beats:[
 [0,'Latency = time for ONE trip','Latency is how long a single request takes, measured in milliseconds. Watch the stopwatch follow one request across.'],
 [4,'Throughput = trips per second','Throughput is how many requests finish each second. It measures volume, not the speed of any single request.'],
@@ -658,7 +710,7 @@ const SV=[{on:0},{on:0},{on:10.4},{on:13},{on:15.5},{on:17.6}];SV[5].off=26;SV[4
 const BOOT=2,SX=k=>560+(k%3)*150,SY=k=>k<3?300:420;
 const ready=(s,t)=>t>=s.on+(s.on?BOOT:0)&&!(s.off&&t>=s.off);
 const nReady=t=>SV.filter(s=>ready(s,t)).length;
-ch({id:'autoscaling',group:'Foundations',title:'Autoscaling: Add Servers When You Need Them',dur:DUR,
+ch({id:'autoscaling',group:'Foundations',title:'Autoscaling: Add Servers When You Need Them',dur:DUR,needs:['scaling'],related:['load-balancers','backpressure','observability'],
 beats:[
 [0,'Traffic has a daily rhythm','A few users at night, a crowd at lunch, a peak in the evening. Paying for enough servers to handle the peak all day wastes money.'],
 [5,'Watch one number','An autoscaler keeps an eye on the group\'s average CPU and checks it every few seconds against a target: here, 70%.'],
@@ -710,7 +762,7 @@ draw(t){
   const ring0=[500,300],RR=165,SA={A:40,B:160,C:270},KEYS=[15,70,100,130,185,215,250,300,340];
   const owner=(k,set)=>{let best=null,bd=999;for(const n of set){let d=(SA[n]-k+360)%360;if(d<bd){bd=d;best=n;}}return best;};
   const onR=(deg,r=RR)=>[ring0[0]+r*Math.sin(deg*Math.PI/180),ring0[1]-r*Math.cos(deg*Math.PI/180)];
-ch({id:'load-balancers',group:'Traffic',title:'Load Balancers',dur:41,
+ch({id:'load-balancers',group:'Traffic',title:'Load Balancers',dur:41,needs:['scaling'],related:['sessions','resilience','proxy-gateway'],
 beats:[
 [0,'One server can\'t keep up','All traffic lands on one machine. Requests pile up and start failing.'],
 [5,'Add servers and a load balancer','A load balancer sits in front of a pool of servers. Clients talk to one address; the balancer decides who does the work.'],
@@ -783,7 +835,7 @@ draw(t){
 const U=[90,300],LB=[290,300],S={A:[560,160],B:[560,300],C:[560,430]},RD=[830,300];
 const to=k=>[[U[0]+20,U[1]],LB,[S[k][0]-60,S[k][1]]],back=k=>to(k).slice().reverse();
 const look=k=>[[S[k][0]+60,S[k][1]],[RD[0]-48,RD[1]]];
-ch({id:'sessions',group:'Traffic',title:'Sessions: Sticky vs Shared Storage',dur:34,
+ch({id:'sessions',group:'Traffic',title:'Sessions: Sticky vs Shared Storage',dur:34,needs:['load-balancers'],related:['caching','spof'],
 beats:[
 [0,'Logged in… but on which server?','You log in, and Server A remembers you in its own memory. Your next click goes through the load balancer.'],
 [5,'Round robin sends you elsewhere','The next request lands on Server B, which has never heard of you: "please log in again".'],
@@ -822,7 +874,7 @@ draw(t){
 /* ---------------- 4. REVERSE PROXIES & API GATEWAYS ---------------- */
 (function(){
   const CL=[[95,170],[95,300],[95,430]],PX=[420,300],SV=[[790,170],[790,300],[790,430]];
-ch({id:'proxy-gateway',group:'Traffic',title:'Reverse Proxies & API Gateways',dur:34,
+ch({id:'proxy-gateway',group:'Traffic',title:'Reverse Proxies & API Gateways',dur:34,needs:['load-balancers'],related:['rate-limiting','microservices','cdn'],
 beats:[
 [0,'Without a proxy: every server is exposed','Clients connect straight to each server. Every server needs a public address, its own security and its own certificates.'],
 [5,'Reverse proxy: one front door','A reverse proxy stands in front of the servers. Clients only ever see the proxy; the servers hide on a private network.'],
@@ -880,7 +932,7 @@ draw(t){
   const OR=[860,135],EA=[280,360],EB=[610,380];
   const UA=[[95,450],[180,505],[80,330]],UB=[[560,495],[690,500]];
   const oPath=(e)=>crv([e[0]+50,e[1]-20],[(e[0]+OR[0])/2,Math.min(e[1],OR[1])-70],[OR[0]-60,OR[1]+10]);
-ch({id:'cdn',group:'Traffic',title:'CDNs & Edge Caching',dur:37,
+ch({id:'cdn',group:'Traffic',title:'CDNs & Edge Caching',dur:37,needs:['client-server'],related:['caching','cache-invalidation','proxy-gateway'],
 beats:[
 [0,'Far from the server = slow','A user in Tokyo loads a site hosted in Virginia. Every request crosses an ocean, about 200 ms each way, however fast the server is.'],
 [7,'Put copies at the edge','A CDN runs edge servers in cities around the world. Users connect to the nearest one instead of the faraway origin.'],
@@ -951,7 +1003,7 @@ draw(t){
   const lbReq=[20.3,21.5,22.7,24.9,25.1,25.3,25.5,25.7,25.9,26.1,26.3,28.8,30,31.2,31.4,31.6,33.2];
   const LB=[];{let lastD=0;lbReq.forEach(s=>{const a=s+1;const inQ=LB.filter(q=>q.ok&&q.dep>a).length;if(inQ>=LCAP){LB.push({s,a,ok:false});return;}const dep=Math.max(a+.35,lastD)+LEAK;lastD=dep;LB.push({s,a,ok:true,dep});});}
   const X0=180,X1=900;
-ch({id:'rate-limiting',group:'Traffic',title:'Rate Limiting: Token Bucket & Leaky Bucket',dur:38.5,
+ch({id:'rate-limiting',group:'Traffic',title:'Rate Limiting: Token Bucket & Leaky Bucket',dur:38.5,needs:['proxy-gateway'],related:['backpressure','resilience','hot-keys'],
 beats:[
 [0,'Why limit?','Without limits, one noisy client, or an attack, can flood a server and ruin it for everyone. A rate limiter decides which requests get in.'],
 [3,'Token bucket: tokens drip in','The bucket holds up to 5 tokens and gains 1 token per second. Every request must take a token to pass.'],
@@ -1035,7 +1087,7 @@ function doc(x,y,w,lines,o={}){const a=o.a??1;if(a<=.01)return;const lh=19,h=lin
 /* ---------------- 7. SQL vs NoSQL ---------------- */
 (function(){
   const UR=[['1','Ada','London'],['2','Lin','Tokyo'],['3','Sam','Lagos']],OR=[['101','2','$30'],['102','1','$12'],['103','2','$55']];
-ch({id:'sql-nosql',group:'Data',title:'SQL vs NoSQL',dur:34,
+ch({id:'sql-nosql',group:'Data',title:'SQL vs NoSQL',dur:34,needs:['client-server'],related:['indexing','sharding','cap'],
 beats:[
 [0,'SQL: tables with fixed columns','Relational databases store data in tables. Every row has the same columns, defined up front by a schema.'],
 [5,'Relations and JOINs','Orders point to users by id. A JOIN stitches related rows together at query time, so each fact is stored exactly once.'],
@@ -1085,7 +1137,7 @@ draw(t){
   const LEAVES=[['ana','bo','cy'],['dan','eve','ivy'],['kim','lee','max'],['raj','sam','zoe']],LX=[470,600,730,860],ROOT=[665,165];
   const rowOf=e=>EM.indexOf(e)+1,TX=60,TY=88,RH=31,rowY=i=>TY+RH*(i+1)+RH/2;
   const slot=(e)=>{for(let l=0;l<4;l++){const j=LEAVES[l].indexOf(e);if(j>=0)return[l,j];}};
-ch({id:'indexing',group:'Data',title:'Database Indexing',dur:28.5,
+ch({id:'indexing',group:'Data',title:'Database Indexing',dur:28.5,needs:['sql-nosql'],related:['sharding','caching'],
 beats:[
 [0,'Find one row in a big table','Query: find the user whose email is raj@mail.com. Rows are stored in the order they were inserted, not sorted by email.'],
 [2.5,'No index: check every row','The database scans row by row until it has checked them all, since there could be more matches. Work grows with table size: O(n).'],
@@ -1132,7 +1184,7 @@ cons:['Every write also updates each index, so write-heavy tables slow down','In
 (function(){
   const L=[500,190],F1=[270,400],F2=[730,400],WR=[120,190],R1=[95,400],R2=[905,400];
   const E=(a,b,da=48,db_=48)=>{const d=Math.hypot(b[0]-a[0],b[1]-a[1]),ux=(b[0]-a[0])/d,uy=(b[1]-a[1])/d;return[[a[0]+ux*da,a[1]+uy*da],[b[0]-ux*db_,b[1]-uy*db_]];};
-ch({id:'replication',group:'Data',title:'Replication: Leader–Follower & Multi-Leader',dur:40,
+ch({id:'replication',group:'Data',title:'Replication: Leader–Follower & Multi-Leader',dur:40,needs:['sql-nosql'],related:['cap','consensus','spof'],
 beats:[
 [0,'One database, every request','All reads and writes hit one database. If it slows down or dies, the whole app goes with it.'],
 [4,'Leader–follower replication','Add follower copies. The leader streams every change to them through a replication log.'],
@@ -1211,7 +1263,7 @@ cons:['Asynchronous replication means stale reads (read-your-own-writes needs ca
   const rangeOf=i=>Math.floor(i/4);
   const slotPos=(s,j)=>[SH[s][0]+(j%2?34:-34),462+Math.floor(j/2)*28];
   const slotIn=(i,map)=>{let j=0;for(let k=0;k<i;k++)if(map(k)===map(i))j++;return j;};
-ch({id:'sharding',group:'Data',title:'Sharding & Partitioning',dur:34,
+ch({id:'sharding',group:'Data',title:'Sharding & Partitioning',dur:34,needs:['replication'],related:['hot-keys','unique-ids','indexing'],
 beats:[
 [0,'One table too big for one machine','A billion rows no longer fit on one server\'s disk, and one CPU can\'t answer every query.'],
 [5,'Split rows by a shard key','Sharding splits rows across several databases. Here the shard key is the user\'s name: A–H, I–P and Q–Z each get their own shard.'],
@@ -1263,7 +1315,7 @@ cons:['Cross-shard JOINs and transactions become hard or impossible','A bad shar
   const LRU=[[0,['D','C','B','A']],[30.9,['B','D','C','A']],[33.9,['E','B','D','C']],[35.9,['C','E','B','D']],[38.9,['F','C','E','B']]];
   const OPS=[[29.3,'get B',C.green],[31.9,'put E  (cache full)',C.amber],[34.4,'get C',C.green],[36.9,'put F  (cache full)',C.amber]];
   const SX=k=>320+k*120;
-ch({id:'caching',group:'Data',title:'Caching Strategies & LRU Eviction',dur:42,
+ch({id:'caching',group:'Data',title:'Caching Strategies & LRU Eviction',dur:42,needs:['sql-nosql'],related:['cache-invalidation','hot-keys','cdn'],
 beats:[
 [0,'Cache-aside: check the cache first','The app asks the fast in-memory cache first. On a miss, it reads the slow database, then saves the answer in the cache for next time.'],
 [7,'Cache hit: skip the database','Later reads for the same key come straight from memory in about 1 ms instead of 50 ms. Watch the hit rate climb.'],
@@ -1338,7 +1390,7 @@ const toC=[[AP[0]+56,AP[1]-24],[CA[0]-90,CA[1]]],toD=[[AP[0]+56,AP[1]],[DB[0]-56
 const price=t=>t<13.5?20:t<19?25:t<27?30:35;
 // the cached copy: [value, filledAt, ttl] or null
 function entry(t){if(t<3.8)return null;if(t<11)return[20,3.8,7.2];if(t<13.6)return null;if(t<19.2)return[20,13.6,8];if(t<23.2)return null;if(t<27.2)return[30,23.2,8];if(t<29)return null;if(t<36.2)return[30,29,7.2];if(t<38.8)return null;return[35,38.8,8];}
-ch({id:'cache-invalidation',group:'Data',title:'Cache Expiry (TTL) & Invalidation',dur:40,
+ch({id:'cache-invalidation',group:'Data',title:'Cache Expiry (TTL) & Invalidation',dur:40,needs:['caching'],related:['cap','event-driven'],
 beats:[
 [0,'A cache is a copy','The app caches a product\'s price so it does not ask the database every time. But a copy can fall out of date.'],
 [5,'TTL: copies expire','Each cached item gets a time to live, here 8 seconds. When it expires, the next read goes to the database and refreshes the copy.'],
@@ -1376,7 +1428,7 @@ draw(t){
 (function(){
 const UX=80,UY=k=>110+k*48,AP=[330,300],CA=[590,160],DB=[840,360];
 const miss=[[AP[0]+56,AP[1]+10],[DB[0]-56,DB[1]]];
-ch({id:'hot-keys',group:'Data',title:'Hot Keys & Request Coalescing',dur:34,
+ch({id:'hot-keys',group:'Data',title:'Hot Keys & Request Coalescing',dur:34,needs:['caching'],related:['sharding','rate-limiting','backpressure'],
 beats:[
 [0,'One key, a million readers','A celebrity posts. Everyone asks for the same key at once: post:42. The cache serves it easily…'],
 [5,'…until it expires','The cached copy of post:42 expires, and in that instant thousands of requests miss the cache together.'],
@@ -1417,7 +1469,7 @@ draw(t){
 (function(){
   const N1=[320,280],N2=[680,280],CA_=[130,440],CB=[870,440];
   const pA=[[146,430],[288,322]],pB=[[854,430],[712,322]],link=[[372,280],[628,280]];
-ch({id:'cap',group:'Data',title:'CAP Theorem & Consistency Models',dur:38,
+ch({id:'cap',group:'Data',title:'CAP Theorem & Consistency Models',dur:38,needs:['replication'],related:['consensus','transactions','cache-invalidation'],
 beats:[
 [0,'Same data on two nodes','Two replicas hold the same value, x = 1. Client A talks to Node 1, client B talks to Node 2.'],
 [3,'Normally: write, then sync','A writes x = 2 to Node 1. Node 1 copies it to Node 2, so B reads 2 as well. Everyone agrees.'],
@@ -1483,7 +1535,7 @@ cons:['CAP only bites during a partition; the rest of the time the trade-off is 
 (function(){
   const Y=[150,300,450],CX=130,SX=860,cp=y=>[[CX+18,y],[SX-60,y]];
   const pushes=[19.2,20.3,20.8,22.1,23.5,24.2,25,27,28.1,29.4,30,31.5,32.8],sends=[21.3,24.6,28.8,32];
-ch({id:'rest-grpc-ws',group:'Communication',title:'REST vs gRPC vs WebSockets',dur:34.5,
+ch({id:'rest-grpc-ws',group:'Communication',title:'REST vs gRPC vs WebSockets',dur:34.5,needs:['client-server'],related:['proxy-gateway','queues-pubsub','microservices'],
 beats:[
 [0,'REST: resources over HTTP + JSON','The client asks for a resource by URL (GET /users/7) and gets a JSON document back. One request, one response, readable text.'],
 [8,'gRPC: compact binary calls','gRPC calls a function on another service using Protocol Buffers: small binary messages over HTTP/2. Many calls share one connection at the same time.'],
@@ -1528,7 +1580,7 @@ cons:['REST: chatty (many round trips), over/under-fetching, verbose JSON','gRPC
   const ta=k=>22.6+k*.85,NE=13,cellX=k=>200+k*50+25;
   const readE=k=>ta(k)+.7,batch=[24.5,27,29.5,32,34.5],readA=k=>batch.find(b=>b>=ta(k)+.3),readS=k=>Math.max(ta(k)+.5,23.5+k*1.35);
   const GR=[['Email',260,readE],['Analytics',520,readA],['Shipping',780,readS]];
-ch({id:'queues-pubsub',group:'Communication',title:'Message Queues & Pub/Sub',dur:41,
+ch({id:'queues-pubsub',group:'Communication',title:'Message Queues & Pub/Sub',dur:41,needs:['rest-grpc-ws'],related:['sync-async','event-driven','backpressure','idempotency'],
 beats:[
 [0,'Direct call: both must be up','The producer calls the consumer directly and waits. If the consumer is slow, the producer is stuck. If it\'s down, the request fails.'],
 [7,'Put a queue in the middle','The producer drops messages into a queue (amber) and moves on instantly. The consumer pulls them at its own pace.'],
@@ -1597,7 +1649,7 @@ cons:['Eventual consistency: work happens "soon", not "now"','Duplicates and ord
 (function(){
   const U=[90,260],API=[320,260],CH=[640,130],EM0=[640,260],PDF0=[640,390],EM1=[840,300],PDF1=[840,430],QU=[520,430];
   const hop=(a,b,da=56,db_=56)=>{const d=Math.hypot(b[0]-a[0],b[1]-a[1]),ux=(b[0]-a[0])/d,uy=(b[1]-a[1])/d;return[[a[0]+ux*da,a[1]+uy*da],[b[0]-ux*db_,b[1]-uy*db_]];};
-ch({id:'sync-async',group:'Communication',title:'Synchronous vs Asynchronous Processing',dur:32,
+ch({id:'sync-async',group:'Communication',title:'Synchronous vs Asynchronous Processing',dur:32,needs:['queues-pubsub'],related:['timeouts','event-driven'],
 beats:[
 [0,'Synchronous: wait for everything','You place an order. The API charges the card, sends the email and builds the invoice PDF one after another, and only then replies.'],
 [11,'You wait for the slowest parts','Total wait = the sum of every step. And if the email service is down, the whole order fails.'],
@@ -1646,7 +1698,7 @@ cons:['Harder to reason about: the result arrives later, so you need status chec
 /* ---------------- 16. SPOF & REDUNDANCY ---------------- */
 (function(){
   const U=[80,300],X={lb:290,s:520,d:770};
-ch({id:'spof',group:'Reliability',title:'Single Points of Failure & Redundancy',dur:31,
+ch({id:'spof',group:'Reliability',title:'Single Points of Failure & Redundancy',dur:31,needs:['load-balancers'],related:['replication','resilience','consensus'],
 beats:[
 [0,'A chain of single boxes','Requests flow user → load balancer → server → database. It works, as long as every link holds.'],
 [4,'One box dies, everything stops','The server fails and every request hits a dead end. A part whose failure takes down the whole system is a single point of failure (SPOF).'],
@@ -1698,7 +1750,7 @@ cons:['Redundancy costs money: roughly 2× hardware for 1× capacity','More movi
 (function(){
 const U=[90,210],WB=[330,210],PY=[650,210],TP=[330,380];
 const CH=[['Web',150],['Orders',370],['Payments',590],['Bank',810]].map(([n,x])=>({n,x,y:420}));
-ch({id:'timeouts',group:'Reliability',title:'Timeouts & Deadlines',dur:34,
+ch({id:'timeouts',group:'Reliability',title:'Timeouts & Deadlines',dur:34,needs:['client-server'],related:['resilience','backpressure','observability'],
 beats:[
 [0,'A call that never answers','The web server calls the payment service, which has hung. Without a timeout, the web server just waits… and waits.'],
 [5,'Waiting requests pile up','Each new request also gets stuck waiting on payments. The server runs out of workers and stops answering even simple pages.'],
@@ -1750,7 +1802,7 @@ draw(t){
   const ROW1=[];for(let v=0;v<=16;v+=.5)ROW1.push([v,5]);
   const ROW2=[0,1,3,7,15].map(v=>[v,5]);
   const ROW3=[];{const m={};for(let c=0;c<5;c++){let v=0;for(let k=0;k<5;k++){if(k>0)v+=(.35+rnd(c*7+k)*1.3)*Math.pow(2,k-1);if(v<=16){const b=Math.round(v/.2)*.2;m[b]=(m[b]||0)+1;}}}for(const b in m)ROW3.push([+b,m[b]]);}
-ch({id:'resilience',group:'Reliability',title:'Health Checks, Failover, Circuit Breakers & Retries',dur:44,
+ch({id:'resilience',group:'Reliability',title:'Health Checks, Failover, Circuit Breakers & Retries',dur:44,needs:['timeouts','spof'],related:['idempotency','load-balancers','backpressure'],
 beats:[
 [0,'Health checks: are you alive?','Every couple of seconds the load balancer pings each server. A healthy server answers "200 OK".'],
 [4.4,'A server stops answering','Server 2 hangs. One missed check could be a blip, so the balancer waits for 3 misses in a row. Meanwhile, requests sent to it fail.'],
@@ -1813,7 +1865,7 @@ cons:['Health checks that are too sensitive cause flapping; too lax and failures
   const path=[[148,300],[455,300]];
   const bal=t=>t<2.6?100:t<10.5?50:t<13.4?0:t<16.1?100:50;
   const lost=(t,t0)=>{const p=(t-t0)/1.4;if(p<=0)return;if(p<.5){const[x,y]=along(rev(path),p);dot(x,y,C.green,6);}else{const m=along(rev(path),.5);drop(t,t0+.7,m[0],m[1],{label:'✕ lost'});}};
-ch({id:'idempotency',group:'Reliability',title:'Idempotency',dur:32,
+ch({id:'idempotency',group:'Reliability',title:'Idempotency',dur:32,needs:['resilience'],related:['queues-pubsub','transactions','unique-ids'],
 beats:[
 [0,'Pay $50, then the network hiccups','The server charges the card, but the response is lost on the way back. The client can\'t tell whether the payment happened.'],
 [8,'Retry… and get charged twice','The client retries, which is the right instinct. But the server treats it as a brand-new payment and charges again.'],
@@ -1869,7 +1921,7 @@ cons:['Must store keys and results (with an expiry), which adds storage and a lo
       const mc=bad?C.red:hot?C.amber:C.accent;if(hot||bad)glowOn(mc,14);rr(gx-65,gy-33,130,66,10);g.fillStyle=C.panel2;g.fill();glowOff();g.strokeStyle=mc;g.lineWidth=1.6;g.stroke();
       tx(m,gx,gy-(idle?6:0),{z:14,wt:650,c:idle?C.faint:C.text});if(idle)tx('idle',gx,gy+13,{z:11,c:C.faint});if(hot)tx('busy!',gx,gy+14,{z:11,c:C.amber,wt:700});});
     if(o.dead)pill('WHOLE APP CRASHED',0,MH/2+18,{c:C.red,z:12});});}
-ch({id:'microservices',group:'Architecture',title:'Monolith vs Microservices',dur:35,
+ch({id:'microservices',group:'Architecture',title:'Monolith vs Microservices',dur:35,needs:['rest-grpc-ws'],related:['proxy-gateway','observability','transactions','event-driven'],
 beats:[
 [0,'Monolith: one app, one deploy','All features live in one codebase and run as one process, sharing one database. Simple to build, test and deploy at first.'],
 [6,'Scaling means copying everything','Only Search is busy, but you can\'t scale just Search. You run whole extra copies of the entire app, idle parts and all.'],
@@ -1935,7 +1987,7 @@ cons:['Monolith: grows tangled, slow builds, one bad deploy or bug affects every
   const C0=23.4;const recv=(t0,x0,x)=>t0+(x-x0)/SPD;
   const invGets=recv(C0,BX0,430)+.5,sr=invGets+.8;const shipGets=recv(sr+.5,430,650)+.5,sh=shipGets+.8;const emGets=recv(sh+.5,650,870)+.5;
   EVTS.push([C0,'OrderPlaced',BX0],[sr+.5,'StockReserved',430],[sh+.5,'Shipped',650]);
-ch({id:'event-driven',group:'Architecture',title:'Event-Driven Architecture',dur:33,
+ch({id:'event-driven',group:'Architecture',title:'Event-Driven Architecture',dur:33,needs:['queues-pubsub'],related:['microservices','transactions','cache-invalidation'],
 beats:[
 [0,'Request-driven: the caller knows everyone','Order service calls Inventory, Email and Analytics directly, one by one, and waits. Adding a feature means changing Order service.'],
 [7,'Event-driven: announce what happened','Order service just publishes a fact, "OrderPlaced", to an event bus. It doesn\'t know or care who is listening.'],
@@ -1985,7 +2037,7 @@ cons:['Harder to follow: there is no single place that shows the whole flow (use
   const series=(f)=>Array.from({length:48},(_,i)=>f(i/47,i));
   const RPS=series((u,i)=>120+18*Math.sin(u*9)+8*(rnd(i)-.5)),ERR=series((u,i)=>u>.55&&u<.72?3.5+rnd(i+50):.4+.3*rnd(i+90)),P99=series((u,i)=>u>.55&&u<.72?820+80*rnd(i):190+30*Math.sin(u*7)+20*rnd(i+7));
   const SP=[['gateway',0,480],['orders',15,462],['payments',40,440],['db query',48,70],['bank API call',80,428]];
-ch({id:'observability',group:'Architecture',title:'Observability: Logs, Metrics & Traces',dur:36,
+ch({id:'observability',group:'Architecture',title:'Observability: Logs, Metrics & Traces',dur:36,needs:['microservices'],related:['timeouts','autoscaling','resilience'],
 beats:[
 [0,'One click, many services','A single request hops through the gateway, the Orders service, the Payments service and the database. When it\'s slow, where do you even look?'],
 [4,'Logs: what happened, in detail','Each service writes timestamped lines describing events. Great for the details of a single error, but there are millions of lines to search.'],
@@ -2041,7 +2093,7 @@ const POS=N.map((n,k)=>{const a=(-90+k*72)*Math.PI/180;return[CX+RAD*Math.cos(a)
 const TO={B:5.2,C:4.0,D:4.8,E:5.6};             // randomized election timeouts (s)
 const HB1=[5.5,6.5,7.5,8.5,9.5], HB2=[20.6,21.6,22.6,23.6,24.6,25.6,26.6,27.6,28.6,29.6,30.6];
 const seg=(a,b)=>{const[x0,y0]=POS[a],[x1,y1]=POS[b],d=Math.hypot(x1-x0,y1-y0),u=[(x1-x0)/d,(y1-y0)/d];return[[x0+u[0]*52,y0+u[1]*34],[x1-u[0]*52,y1-u[1]*34]];};
-ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:38,
+ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:38,needs:['replication'],related:['cap','spof','transactions'],
 beats:[
 [0,'Five nodes must agree','A replicated database needs exactly one leader to order the writes. With five nodes, how do they agree who leads, even when some crash?'],
 [5,'The leader sends heartbeats','Leader A pings every follower a few times a second: "still alive". Each ping resets that follower\'s election timer.'],
@@ -2088,7 +2140,7 @@ draw(t){
 const SV=[['Flights',[760,140]],['Hotels',[760,295]],['Cars',[760,450]]],CO=[380,295];
 const to=k=>[[CO[0]+80,CO[1]],[SV[k][1][0]-72,SV[k][1][1]]],back=k=>to(k).slice().reverse();
 const step=(a,b)=>[[SV[a][1][0],SV[a][1][1]+(b>a?30:-30)],[SV[b][1][0],SV[b][1][1]+(b>a?-30:30)]];
-ch({id:'transactions',group:'Advanced',title:'Distributed Transactions: Two-Phase Commit & Sagas',dur:40,
+ch({id:'transactions',group:'Advanced',title:'Distributed Transactions: Two-Phase Commit & Sagas',dur:40,needs:['microservices','cap'],related:['idempotency','event-driven','consensus'],
 beats:[
 [0,'One trip, three services','Booking a trip touches Flights, Hotels and Cars, each with its own database. Either all three bookings happen, or none should.'],
 [5,'Two-phase commit: prepare','A coordinator asks each service "can you commit?". Each one locks its rows, gets ready, and votes yes.'],
@@ -2132,7 +2184,7 @@ draw(t){
 const SV=[[150,170],[150,300],[150,430]],DBP=[540,300];
 const BAR={x:300,y:112,w:620};const F=[['timestamp (ms)',41,C.accent],['machine',10,C.amber],['sequence',12,C.green]];
 const UU=['f47ac10b-58cc…','0b9e3a12-77d2…','c2e1d4a9-10fe…','7a03b5c8-9e44…','3d99ef01-b2a7…','9e5c7722-4f1b…'];
-ch({id:'unique-ids',group:'Advanced',title:'Unique IDs at Scale: Snowflake IDs',dur:34,
+ch({id:'unique-ids',group:'Advanced',title:'Unique IDs at Scale: Snowflake IDs',dur:34,needs:['sharding'],related:['idempotency','capstone'],
 beats:[
 [0,'Every row needs a unique ID','Orders, posts, messages: each one needs an ID nobody else will ever get, even with hundreds of servers creating them at the same moment.'],
 [5,'Auto-increment: one counter','One database hands out 1, 2, 3… Simple and ordered, but every server has to ask it, so it becomes a bottleneck and a single point of failure.'],
@@ -2167,7 +2219,7 @@ draw(t){
 /* ---------------- A4. BACK-PRESSURE & LOAD SHEDDING ---------------- */
 (function(){
 const PR=[150,290],QU=[470,290],DB=[810,290];
-ch({id:'backpressure',group:'Advanced',title:'Back-Pressure & Load Shedding',dur:36,
+ch({id:'backpressure',group:'Advanced',title:'Back-Pressure & Load Shedding',dur:36,needs:['queues-pubsub','rate-limiting'],related:['autoscaling','timeouts','hot-keys'],
 beats:[
 [0,'A fast producer, a slow consumer','The API receives 300 requests/s, but the database can only handle 200/s. The extra 100 every second has to go somewhere.'],
 [5,'An unbounded queue delays the crash','Requests pile up in memory. Everyone waits longer and longer, until memory runs out and the whole service falls over.'],
@@ -2216,7 +2268,7 @@ draw(t){
   const CL=[];for(let s=33.2;s<60.6;s+=.72){const i=CL.length;const k=s<46.3?(i%2):1;CL.push({s,k,ev:s>=40});}
   const EV=[];{let last=0;CL.forEach(c=>{if(!c.ev)return;const e=c.s+1.6+.5+.55;const take=Math.max(e+.4,last+.95);last=take;EV.push({e,take,k:c.k,s:c.s});});}
   const FLOOD=[];for(let s=51.3;s<54.8;s+=.14)FLOOD.push({s,ok:FLOOD.length<3});
-ch({id:'capstone',group:'Capstone',title:'Capstone: Design a URL Shortener',dur:62,
+ch({id:'capstone',group:'Capstone',title:'Capstone: Design a URL Shortener',dur:62,needs:['caching','sharding','unique-ids','queues-pubsub'],related:['rate-limiting','resilience','load-balancers'],
 beats:[
 [0,'The goal: long URL → short link','A URL shortener turns a long link into a short code, then redirects everyone who opens it. Clicks (reads) outnumber new links (writes) about 100 to 1.'],
 [5,'Assemble the building blocks','DNS, an API gateway with rate limiting, a load balancer, two stateless app servers, a cache, a sharded database, and a queue for click analytics.'],
@@ -2320,9 +2372,22 @@ function flyer(now,f){const p=(now-f.t0)/f.d;if(p<0)return false;if(f.drop&&p>=f
 function flyers(now,list){for(let i=list.length-1;i>=0;i--)if(flyer(now,list[i]))list.splice(i,1);}
 
 // ---------- effects: bursts and floating text (real time) ----------
+// ---------- sound cues (off until the viewer turns them on) ----------
+// Short synthesized tones: no audio files, nothing loads until enabled.
+const SFX={on:false,ctx:null,last:0,
+  enable(v){this.on=!!v;if(!v)return;if(!this.ctx){const A=window.AudioContext||window.webkitAudioContext;if(A)this.ctx=new A();}if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();},
+  tone(f,d,o={}){const a=this.ctx,t0=a.currentTime+(o.at||0),osc=a.createOscillator(),gn=a.createGain();osc.type=o.type||'sine';osc.frequency.setValueAtTime(f,t0);
+    if(o.to)osc.frequency.exponentialRampToValueAtTime(o.to,t0+d);gn.gain.setValueAtTime(0,t0);gn.gain.linearRampToValueAtTime(o.vol||.07,t0+.012);gn.gain.exponentialRampToValueAtTime(.0001,t0+d);
+    osc.connect(gn);gn.connect(a.destination);osc.start(t0);osc.stop(t0+d+.03);},
+  play(kind,n=0){if(!this.on||!this.ctx)return;const now=Date.now();if(kind!=='win'&&now-this.last<90)return;this.last=now;
+    try{if(kind==='good'){this.tone(660,.12);this.tone(990,.16,{at:.07});}
+      else if(kind==='bad')this.tone(220,.22,{type:'triangle',to:150,vol:.09});
+      else if(kind==='beat')this.tone(520,.18,{vol:.035});
+      else if(kind==='win'){[523,659,784,1047].slice(0,n+1).forEach((f,i)=>this.tone(f,.22,{at:i*.11}));}}catch(e){}}};
+
 const FX={p:[],
   burst(x,y,c,n=18,sp=170){if(reduceMQ.matches)n=Math.min(n,4),sp*=.3;for(let i=0;i<n;i++){const a=Math.random()*6.283,v=sp*(.35+Math.random()*.65);this.p.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:.6+Math.random()*.5,age:0,c,r:1.8+Math.random()*2.4});}},
-  text(x,y,s,c=C.green,z=17){this.p.push({x,y,vx:0,vy:reduceMQ.matches?0:-36,life:1.15,age:0,c,s,z});},
+  text(x,y,s,c=C.green,z=17){if(c===C.green)SFX.play('good');else if(c===C.red)SFX.play('bad');this.p.push({x,y,vx:0,vy:reduceMQ.matches?0:-36,life:1.15,age:0,c,s,z});},
   step(dt){for(let i=this.p.length-1;i>=0;i--){const q=this.p[i];q.age+=dt;if(q.age>=q.life){this.p.splice(i,1);continue;}q.x+=q.vx*dt;q.y+=q.vy*dt;const a=1-q.age/q.life;
     if(q.s){tx(q.s,q.x,q.y,{z:q.z,wt:800,c:q.c,a});}else{q.vy+=260*dt;q.vx*=.985;g.save();g.globalAlpha=a;glowOn(q.c,8);g.fillStyle=q.c;g.beginPath();g.arc(q.x,q.y,q.r*a+.4,0,7);g.fill();glowOff();g.restore();}}},
   clear(){this.p.length=0;}};
@@ -2404,6 +2469,44 @@ function orderGame(o){return api=>{
       if(k>=0){const other=slots[k].card;if(drag.slot>=0)slots[drag.slot].card=other;if(other)other.slot=drag.slot;slots[k].card=drag;drag.slot=k;}
       else if(drag.slot>=0){slots[drag.slot].card=null;drag.slot=-1;}drag=null;}};
 };}
+
+// ---------- mechanic: multiple choice (section quizzes) ----------
+// o.questions:[{q, a:[right, wrong, wrong…], why, ch}]  (the first answer is the right one;
+// options are shuffled when the quiz starts). ch: the chapter to rewatch after a miss.
+function quizGame(o){const make=api=>{
+  const qs=shuffle(o.questions.map(q=>({...q,opts:shuffle(q.a.map((t,k)=>({t,ok:k===0})))})));const n=qs.length;
+  let i=0,picked=-1,right=0,done=false,shown=0;const missed=[],marks=[];
+  const OW=430,OH=92,ox=k=>W/2+(k%2?1:-1)*(OW/2+10),oy=k=>246+Math.floor(k/2)*(OH+18);
+  const opts=()=>qs[i].opts;
+  function ask(){picked=-1;shown=api.now();const q=qs[i];
+    api.status(`Question <b>${i+1}</b> of ${n}: ${esc(q.q)} ${q.opts.map((p,k)=>`<kbd>${k+1}</kbd> ${esc(p.t)}`).join(' · ')}`);}
+  function pick(k){if(done||picked>=0||!opts()[k])return;picked=k;const q=qs[i],ok=q.opts[k].ok;marks.push(ok);
+    const x=ox(k),y=oy(k);if(ok){right++;FX.burst(x,y,C.green,18,140);FX.text(x,y-60,'Right!',C.green,16);}else{missed.push(q);FX.text(x,y-60,'Not quite',C.red,16);}
+    const ans=q.opts.find(p=>p.ok).t;
+    api.status(`${ok?'<b>Right.</b>':`<span class="bad">✕</span> The answer is “${esc(ans)}”.`} ${esc(q.why)} Press <kbd>Enter</kbd> for ${i+1<n?'the next question':'your score'}.`);}
+  function next(){if(done||picked<0)return;if(i+1<n){i++;ask();return;}done=true;
+    const miss=n-right,st=miss===0?3:miss<=1?2:right>=n/2?1:0;
+    const again=[...new Set(missed.map(q=>q.ch))].map(id=>chapters.find(c=>c.id===id)).filter(Boolean).map(c=>c.title);
+    api.win(st,`${right} of ${n} right`,miss?`Worth a rewatch: ${again.join('; ')}.`:'Every answer right. You have this section down.');}
+  api.button('Next question →',next,{primary:true});
+  let started=false;
+  return{
+    draw(now){if(!started){started=true;ask();}const q=qs[i];
+      tx(`${o.title||'Section quiz'} · ${i+1} / ${n}`,W/2,44,{z:13,wt:700,c:C.dim});
+      textBlock(q.q,W/2,118,860,{z:21,wt:700,lh:29});
+      q.opts.forEach((p,k)=>{const x=ox(k),y=oy(k),me=k===picked,after=picked>=0;
+        const c=after?(p.ok?C.green:me?C.red:C.edge):C.edge,a=after&&!p.ok&&!me?.45:1;
+        plate(x,y,OW,OH,{c,fill:after&&(p.ok||me)?hexA(c,.13):C.panel2,glow:after&&(p.ok||me)?14:0,a,r:14});
+        keycap(String(k+1),x-OW/2+20,y-OH/2+20,{a});textBlock(p.t,x+8,y,OW-70,{z:15.5,wt:600,lh:21,a});});
+      if(picked>=0)textBlock(q.why,W/2,492,880,{z:14,wt:500,c:C.dim,lh:19});
+      marks.forEach((ok,k)=>dot(W/2-(n-1)*11+k*22,536,ok?C.green:C.red,4.5));
+      for(let k=marks.length;k<n;k++){g.save();g.strokeStyle=C.edge;g.lineWidth=1.5;g.beginPath();g.arc(W/2-(n-1)*11+k*22,536,4.5,0,7);g.stroke();g.restore();}},
+    click(x,y){const k=opts().findIndex((p,k)=>Math.abs(x-ox(k))<OW/2&&Math.abs(y-oy(k))<OH/2);if(k>=0)pick(k);else if(picked>=0)next();},
+    key(k){if(k==='Enter'||k===' '||k==='n'||k==='N'){next();return;}const d=+k;if(d>=1&&d<=4)pick(d-1);}};
+};make.questions=o.questions;return make;}
+// registry: one quiz per course section, shown at the end of that section in the sidebar
+const QUIZ={};
+function quiz(group,def){QUIZ[group]={...def,group,id:'quiz-'+group.toLowerCase().replace(/[^a-z0-9]+/g,'-')};}
 
 // ---------- mechanic: tune, then run a simulation ----------
 // o.controls(api,p): builds controls that write into p. o.build(p,api): returns a sim with
@@ -2827,6 +2930,83 @@ chal('timeouts',{title:'Set the timeout budget',goal:'Every user must get an ans
           if(a&&b)return{stars:2,title:'Within budget, but wasteful',msg:'An inner service waits longer than its caller does, so it keeps working after the caller has given up. Make each inner timeout shorter.'};
           return{stars:1,title:a?'Healthy calls are failing':`Users waited ${R.maxWait.toFixed(1)} s`,msg:a?'A timeout is shorter than a healthy call needs. Leave room for 0.2 s plus 0.1 s per hop.':'The outer timeout lets users wait past 2 s. Every hop must fit inside the budget.'};}};}})});
 
+/* ---------------- QUIZ: FOUNDATIONS ---------------- */
+quiz('Foundations',{title:'Foundations recap',goal:'Six questions on page loads, latency, scaling and autoscaling. Answer with a click or keys 1–4.',
+  hint:'Latency is one request\'s time; throughput is requests per second. Scaling out survives a crash; autoscaling reacts, it does not predict.',
+  make:quizGame({title:'Foundations',questions:[
+    {q:'You type example.com and press Enter. What does the browser need before anything else?',a:['The server\'s IP address, from DNS','A TCP connection to example.com','The page\'s HTML','A TLS certificate'],why:'Networks route by number. DNS turns the name into an IP address before any connection can open.',ch:'client-server'},
+    {q:'A page takes 300 ms to load and the server finishes 2,000 requests per second. Which number is the latency?',a:['300 ms','2,000 requests per second','Both of them','Neither of them'],why:'Latency is how long one request takes. Throughput is how many requests finish per second.',ch:'scaling'},
+    {q:'Your only database server sits at 95% CPU. What is the quickest fix that needs no code changes?',a:['Move it to a bigger machine (scale up)','Add a second identical database (scale out)','Shard the data','Put a CDN in front of it'],why:'Vertical scaling is a hardware change. Scaling a database out needs replication or sharding, which is real design work.',ch:'scaling'},
+    {q:'Why do several medium servers usually beat one huge one?',a:['A crash removes only part of the capacity, and they cost less','Each request is always faster','They need no load balancer','They can never run out of memory'],why:'Scaling out spreads the risk: losing one of four servers is a dent, losing your only server is an outage.',ch:'scaling'},
+    {q:'An autoscaler adds a server above 70% CPU and removes one below 65%, with no cooldown. What happens?',a:['It flaps, adding and removing servers over and over','It scales perfectly','It never adds a server','It removes every server'],why:'Each change pushes the load across the other threshold. Leave a wide gap between the two and add a cooldown.',ch:'autoscaling'},
+    {q:'Traffic doubles in 10 seconds, but a new server takes 2 minutes to boot. What does autoscaling alone give you?',a:['Dropped or slow requests until new servers are ready','Instant extra capacity','Lower latency straight away','Exactly the same as before'],why:'Autoscaling reacts after load rises. Keep headroom, or scale ahead of spikes you can predict.',ch:'autoscaling'}]})});
+
+/* ---------------- QUIZ: TRAFFIC ---------------- */
+quiz('Traffic',{title:'Traffic recap',goal:'Six questions on load balancing, sessions, gateways, CDNs and rate limits. Answer with a click or keys 1–4.',
+  hint:'Think about where each decision is best made: at the balancer, at the gateway, at the edge, or in a shared store.',
+  make:quizGame({title:'Traffic',questions:[
+    {q:'One server is older and slower, and requests vary a lot in size. Which balancing strategy fits best?',a:['Least connections','Round robin','Random','Always the first server'],why:'Least connections looks at how busy each server really is, so the slow one naturally gets less work.',ch:'load-balancers'},
+    {q:'Users get logged out whenever the load balancer moves them to another server. What is the most robust fix?',a:['Keep sessions in a shared store such as Redis','Turn on sticky sessions','Add more servers','Make sessions last longer'],why:'Sticky sessions help only until a server dies. With a shared store, any server can serve any user.',ch:'sessions'},
+    {q:'Twenty internal services all need token checks and rate limits. Where should that happen?',a:['Once, at the API gateway','Separately inside every service','In the database','In the user\'s browser'],why:'The gateway is the single front door, so cross-cutting checks happen once, before any service sees the request.',ch:'proxy-gateway'},
+    {q:'A video is requested by users on four continents. What cuts their wait the most?',a:['Serving it from CDN edge caches near them','A bigger origin server','A faster database','Switching from REST to gRPC'],why:'Distance is latency. Edge caches serve the bytes from close by, so most requests never cross an ocean.',ch:'cdn'},
+    {q:'You want to allow short bursts but cap the average at 10 requests per second. Which limiter fits?',a:['Token bucket','Leaky bucket','No limiter, just add servers','A longer timeout'],why:'A token bucket saves unused tokens for bursts, while its refill rate caps the average. A leaky bucket smooths everything to one fixed rate.',ch:'rate-limiting'},
+    {q:'A client goes over its rate limit. What should the server send back?',a:['429 Too Many Requests','500 Internal Server Error','200 OK with an empty body','301 Moved Permanently'],why:'429 tells the client it is being limited, ideally with a Retry-After header, so it can back off.',ch:'rate-limiting'}]})});
+
+/* ---------------- QUIZ: DATA ---------------- */
+quiz('Data',{title:'Data recap',goal:'Six questions on indexes, replicas, shards, caches and CAP. Answer with a click or keys 1–4.',
+  hint:'Ask what is actually overloaded: reads, writes, one key, or the network between replicas.',
+  make:quizGame({title:'Data',questions:[
+    {q:'A query looks up one email among 10 million rows and takes seconds. What should you try first?',a:['Add an index on the email column','Put a cache in front','Shard the table','Switch to a NoSQL database'],why:'Without an index the database reads every row. An index finds the row in a handful of page reads.',ch:'indexing'},
+    {q:'90% of traffic is reads and the database is overloaded. Which structural fix fits best?',a:['Add followers and send reads to them','Shard by user id','Drop some indexes','Use two-phase commit'],why:'Followers copy the leader and can serve reads. Sharding is for when writes or data size are the problem.',ch:'replication'},
+    {q:'You shard users by the first letter of their name. What goes wrong?',a:['Shards fill unevenly, because some letters are far more common','Nothing, it spreads evenly','Joins get faster','You can never add another shard'],why:'A good shard key spreads load evenly, such as a hash of the user id.',ch:'sharding'},
+    {q:'A price changes in the database, but users see the old price for up to an hour. What is the likely cause?',a:['A long TTL and no invalidation when the price is written','A missing index','Synchronous replication','A cache that is too small'],why:'The cached copy lives until its TTL runs out. Delete or update it when the price changes.',ch:'cache-invalidation'},
+    {q:'A celebrity post gets 50,000 reads a second and its cache key expires. What stops the database being stampeded?',a:['Request coalescing: one fetch, everyone else waits for it','A shorter TTL','More database indexes','Sticky sessions'],why:'Coalescing turns thousands of identical misses into a single database query. Refreshing before expiry helps too.',ch:'hot-keys'},
+    {q:'During a network partition, a balance service refuses writes rather than risk two different balances. Which side of CAP did it pick?',a:['Consistency (CP)','Availability (AP)','Both at once','Neither: CAP does not apply'],why:'Refusing to answer rather than risk a wrong answer is the consistent choice. An AP system would answer and reconcile later.',ch:'cap'}]})});
+
+/* ---------------- QUIZ: COMMUNICATION ---------------- */
+quiz('Communication',{title:'Communication recap',goal:'Six questions on protocols, queues, pub/sub and async work. Answer with a click or keys 1–4.',
+  hint:'Who has to wait for whom? Push or pull? One receiver or many?',
+  make:quizGame({title:'Communication',questions:[
+    {q:'A chat app must push new messages to users the moment they arrive. What fits best?',a:['WebSockets','REST, polling every minute','gRPC unary calls','A nightly batch job'],why:'A WebSocket stays open, so the server can push a message the instant it exists.',ch:'rest-grpc-ws'},
+    {q:'Two internal services exchange thousands of small, typed calls per second. What fits best?',a:['gRPC','REST with JSON','WebSockets','A shared database table'],why:'gRPC\'s compact binary format and typed contracts make internal calls fast and safe.',ch:'rest-grpc-ws'},
+    {q:'A new order must update stock, email the customer and notify analytics. With pub/sub, what does the order service publish?',a:['One OrderPlaced event; every subscriber gets a copy','Three messages, one per service','Nothing; the others poll the database','One message per subscriber, sent in turn'],why:'Publishers do not need to know their subscribers. One event fans out to everyone who listens.',ch:'queues-pubsub'},
+    {q:'Checkout takes 4 seconds because it also renders a PDF invoice. What do you move off the request path?',a:['The PDF, onto a queue for a background worker','Charging the card','The stock check','Nothing; buy a bigger server'],why:'Do only what the customer must wait for. Everything else can happen just after you reply.',ch:'sync-async'},
+    {q:'Consumers fall behind during a sale. What happens to the messages?',a:['They wait in the queue until consumers catch up','They are lost','The producer crashes','They go straight to the database'],why:'Queues absorb bursts. Watch the queue length, though: if it never drains, add consumers.',ch:'queues-pubsub'},
+    {q:'Why must a queue consumer cope with getting the same message twice?',a:['Most queues deliver at least once, so handlers must be idempotent','Queues never redeliver, so it cannot happen','It only happens when the queue is broken','The queue drops duplicates itself'],why:'After a crash or timeout a message is redelivered. Processing it twice must be harmless.',ch:'idempotency'}]})});
+
+/* ---------------- QUIZ: RELIABILITY ---------------- */
+quiz('Reliability',{title:'Reliability recap',goal:'Six questions on single points of failure, timeouts, retries and idempotency. Answer with a click or keys 1–4.',
+  hint:'Failures will happen. The question is whether they spread, and whether retrying is safe.',
+  make:quizGame({title:'Reliability',questions:[
+    {q:'Which of these is a single point of failure?',a:['One database with no replica, behind two app servers','Two app servers behind a load balancer','A managed, multi-region DNS service','A three-node Raft cluster'],why:'If that one database dies, everything stops, however many app servers sit in front of it.',ch:'spof'},
+    {q:'Web waits 2 s for Orders; Orders waits 5 s for Payments. Payments hangs. What goes wrong?',a:['Orders keeps working for 3 s after Web has given up','Nothing goes wrong','Web waits the full 5 s','Payments times out first'],why:'Inner timeouts must be shorter than outer ones, or work carries on for a caller who has left. Pass a deadline down.',ch:'timeouts'},
+    {q:'A thousand clients all retry a failed call after exactly one second. What should you add?',a:['Exponential backoff with jitter','More retries','A shorter timeout','Sticky sessions'],why:'Backoff spaces the retries out, and jitter stops every client retrying at the same instant.',ch:'resilience'},
+    {q:'A dependency is down. What does a circuit breaker do?',a:['Fails calls fast for a while, then probes to see if it has recovered','Retries forever','Restarts the dependency','Caches the error responses'],why:'Failing fast frees your threads and gives the dependency room to recover.',ch:'resilience'},
+    {q:'A payment request times out and the client retries. How do you avoid charging twice?',a:['Send an idempotency key; a repeat gets the saved result','Never retry payments','Use a longer timeout','Retry with a different card'],why:'The server remembers each key\'s result, so a retry returns the first answer instead of charging again.',ch:'idempotency'},
+    {q:'Which operation is naturally idempotent?',a:['Set the email address to sam@example.com','Add $10 to the balance','Append a comment','Send a welcome email'],why:'Setting a value twice leaves the same result. Adding, appending and sending all repeat their effect.',ch:'idempotency'}]})});
+
+/* ---------------- QUIZ: ARCHITECTURE ---------------- */
+quiz('Architecture',{title:'Architecture recap',goal:'Six questions on service boundaries, events and observability. Answer with a click or keys 1–4.',
+  hint:'Every boundary turns a function call into a network call. Every incident needs data to explain it.',
+  make:quizGame({title:'Architecture',questions:[
+    {q:'Two features call each other hundreds of times per request. Where should they live?',a:['In the same service','In separate services','In separate data centers','It makes no difference'],why:'Chatty pairs belong together. Split them and every call becomes a slow network hop that can fail.',ch:'microservices'},
+    {q:'A small team with one product and no scaling problems is starting out. What is usually the best start?',a:['A well-structured monolith','Forty microservices','One service per database table','A separate function for every endpoint'],why:'Microservices pay off with many teams or very different scaling needs. Early on they mostly add network calls and moving parts.',ch:'microservices'},
+    {q:'In an event-driven design, how does Orders tell Email, Stock and Analytics about a new order?',a:['It publishes OrderPlaced and does not need to know who listens','It calls each service in turn','It writes into their databases','It waits for each one to reply'],why:'The publisher stays decoupled. New listeners can be added without touching Orders.',ch:'event-driven'},
+    {q:'Checkout is slow for some users. Which signal shows where one request spent its time?',a:['A distributed trace','CPU metrics','A single log line','An uptime check'],why:'A trace follows one request through every service and times each step, so the slow hop stands out.',ch:'observability'},
+    {q:'Your alert watches average latency, but users still complain. What should you alert on?',a:['p99 latency, the slowest 1% users actually feel','Average CPU','The number of log lines','Free disk space'],why:'Averages hide the slow tail. A p99 alert fires when a real share of users is suffering.',ch:'observability'},
+    {q:'What is the main cost of splitting a monolith into microservices?',a:['In-process calls become network calls that can be slow or fail','The code becomes impossible to test','You can no longer use a database','You must rewrite it in a new language'],why:'You trade simple function calls for timeouts, retries, partial failures and distributed tracing.',ch:'microservices'}]})});
+
+/* ---------------- QUIZ: ADVANCED ---------------- */
+quiz('Advanced',{title:'Advanced recap',goal:'Six questions on consensus, distributed transactions, ids and overload. Answer with a click or keys 1–4.',
+  hint:'Count majorities. Prefer undoing steps to locking everything. Shed load before it sheds you.',
+  make:quizGame({title:'Advanced',questions:[
+    {q:'A five-node Raft cluster loses two nodes. Can it still accept writes?',a:['Yes: three of five is still a majority','No: any lost node stops writes','Only reads, no writes','Only if the leader survived'],why:'Raft needs a majority. With three of five alive, it elects a leader if needed and carries on.',ch:'consensus'},
+    {q:'A four-node cluster splits into two halves of two. What happens?',a:['Neither half has a majority, so writes stop','Both halves elect a leader','The half with the old leader carries on','The cluster grows to eight nodes'],why:'Two of four is not a majority. This is why clusters use odd sizes like 3 or 5.',ch:'consensus'},
+    {q:'An order spans Payments, Stock and Shipping, each with its own database, and shipping fails. How does a saga recover?',a:['It runs compensating steps: release the stock, refund the payment','It rolls all three databases back at once','It retries forever','It ignores the failure'],why:'Each saga step has an undo. On failure, the steps already done are compensated in reverse order.',ch:'transactions'},
+    {q:'What is the main weakness of two-phase commit?',a:['If the coordinator dies mid-commit, participants can be stuck holding locks','It is never consistent','It needs no coordinator','It only works with NoSQL'],why:'Participants that voted yes must wait for the coordinator\'s decision, holding their locks until it returns.',ch:'transactions'},
+    {q:'You need ids that are unique across 100 machines, roughly time-ordered and 64 bits long. Which scheme?',a:['Snowflake IDs','Auto-increment from one database','Random UUIDs','Usernames'],why:'Timestamp + machine number + sequence: no coordination, sortable by time, and it fits in 64 bits.',ch:'unique-ids'},
+    {q:'A service is overloaded. What is load shedding?',a:['Rejecting some requests early so the rest still succeed','Adding servers automatically','Retrying faster','Caching the errors'],why:'Serving 80% well beats serving 100% so slowly that everything times out.',ch:'backpressure'}]})});
+
 /* ---------------- 17. RESILIENCE: tune the client ---------------- */
 function resilSim(p){ // discrete-event model, also used by the challenge
   const CAP=60,load=[],att=[];let ok=0,gave=0,state='closed',openUntil=0,fails=[],id=0,peak=0;
@@ -3007,6 +3187,117 @@ chal('capstone',{title:'Launch the shortener',goal:'Build it, then survive the l
 </script>
 <script>
 /* ============================================================
+   GLOSSARY: [term, definition, other spellings that should match]
+   The first few terms in each caption, transcript line and trade-off
+   become focusable; hover, focus or tap shows the definition.
+   All-caps spellings (CAP, TTL, DNS…) match case-sensitively.
+   ============================================================ */
+const GLOSSARY=[
+['packet','A small chunk of data sent over a network, labelled with where it came from and where it is going.',['packets']],
+['IP address','The numeric address of a machine on a network, like 93.184.216.34.',['IP addresses']],
+['port','A number that picks which program on a machine gets the traffic, like 443 for HTTPS.',['ports']],
+['router','A device that passes packets one hop closer to their destination.',['routers']],
+['DNS','The internet\'s phone book: it turns a name like example.com into an IP address.',[]],
+['TCP','The protocol that turns lossy packets into a reliable, ordered stream, resending anything lost.',[]],
+['TLS','Encryption for a connection; the S in HTTPS.',['HTTPS']],
+['latency','How long one request takes, start to finish.',[]],
+['throughput','How many requests a system finishes per second.',[]],
+['p99','The 99th-percentile latency: 99% of requests are faster than this, 1% slower.',['p99 latency']],
+['vertical scaling','Making one machine bigger: more CPU, more memory.',['scale up','scaling up']],
+['horizontal scaling','Adding more machines and spreading the work across them.',['scale out','scaling out']],
+['autoscaling','Adding and removing servers automatically as load rises and falls.',['autoscaler']],
+['cooldown','A pause after a scaling action so the system settles before the next one.',[]],
+['load balancer','A component that spreads incoming requests across several servers.',['load balancers','load balancing']],
+['round robin','Sending requests to servers in turn: 1, 2, 3, 1, 2, 3…',[]],
+['least connections','Sending each request to the server with the fewest requests in progress.',[]],
+['health check','A small, regular request that tells a load balancer whether a server is alive.',['health checks']],
+['stateless','Keeping nothing about users between requests, so any server can handle any request.',[]],
+['sticky session','Pinning a user to one server so their in-memory session stays reachable.',['sticky sessions']],
+['session','What a server remembers about a logged-in user between requests.',['sessions']],
+['reverse proxy','A server in front of your servers that receives requests and forwards them.',['reverse proxies']],
+['API gateway','The single front door for an API: routing, authentication and rate limits in one place.',['gateway']],
+['CDN','A network of caches around the world that serve content from close to the user.',['CDNs']],
+['edge server','A CDN server close to users that keeps copies of content, so requests need not travel to the origin.',['edge servers','edge','edges','edge cache','edge caches']],
+['origin','The main server that holds the real content; caches fetch from it.',['origin server']],
+['rate limiting','Capping how many requests a client may make in a period.',['rate limit','rate limits','rate limiter']],
+['token bucket','A rate limiter that refills tokens at a steady rate; each request spends one, and bursts can use saved tokens.',[]],
+['leaky bucket','A rate limiter that queues requests and lets them out at a fixed rate.',[]],
+['429','The HTTP status Too Many Requests, sent when a rate limit rejects a request.',[]],
+['SQL','Relational databases: tables with a fixed schema, joins and transactions.',[]],
+['NoSQL','Non-relational databases (document, key-value, wide-column) that trade joins for flexible schemas and easy scaling.',[]],
+['schema','The declared shape of the data: tables, columns and their types.',[]],
+['index','A sorted lookup structure that lets a database find rows without reading them all.',['indexes','indexing']],
+['B-tree','The balanced tree most databases use for indexes; a few page reads reach any row.',[]],
+['full table scan','Reading every row to find matches, because no index helps.',['full scan']],
+['replication','Keeping copies of the same data on several machines.',['replica','replicas']],
+['leader','The replica that accepts writes and passes them on to the others.',[]],
+['follower','A replica that copies the leader\'s writes and can serve reads.',['followers','read replica','read replicas']],
+['replication lag','How far behind the leader a follower is.',['lag']],
+['sharding','Splitting data across machines so each holds only part of it.',['shard','shards','partitioning']],
+['shard key','The field that decides which shard a row lives on.',[]],
+['consistent hashing','Placing keys and servers on a ring, so adding a server moves only a small share of keys.',[]],
+['cache','A fast store, usually in memory, that keeps copies of data that is slow to fetch.',['caches','caching']],
+['cache hit','The data was already in the cache.',['hit rate']],
+['cache miss','The data was not in the cache and had to be fetched from the slower store.',[]],
+['LRU','Least Recently Used: when the cache is full, evict the item unused for longest.',[]],
+['eviction','Removing an item from a full cache to make room.',['evict']],
+['TTL','Time to live: how long a cached copy may be used before it expires.',[]],
+['cache invalidation','Removing or updating cached copies when the real data changes.',['invalidation','invalidate']],
+['cache-aside','The app checks the cache first and, on a miss, reads the database and fills the cache.',[]],
+['write-through','Writes update the cache and the database together before replying.',[]],
+['write-back','Writes go to the cache now and reach the database later.',[]],
+['hot key','A single key that receives a large share of all traffic.',['hot keys']],
+['request coalescing','Merging identical in-flight requests so only one reaches the database.',['coalescing','coalesce']],
+['cache stampede','Many requests miss the same expired key at once and all hit the database.',['stampede','thundering herd']],
+['CAP theorem','During a network partition, a distributed store must choose between consistency and availability.',['CAP']],
+['network partition','A network split that stops some nodes from reaching others.',['partition']],
+['strong consistency','Every read sees the latest write.',[]],
+['eventual consistency','Replicas may disagree for a while, but agree once writes stop.',['eventually consistent']],
+['REST','HTTP APIs built around resources and verbs (GET, POST), usually with JSON.',[]],
+['gRPC','Fast binary calls over HTTP/2 with typed contracts; common between internal services.',[]],
+['WebSocket','A connection that stays open so client and server can both send messages at any time.',['WebSockets']],
+['message queue','A buffer between services: producers add messages, consumers take them off at their own pace.',['queue','queues']],
+['pub/sub','Publish/subscribe: one message is delivered to every subscriber of a topic.',['publish/subscribe']],
+['producer','A service that puts messages on a queue.',['producers','publisher']],
+['consumer','A service that takes messages off a queue and processes them.',['consumers','subscriber','subscribers']],
+['asynchronous','The caller does not wait: work is handed off and finished later.',['async']],
+['single point of failure','A component whose failure takes the whole system down.',['SPOF','single points of failure']],
+['redundancy','Extra copies of a component so one failure is not fatal.',['redundant']],
+['failover','Switching to a standby when the active component fails.',['standby']],
+['timeout','How long a caller waits before giving up.',['timeouts']],
+['deadline','The total time budget for a request, passed along so each hop knows how long is left.',['deadlines']],
+['retry','Trying a failed request again.',['retries']],
+['exponential backoff','Waiting longer before each retry: 1 s, 2 s, 4 s…',['backoff']],
+['jitter','Random variation in retry delays, so clients do not all retry at the same moment.',[]],
+['circuit breaker','Stops calling a failing service for a while, failing fast so it can recover.',['circuit breakers']],
+['idempotent','Safe to repeat: doing it twice has the same effect as doing it once.',['idempotency']],
+['idempotency key','A unique id sent with a request so the server can spot and ignore duplicates.',[]],
+['monolith','One application that holds every feature and deploys as one unit.',[]],
+['microservices','Many small services, each owning one job and its data, talking over the network.',['microservice']],
+['event-driven','Services announce what happened as events; others react without the sender knowing who listens.',[]],
+['observability','Being able to tell what a system is doing from the outside, using logs, metrics and traces.',[]],
+['metrics','Numbers measured over time, like requests per second or p99 latency.',[]],
+['logs','Timestamped records of individual events.',[]],
+['trace','The path of one request through every service, with a timing for each step.',['traces','distributed trace']],
+['span','One timed step inside a trace.',['spans']],
+['consensus','Getting several machines to agree on one value, even when some fail.',[]],
+['Raft','A consensus algorithm: nodes elect a leader, which copies a log to a majority.',[]],
+['majority','More than half of the nodes: enough agreement to make progress safely.',['quorum']],
+['heartbeat','A regular "I\'m alive" message; when they stop, others react.',['heartbeats']],
+['leader election','Choosing a new leader when the old one stops sending heartbeats.',['election']],
+['two-phase commit','A coordinator asks every participant to prepare, then tells all of them to commit or all to abort.',['2PC']],
+['saga','A long transaction split into steps, each with a compensating step that undoes it.',['sagas']],
+['compensation','An action that undoes an earlier step, like a refund for a charge.',['compensating']],
+['Snowflake ID','A 64-bit id made of a timestamp, a machine number and a sequence, so machines can create ids without coordinating.',['Snowflake','Snowflake IDs']],
+['UUID','A random 128-bit id: practically never collides, but large and unordered.',['UUIDs']],
+['back-pressure','A slow component signalling upstream to slow down instead of being overwhelmed.',['backpressure']],
+['load shedding','Deliberately rejecting some requests under overload so the rest still succeed.',[]],
+['base62','Writing numbers with 0–9, a–z and A–Z, which makes short codes.',[]],
+['301','A permanent HTTP redirect; browsers remember it.',[]],
+['302','A temporary HTTP redirect; browsers ask again every time.',[]]];
+</script>
+<script>
+/* ============================================================
    PLAYER / UI
    ============================================================ */
 (function(){
@@ -3014,15 +3305,18 @@ const $=id=>document.getElementById(id);
 const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
 let seen={};try{seen=JSON.parse(store.get('sdve-seen')||'{}')||{};}catch(e){seen={};}
 let stars={};try{stars=JSON.parse(store.get('pim-stars')||'{}')||{};}catch(e){stars={};}
-let mode='watch',inst=null,api=null,ct=0,pdown=null;
+let mode='watch',inst=null,api=null,ct=0,pdown=null,quizG=null;   // quizG: the section whose quiz is running
 let cur=0,t=0,playing=false,speed=1,last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
 // sidebar
 const toc=$('toc');let grp='';
-chapters.forEach((c,i)=>{if(c.group!==grp){grp=c.group;const h=document.createElement('div');h.className='grp';h.textContent=grp;toc.appendChild(h);}
+const addQuiz=gname=>{if(!QUIZ[gname])return;const b=document.createElement('button');b.className='qz';b.dataset.q=gname;b.innerHTML='<span class="n" aria-hidden="true">✎</span><span>Section quiz</span><span class="st" aria-hidden="true"></span>';b.onclick=()=>{startQuiz(gname);document.body.classList.remove('menu');};toc.appendChild(b);};
+chapters.forEach((c,i)=>{if(c.group!==grp){if(grp)addQuiz(grp);grp=c.group;const h=document.createElement('div');h.className='grp';h.dataset.g=grp;h.textContent=grp;toc.appendChild(h);}
   const b=document.createElement('button');b.className='ch';b.dataset.i=i;b.innerHTML=`<span class="n">${i+1}</span><span>${c.title}</span>${CHAL[c.id]?'<span class="st"></span>':''}`;b.onclick=()=>{load(i,true);document.body.classList.remove('menu');};toc.appendChild(b);});
 // screen readers get one clear name per chapter: number, title, watched, stars
+addQuiz(grp);
+function qzLabel(b){const q=QUIZ[b.dataset.q],k=stars[q.id]||0;b.setAttribute('aria-label',`${q.title}, ${k} of 3 stars`);}
 function tocLabel(b){const j=+b.dataset.i,c=chapters[j],k=stars[c.id]||0;b.setAttribute('aria-label',`${j+1}. ${c.title}${seen[c.id]?', watched':''}${CHAL[c.id]?`, ${k} of 3 stars`:''}`);}
 
 function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2.5);cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.width*H/W*dpr));K=cv.width/W;render();}
@@ -3054,7 +3348,7 @@ function render(){if(mode==='play'){renderChal(0);return;}const c=chapters[cur];
   // UI sync
   const p=t/c.dur*100;$('scrub').value=Math.round(t/c.dur*1000);$('scrub').style.setProperty('--p',p+'%');
   $('time').textContent=fmt(t)+' / '+fmt(c.dur);
-  const k=beatIndex(c,t);if(k!==capIdx){capIdx=k;const el=$('capText');el.textContent=c.beats[k][2];el.classList.remove('fade');void el.offsetWidth;el.classList.add('fade');$('capStep').textContent=`${k+1}/${c.beats.length}`;
+  const k=beatIndex(c,t);if(k!==capIdx){if(playing&&capIdx>=0)SFX.play('beat');capIdx=k;const el=$('capText');fillTerms(el,c.beats[k][2]);el.classList.remove('fade');void el.offsetWidth;el.classList.add('fade');$('capStep').textContent=`${k+1}/${c.beats.length}`;
     const b=c.beats[k],step=`Step ${k+1} of ${c.beats.length}: ${b[1]}`;cv.setAttribute('aria-label',`${c.title}. ${step}`);
     announce((annTitle?c.title+'. ':'')+step+'. '+b[2]);annTitle=false;markTranscript(k);}
 }
@@ -3065,7 +3359,7 @@ function announce(s){clearTimeout(liveT);liveT=setTimeout(()=>{$('srLive').textC
 // transcript: every step as text; activating one jumps there
 function buildTranscript(c){const ol=$('trList');ol.innerHTML='';
   c.beats.forEach((b,k)=>{const li=document.createElement('li'),btn=document.createElement('button'),ts=document.createElement('span'),h=document.createElement('b'),p=document.createElement('span');
-    btn.type='button';ts.className='ts';ts.textContent=fmt(b[0]);h.textContent=b[1];p.textContent=b[2];btn.append(ts,h,p);btn.onclick=()=>{seek(b[0]+.01);setPlaying(true);};li.appendChild(btn);ol.appendChild(li);});}
+    btn.type='button';ts.className='ts';ts.textContent=fmt(b[0]);h.textContent=b[1];fillTerms(p,b[2],2);btn.append(ts,h,p);btn.onclick=()=>{seek(b[0]+.01);setPlaying(true);};li.appendChild(btn);ol.appendChild(li);});}
 function markTranscript(k){Array.from($('trList').children).forEach((li,j)=>{const on=j===k,b=li.children[0];li.classList.toggle('now',on);if(on)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');});}
 function setTranscript(v){$('transcript').hidden=!v;$('trBtn').setAttribute('aria-expanded',String(v));$('trBtn').classList.toggle('on',v);store.set('pim-tr',v?'1':'0');}
 function showCard(v,done){const card=$('card'),was=card.classList.contains('show');card.classList.toggle('show',v);card.classList.toggle('done',!!done);
@@ -3075,15 +3369,26 @@ function showCard(v,done){const card=$('card'),was=card.classList.contains('show
 function seek(nt){const c=chapters[cur];t=clamp(nt,0,c.dur);if(t<c.dur)showCard(false);render();}
 window.seek=seek;
 function load(i,autoplay){if(mode==='play')exitChal(true);hideResult();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;showCard(false);
-  $('eyebrow').textContent=`${c.group} · Chapter ${cur+1} of ${chapters.length}`;$('title').textContent=c.title;document.title=c.title+' · Packets in Motion';
-  $('chalBtn').hidden=!CHAL[c.id];$('cardChal').hidden=!CHAL[c.id];
-  $('cardTitle').textContent=c.title;buildTranscript(c);annTitle=true;$('useList').innerHTML=c.use.map(s=>`<li>${s}</li>`).join('');$('conList').innerHTML=c.cons.map(s=>`<li>${s}</li>`).join('');
+  heading();$('cardChal').hidden=!CHAL[c.id];
+  $('cardTitle').textContent=c.title;buildTranscript(c);annTitle=true;listTerms($('useList'),c.use);listTerms($('conList'),c.cons);cardLinks(c);
   $('ticks').innerHTML=c.beats.slice(1).map(b=>`<b style="left:${b[0]/c.dur*100}%"></b>`).join('');
-  document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i;b.classList.toggle('on',j===cur);b.classList.toggle('seen',!!seen[chapters[j].id]);if(j===cur)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');tocLabel(b);});
-  const on=document.querySelector('.ch.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});
+  markToc();
   $('nextBtn').disabled=false;$('cardNext').textContent=cur===chapters.length-1?'Back to chapter 1 →':'Next chapter →';
-  if(location.hash!=='#'+c.id)history.replaceState(null,'','#'+c.id);
   setPlaying(!!autoplay);render();}
+// title, eyebrow, tab title and URL for the current chapter (or the running quiz)
+function heading(){const c=chapters[cur],q=quizG&&QUIZ[quizG];
+  $('eyebrow').textContent=q?`${q.group} · Section quiz`:`${c.group} · Chapter ${cur+1} of ${chapters.length}`;$('title').textContent=q?q.title:c.title;
+  document.title=(q?q.title:c.title)+' · Packets in Motion';$('chalBtn').hidden=!!q||!CHAL[c.id];
+  const h='#'+(q?q.id:c.id);if(location.hash!==h)history.replaceState(null,'','#'+(q?q.id:c.id));}
+// sidebar state: the current chapter (or quiz), watched marks, names for screen readers
+function markToc(){document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i,on=!quizG&&j===cur;b.classList.toggle('on',on);b.classList.toggle('seen',!!seen[chapters[j].id]);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');tocLabel(b);});
+  document.querySelectorAll('.qz').forEach(b=>{const on=b.dataset.q===quizG;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');qzLabel(b);});
+  const on=document.querySelector(quizG?'.qz.on':'.ch.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});}
+// "Before this" and "Related" chapter links on the trade-offs card
+function cardLinks(c){const box=$('cardLinks');box.innerHTML='';
+  [['Before this',c.needs],['Related',c.related]].forEach(([label,ids])=>{const list=(ids||[]).map(id=>chapters.findIndex(x=>x.id===id)).filter(i=>i>=0&&i!==cur);if(!list.length)return;
+    const span=document.createElement('span'),b=document.createElement('b');b.textContent=label+':';span.appendChild(b);
+    list.forEach(i=>{const btn=document.createElement('button');btn.type='button';btn.textContent=chapters[i].title;btn.onclick=()=>load(i,true);span.appendChild(btn);});box.appendChild(span);});}
 function finish(){const c=chapters[cur];seen[c.id]=1;store.set('sdve-seen',JSON.stringify(seen));
   document.querySelectorAll('.ch').forEach(b=>{b.classList.toggle('seen',!!seen[chapters[+b.dataset.i].id]);tocLabel(b);});updProg();showCard(true,true);}
 function updProg(){$('progBar').style.width=(Object.keys(seen).filter(k=>chapters.some(c=>c.id===k)).length/chapters.length*100)+'%';}
@@ -3122,27 +3427,35 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[];ctl.innerHTML='';run
     toggle(label,val,fn){const b=document.createElement('button');b.type='button';b.className='tog';b.textContent=label;b.setAttribute('aria-pressed',String(val));b.onclick=()=>{const v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(v));fn(v);};ctl.appendChild(b);els.push(b);return b;},
     lock(v){els.forEach(e=>e.disabled=v);},
     win(st,title,msg){showResult(st,title,msg);}};}
-function startChal(){const c=chapters[cur],d=CHAL[c.id];if(!d)return;setPlaying(false);showCard(false);hideResult();mode='play';document.body.classList.add('play');
+function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;quizG=gname||null;setPlaying(false);showCard(false);hideResult();mode='play';document.body.classList.add('play');
   $('cTitle').textContent=d.title;$('cGoal').textContent=d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
-  FX.clear();ct=0;api=makeApi();inst=d.make(api);$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`Challenge: ${d.title}. ${d.goal}`);render();}
-function exitChal(quiet){mode='watch';capIdx=-1;inst=null;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
-function showResult(st,title,msg){const c=chapters[cur];if(st>(stars[c.id]||0)){stars[c.id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();}
-  const all=Object.keys(CHAL).every(id=>stars[id]===3);
+  FX.clear();ct=0;api=makeApi();inst=d.make(api);$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
+  $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
+function exitChal(quiet){const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;inst=null;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
+function showResult(st,title,msg){const c=chapters[cur],id=quizG?QUIZ[quizG].id:c.id;if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
+  const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
   $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
   $('resMsg').textContent=msg+(all&&st===3?' That was the last star: you have mastered every challenge in the course!':'');
-  $('resNext').textContent=cur===chapters.length-1?'Back to lesson 1 →':'Next lesson →';$('result').classList.add('show');if(st===3)FX.burst(W/2,H/2,C.amber,50,300);
+  $('resNext').textContent=quizG?'Next section →':cur===chapters.length-1?'Back to lesson 1 →':'Next lesson →';$('resWatch').textContent=quizG?'Back to the lessons':'Watch the lesson';$('result').classList.add('show');if(st===3)FX.burst(W/2,H/2,C.amber,50,300);
   setTimeout(()=>{const b=$(st?'resNext':'resRetry');if(b)b.focus({preventScroll:true});},60);}
 function hideResult(){$('result').classList.remove('show');}
-function updStars(){let n=0;document.querySelectorAll('.ch').forEach(b=>{const id=chapters[+b.dataset.i].id,s=b.querySelector('.st');if(!s)return;const k=stars[id]||0;n+=k;s.textContent='★'.repeat(k)+'☆'.repeat(3-k);s.classList.toggle('got',k>0);s.setAttribute('aria-hidden','true');tocLabel(b);});
-  $('starTotal').textContent=`★ ${n} / ${Object.keys(CHAL).length*3} stars`;}
+const allIds=()=>[...Object.keys(CHAL),...Object.values(QUIZ).map(q=>q.id)];
+// the first chapter of the section after a quiz's section
+const afterQuiz=gname=>{let i=-1;chapters.forEach((c,j)=>{if(c.group===gname)i=j;});return i+1;};
+const firstOf=gname=>Math.max(0,chapters.findIndex(c=>c.group===gname));
+function updStars(){let n=0;document.querySelectorAll('.qz').forEach(b=>{const k=stars[QUIZ[b.dataset.q].id]||0,s=b.querySelector('.st');n+=k;if(s){s.textContent='★'.repeat(k)+'☆'.repeat(3-k);s.classList.toggle('got',k>0);}});document.querySelectorAll('.ch').forEach(b=>{const id=chapters[+b.dataset.i].id,s=b.querySelector('.st'),k=CHAL[id]?stars[id]||0:0;n+=k;if(!s)return;s.textContent='★'.repeat(k)+'☆'.repeat(3-k);s.classList.toggle('got',k>0);s.setAttribute('aria-hidden','true');tocLabel(b);});
+  $('starTotal').textContent=`★ ${n} / ${allIds().length*3} stars`;}
 const toWorld=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H];};
 cv.addEventListener('pointerdown',e=>{if(mode!=='play'||!inst)return;const[x,y]=toWorld(e);pdown={x,y};try{cv.setPointerCapture(e.pointerId);}catch(_){}if(inst.down)inst.down(x,y,ct);});
 cv.addEventListener('pointermove',e=>{if(mode!=='play'||!inst)return;const[x,y]=toWorld(e);if(inst.move)inst.move(x,y,ct);});
 cv.addEventListener('pointerup',e=>{if(mode!=='play'||!inst)return;const[x,y]=toWorld(e);if(inst.up)inst.up(x,y,ct);if(pdown&&Math.hypot(x-pdown.x,y-pdown.y)<8&&inst.click)inst.click(x,y,ct);pdown=null;});
 $('chalBtn').onclick=()=>{if(mode==='play')exitChal();else startChal();};
-$('cardChal').onclick=startChal;$('cRestart').onclick=startChal;$('cBack').onclick=()=>exitChal();
+$('cardChal').onclick=()=>startChal();$('cRestart').onclick=()=>startChal(quizG);$('cBack').onclick=()=>exitChal();
 $('cHintBtn').onclick=()=>{$('cHint').hidden=!$('cHint').hidden;};
-$('resRetry').onclick=startChal;$('resWatch').onclick=()=>{exitChal();seek(0);setPlaying(true);};$('resNext').onclick=()=>load(cur+1,true);
+$('resRetry').onclick=()=>startChal(quizG);
+$('resWatch').onclick=()=>{if(quizG){const g=quizG;exitChal(true);load(firstOf(g),false);return;}exitChal();seek(0);setPlaying(true);};
+$('resNext').onclick=()=>{if(quizG){const i=afterQuiz(quizG);exitChal(true);load(i,true);return;}load(cur+1,true);};
 
 function setCC(v){captions=v;$('caption').classList.toggle('hide',!v);$('ccBtn').classList.toggle('on',v);$('ccBtn').setAttribute('aria-pressed',String(v));store.set('sdve-cc',v?'1':'0');}
 $('ccBtn').onclick=()=>setCC(!captions);
@@ -3153,13 +3466,16 @@ function setTheme(v){if(!['dark','light','contrast'].includes(v))v='dark';docume
 $('theme').onchange=e=>{store.set('pim-theme',e.target.value);setTheme(e.target.value);};
 $('menuBtn').onclick=()=>document.body.classList.toggle('menu');
 $('scrim').onclick=()=>document.body.classList.remove('menu');
-window.addEventListener('keydown',e=>{if(e.target.tagName==='SELECT'||e.target.tagName==='INPUT'&&e.key!==' ')return;const c=chapters[cur];
+window.addEventListener('keydown',e=>{if($('glossary').open)return;if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
+  if(e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'&&(e.key!==' '||e.target.type!=='range'))return;const c=chapters[cur];
   if(mode!=='play'&&(e.target.tagName==='BUTTON'||e.target.tagName==='A')&&(e.key===' '||e.key==='Enter'))return;   // the focused control handles it
   if(mode==='play'){if(e.key==='Escape'){if($('result').classList.contains('show'))hideResult();else exitChal();}
     else if(e.key===']')load(cur+1,true);else if(e.key==='[')load(cur-1,true);
     else if(!(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))&&inst&&inst.key){if(e.key===' ')e.preventDefault();inst.key(e.key,ct);}
     return;}
   if(e.key==='p'||e.key==='P'){startChal();return;}
+  if(e.key==='/'){e.preventDefault();document.body.classList.add('menu');$('find').focus();return;}
+  if(e.key==='g'||e.key==='G'){openGlossary();return;}
   if(e.key===' '){e.preventDefault();$('playBtn').click();}
   else if(e.key==='ArrowRight'){e.preventDefault();seek(t+2);}
   else if(e.key==='ArrowLeft'){e.preventDefault();seek(t-2);}
@@ -3172,7 +3488,9 @@ window.addEventListener('keydown',e=>{if(e.target.tagName==='SELECT'||e.target.t
   else if(/^[0-9]$/.test(e.key)){const k=e.key==='0'?9:+e.key-1;if(c.beats[k])seek(c.beats[k][0]+.01);}});
 window.addEventListener('resize',resize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe(cv);
-window.addEventListener('hashchange',()=>{const i=chapters.findIndex(c=>'#'+c.id===location.hash);if(i>=0&&i!==cur)load(i,true);});
+const quizFor=h=>Object.keys(QUIZ).find(g=>'#'+QUIZ[g].id===h);
+window.addEventListener('hashchange',()=>{const q=quizFor(location.hash);if(q){if(q!==quizG){load(firstOf(q),false);startQuiz(q);}return;}
+  const i=chapters.findIndex(c=>'#'+c.id===location.hash);if(i>=0&&(i!==cur||quizG))load(i,true);});
 // fullscreen + landscape lock (lock works on Android; iOS relies on the rotate prompt)
 const fsOK=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
 function goFull(){const el=document.documentElement,req=el.requestFullscreen||el.webkitRequestFullscreen;
@@ -3181,14 +3499,81 @@ function goFull(){const el=document.documentElement,req=el.requestFullscreen||el
   if(!req)return;Promise.resolve(req.call(el)).then(()=>{try{return screen.orientation.lock('landscape');}catch(e){}}).catch(()=>{});}
 if(!fsOK){$('fsBtn').style.display='none';$('rotateFs').style.display='none';}
 $('fsBtn').onclick=goFull;$('rotateFs').onclick=goFull;
-window.addEventListener('keydown',e=>{if((e.key==='f'||e.key==='F')&&fsOK&&e.target.tagName!=='INPUT'&&mode!=='play')goFull();});
+window.addEventListener('keydown',e=>{if((e.key==='f'||e.key==='F')&&fsOK&&e.target.tagName!=='INPUT'&&mode!=='play'&&!$('glossary').open)goFull();});
 // pause while the portrait prompt covers the stage; resume when turned back
 const portrait=window.matchMedia('(orientation:portrait) and (pointer:coarse) and (max-width:600px)');let resumeOnTurn=false;
 function onOrient(){if(portrait.matches){resumeOnTurn=playing;if(playing)setPlaying(false);}else if(resumeOnTurn){resumeOnTurn=false;last=null;setPlaying(true);}resize();}
 if(portrait.addEventListener)portrait.addEventListener('change',onOrient);else if(portrait.addListener)portrait.addListener(onOrient);
+/* ---------------- search ---------------- */
+const hay=chapters.map(c=>[c.title,c.group,...c.beats.map(b=>b[1]+' '+b[2]),...c.use,...c.cons].join(' ').toLowerCase());
+function filterToc(q){const words=q.trim().toLowerCase().split(/\s+/).filter(Boolean),hit=i=>words.every(w=>hay[i].includes(w));let n=0;
+  document.querySelectorAll('.ch').forEach(b=>{const ok=hit(+b.dataset.i);b.hidden=!ok;if(ok)n++;});
+  document.querySelectorAll('.qz').forEach(b=>{b.hidden=words.length>0&&!words.every(w=>(b.dataset.q+' section quiz').toLowerCase().includes(w));});
+  document.querySelectorAll('.grp').forEach(h=>{h.hidden=words.length>0&&!chapters.some((c,i)=>c.group===h.dataset.g&&hit(i));});
+  $('noFind').hidden=!words.length||n>0;$('findMsg').textContent=words.length?(n?`${n} chapter${n>1?'s':''} match`:'No chapters match'):'';return n;}
+$('find').addEventListener('input',e=>filterToc(e.target.value));
+$('find').addEventListener('keydown',e=>{if(e.key==='Enter'){const b=[...document.querySelectorAll('.ch')].find(b=>!b.hidden);if(b)b.click();}
+  else if(e.key==='Escape'){e.target.value='';filterToc('');e.target.blur();}});
+
+/* ---------------- glossary ---------------- */
+const G=GLOSSARY.map(([t,d,alt],i)=>({t,d,i,forms:[t,...alt]}));
+const FORMS=G.flatMap(g=>g.forms.map(f=>({f,g,cs:/^[A-Z0-9]+$/.test(f)}))).sort((a,b)=>b.f.length-a.f.length);
+const TERM_RE=new RegExp('(?<![A-Za-z0-9-])('+FORMS.map(x=>x.f.replace(/[.*+?^${}()|[\]\\\/]/g,'\\$&')).join('|')+')(?![A-Za-z0-9])','gi');
+const termOf=m=>{const lo=m.toLowerCase();return FORMS.find(x=>x.cs?x.f===m:x.f.toLowerCase()===lo);};
+// text with up to `max` glossary terms turned into focusable buttons (first use of each)
+function fillTerms(el,text,max=3){el.textContent='';let last=0,n=0;const used=new Set();
+  for(const m of text.matchAll(TERM_RE)){const x=termOf(m[1]);if(!x||used.has(x.g.i))continue;if(n>=max)break;
+    el.append(text.slice(last,m.index));const b=document.createElement('button');b.type='button';b.className='term';b.textContent=m[1];b.dataset.g=x.g.i;b.setAttribute('aria-describedby','tip');el.appendChild(b);
+    last=m.index+m[1].length;n++;used.add(x.g.i);}
+  el.append(text.slice(last));}
+function listTerms(ul,items){ul.innerHTML='';items.forEach(s=>{const li=document.createElement('li');fillTerms(li,s,2);ul.appendChild(li);});}
+const tip=$('tip');let tipFor=null;
+function showTip(b){const g=G[+b.dataset.g];if(!g)return;tip.innerHTML='';const h=document.createElement('b');h.textContent=g.t;tip.append(h,g.d);tip.hidden=false;tipFor=b;
+  const r=b.getBoundingClientRect(),w=Math.min(300,innerWidth-16),x=Math.min(Math.max(8,r.left),innerWidth-w-8);tip.style.left=x+'px';tip.style.top=(r.bottom+8)+'px';
+  const th=tip.getBoundingClientRect().height;if(r.bottom+8+th>innerHeight-8)tip.style.top=Math.max(8,r.top-th-8)+'px';}
+function hideTip(){tip.hidden=true;tipFor=null;}
+const termAt=e=>e.target&&e.target.closest?e.target.closest('.term'):null;
+document.addEventListener('mouseover',e=>{const b=termAt(e);if(b)showTip(b);});
+document.addEventListener('mouseout',e=>{if(termAt(e))hideTip();});
+document.addEventListener('focusin',e=>{const b=termAt(e);if(b)showTip(b);});
+document.addEventListener('focusout',e=>{if(termAt(e))hideTip();});
+document.addEventListener('click',e=>{const b=termAt(e);if(b){e.stopPropagation();if(tipFor===b)hideTip();else showTip(b);}else if(tipFor)hideTip();},true);
+function buildGlossary(){const dl=$('glList');dl.innerHTML='';const uses=G.map(()=>new Set());
+  chapters.forEach((c,ci)=>{const text=[c.title,...c.beats.map(b=>b[1]+' '+b[2]),...c.use,...c.cons].join(' ');for(const m of text.matchAll(TERM_RE)){const x=termOf(m[1]);if(x)uses[x.g.i].add(ci);}});
+  G.slice().sort((a,b)=>a.t.localeCompare(b.t,undefined,{sensitivity:'base'})).forEach(g=>{const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=g.t;dd.append(g.d);
+    const used=[...uses[g.i]].sort((a,b)=>a-b).slice(0,6);
+    if(used.length){const p=document.createElement('div');p.className='in';used.forEach(ci=>{const b=document.createElement('button');b.type='button';b.textContent=chapters[ci].title;b.onclick=()=>{closeGlossary();load(ci,true);};p.appendChild(b);});dd.appendChild(p);}
+    dt.dataset.k=dd.dataset.k=[g.t,...g.forms,g.d].join(' ').toLowerCase();dl.append(dt,dd);});}
+function filterGloss(q){q=q.trim().toLowerCase();Array.from($('glList').children).forEach(e=>{e.hidden=!!q&&!e.dataset.k.includes(q);});}
+function openGlossary(){hideTip();if(!$('glList').children.length)buildGlossary();const d=$('glossary');if(!d.open){if(d.showModal)d.showModal();else d.setAttribute('open','');}$('glFind').value='';filterGloss('');$('glFind').focus();}
+function closeGlossary(){const d=$('glossary');if(d.close)d.close();else d.removeAttribute('open');}
+$('glossBtn').onclick=openGlossary;$('glClose').onclick=closeGlossary;$('glFind').addEventListener('input',e=>filterGloss(e.target.value));
+
+/* ---------------- progress export / import ---------------- */
+const KNOWN=new Set(allIds().concat(chapters.map(c=>c.id)));
+const ioMsg=s=>{$('ioMsg').textContent=s;};
+function exportProgress(){const data={app:'packets-in-motion',version:1,exported:new Date().toISOString(),seen,stars};
+  const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));a.download='packets-in-motion-progress.json';
+  document.body.appendChild(a);a.click();a.remove();ioMsg('Progress saved to packets-in-motion-progress.json.');return data;}
+// merges: a chapter stays watched, and each challenge keeps its best score
+function importProgress(text){let d;try{d=JSON.parse(text);}catch(e){ioMsg('That file is not valid JSON.');return false;}
+  if(!d||d.app!=='packets-in-motion'||typeof d.seen!=='object'||typeof d.stars!=='object'||!d.seen||!d.stars){ioMsg('That is not a Packets in Motion progress file.');return false;}
+  let nSeen=0,nStars=0;
+  Object.keys(d.seen).forEach(k=>{if(KNOWN.has(k)&&d.seen[k]&&!seen[k]){seen[k]=1;nSeen++;}});
+  Object.entries(d.stars).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>=0&&n<=3&&n>(stars[k]||0)){nStars+=n-(stars[k]||0);stars[k]=n;}});
+  store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();
+  ioMsg(nSeen||nStars?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.`:'Nothing new in that file: you already have all of it.');return true;}
+$('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
+$('importFile').onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;return file.text().then(importProgress).finally(()=>{e.target.value='';});};
+
+/* ---------------- sound cues ---------------- */
+function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',String(v));$('soundBtn').textContent='Sound cues: '+(v?'on':'off');store.set('pim-sound',v?'1':'0');}
+$('soundBtn').onclick=()=>{setSound(!SFX.on);SFX.play('good');};
+
+setSound(store.get('pim-sound')==='1');hideTip();
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
-const start=Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
-load(start,true);resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
+const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
+load(start,!startQ);if(startQ)startQuiz(startQ);resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();
 </script>
 </body>

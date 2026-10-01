@@ -9,7 +9,7 @@
   const ta=k=>22.6+k*.85,NE=13,cellX=k=>200+k*50+25;
   const readE=k=>ta(k)+.7,batch=[24.5,27,29.5,32,34.5],readA=k=>batch.find(b=>b>=ta(k)+.3),readS=k=>Math.max(ta(k)+.5,23.5+k*1.35);
   const GR=[['Email',260,readE],['Analytics',520,readA],['Shipping',780,readS]];
-ch({id:'queues-pubsub',group:'Communication',title:'Message Queues & Pub/Sub',dur:41,
+ch({id:'queues-pubsub',group:'Communication',title:'Message Queues & Pub/Sub',dur:41,needs:['rest-grpc-ws'],related:['sync-async','event-driven','backpressure','idempotency'],
 beats:[
 [0,'Direct call: both must be up','The producer calls the consumer directly and waits. If the consumer is slow, the producer is stuck. If it\'s down, the request fails.'],
 [7,'Put a queue in the middle','The producer drops messages into a queue (amber) and moves on instantly. The consumer pulls them at its own pace.'],

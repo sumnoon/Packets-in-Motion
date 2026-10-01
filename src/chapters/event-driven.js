@@ -8,7 +8,7 @@
   const C0=23.4;const recv=(t0,x0,x)=>t0+(x-x0)/SPD;
   const invGets=recv(C0,BX0,430)+.5,sr=invGets+.8;const shipGets=recv(sr+.5,430,650)+.5,sh=shipGets+.8;const emGets=recv(sh+.5,650,870)+.5;
   EVTS.push([C0,'OrderPlaced',BX0],[sr+.5,'StockReserved',430],[sh+.5,'Shipped',650]);
-ch({id:'event-driven',group:'Architecture',title:'Event-Driven Architecture',dur:33,
+ch({id:'event-driven',group:'Architecture',title:'Event-Driven Architecture',dur:33,needs:['queues-pubsub'],related:['microservices','transactions','cache-invalidation'],
 beats:[
 [0,'Request-driven: the caller knows everyone','Order service calls Inventory, Email and Analytics directly, one by one, and waits. Adding a feature means changing Order service.'],
 [7,'Event-driven: announce what happened','Order service just publishes a fact, "OrderPlaced", to an event bus. It doesn\'t know or care who is listening.'],

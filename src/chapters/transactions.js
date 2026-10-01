@@ -3,7 +3,7 @@
 const SV=[['Flights',[760,140]],['Hotels',[760,295]],['Cars',[760,450]]],CO=[380,295];
 const to=k=>[[CO[0]+80,CO[1]],[SV[k][1][0]-72,SV[k][1][1]]],back=k=>to(k).slice().reverse();
 const step=(a,b)=>[[SV[a][1][0],SV[a][1][1]+(b>a?30:-30)],[SV[b][1][0],SV[b][1][1]+(b>a?-30:30)]];
-ch({id:'transactions',group:'Advanced',title:'Distributed Transactions: Two-Phase Commit & Sagas',dur:40,
+ch({id:'transactions',group:'Advanced',title:'Distributed Transactions: Two-Phase Commit & Sagas',dur:40,needs:['microservices','cap'],related:['idempotency','event-driven','consensus'],
 beats:[
 [0,'One trip, three services','Booking a trip touches Flights, Hotels and Cars, each with its own database. Either all three bookings happen, or none should.'],
 [5,'Two-phase commit: prepare','A coordinator asks each service "can you commit?". Each one locks its rows, gets ready, and votes yes.'],

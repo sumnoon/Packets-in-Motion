@@ -2,7 +2,7 @@
 (function(){
 const UX=80,UY=k=>110+k*48,AP=[330,300],CA=[590,160],DB=[840,360];
 const miss=[[AP[0]+56,AP[1]+10],[DB[0]-56,DB[1]]];
-ch({id:'hot-keys',group:'Data',title:'Hot Keys & Request Coalescing',dur:34,
+ch({id:'hot-keys',group:'Data',title:'Hot Keys & Request Coalescing',dur:34,needs:['caching'],related:['sharding','rate-limiting','backpressure'],
 beats:[
 [0,'One key, a million readers','A celebrity posts. Everyone asks for the same key at once: post:42. The cache serves it easily…'],
 [5,'…until it expires','The cached copy of post:42 expires, and in that instant thousands of requests miss the cache together.'],

@@ -30,8 +30,8 @@ export function build() {
       if (!mime) throw new Error(`datauri: unknown file type for ${rel}`);
       return `data:${mime};base64,` + fs.readFileSync(path.join(ROOT, rel)).toString('base64');
     });
-  // every chapter and challenge file must be wired into page.html
-  for (const dir of ['chapters', 'challenges']) {
+  // every chapter, challenge and quiz file must be wired into page.html
+  for (const dir of ['chapters', 'challenges', 'quizzes']) {
     for (const f of fs.readdirSync(path.join(SRC, dir))) {
       if (f.endsWith('.js') && !used.has(`${dir}/${f}`)) throw new Error(`src/${dir}/${f} is not included in src/page.html`);
     }

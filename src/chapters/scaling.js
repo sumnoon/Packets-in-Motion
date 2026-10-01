@@ -1,5 +1,5 @@
 /* ---------------- 2. LATENCY vs THROUGHPUT, SCALING ---------------- */
-ch({id:'scaling',group:'Foundations',title:'Latency vs Throughput · Vertical vs Horizontal Scaling',dur:38,
+ch({id:'scaling',group:'Foundations',title:'Latency vs Throughput · Vertical vs Horizontal Scaling',dur:38,needs:['client-server'],related:['load-balancers','autoscaling','sharding'],
 beats:[
 [0,'Latency = time for ONE trip','Latency is how long a single request takes, measured in milliseconds. Watch the stopwatch follow one request across.'],
 [4,'Throughput = trips per second','Throughput is how many requests finish each second. It measures volume, not the speed of any single request.'],

@@ -7,7 +7,7 @@ const SV=[{on:0},{on:0},{on:10.4},{on:13},{on:15.5},{on:17.6}];SV[5].off=26;SV[4
 const BOOT=2,SX=k=>560+(k%3)*150,SY=k=>k<3?300:420;
 const ready=(s,t)=>t>=s.on+(s.on?BOOT:0)&&!(s.off&&t>=s.off);
 const nReady=t=>SV.filter(s=>ready(s,t)).length;
-ch({id:'autoscaling',group:'Foundations',title:'Autoscaling: Add Servers When You Need Them',dur:DUR,
+ch({id:'autoscaling',group:'Foundations',title:'Autoscaling: Add Servers When You Need Them',dur:DUR,needs:['scaling'],related:['load-balancers','backpressure','observability'],
 beats:[
 [0,'Traffic has a daily rhythm','A few users at night, a crowd at lunch, a peak in the evening. Paying for enough servers to handle the peak all day wastes money.'],
 [5,'Watch one number','An autoscaler keeps an eye on the group\'s average CPU and checks it every few seconds against a target: here, 70%.'],

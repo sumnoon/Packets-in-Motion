@@ -2,7 +2,7 @@
 (function(){
   const L=[500,190],F1=[270,400],F2=[730,400],WR=[120,190],R1=[95,400],R2=[905,400];
   const E=(a,b,da=48,db_=48)=>{const d=Math.hypot(b[0]-a[0],b[1]-a[1]),ux=(b[0]-a[0])/d,uy=(b[1]-a[1])/d;return[[a[0]+ux*da,a[1]+uy*da],[b[0]-ux*db_,b[1]-uy*db_]];};
-ch({id:'replication',group:'Data',title:'Replication: Leader–Follower & Multi-Leader',dur:40,
+ch({id:'replication',group:'Data',title:'Replication: Leader–Follower & Multi-Leader',dur:40,needs:['sql-nosql'],related:['cap','consensus','spof'],
 beats:[
 [0,'One database, every request','All reads and writes hit one database. If it slows down or dies, the whole app goes with it.'],
 [4,'Leader–follower replication','Add follower copies. The leader streams every change to them through a replication log.'],

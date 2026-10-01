@@ -26,9 +26,22 @@ function flyer(now,f){const p=(now-f.t0)/f.d;if(p<0)return false;if(f.drop&&p>=f
 function flyers(now,list){for(let i=list.length-1;i>=0;i--)if(flyer(now,list[i]))list.splice(i,1);}
 
 // ---------- effects: bursts and floating text (real time) ----------
+// ---------- sound cues (off until the viewer turns them on) ----------
+// Short synthesized tones: no audio files, nothing loads until enabled.
+const SFX={on:false,ctx:null,last:0,
+  enable(v){this.on=!!v;if(!v)return;if(!this.ctx){const A=window.AudioContext||window.webkitAudioContext;if(A)this.ctx=new A();}if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume();},
+  tone(f,d,o={}){const a=this.ctx,t0=a.currentTime+(o.at||0),osc=a.createOscillator(),gn=a.createGain();osc.type=o.type||'sine';osc.frequency.setValueAtTime(f,t0);
+    if(o.to)osc.frequency.exponentialRampToValueAtTime(o.to,t0+d);gn.gain.setValueAtTime(0,t0);gn.gain.linearRampToValueAtTime(o.vol||.07,t0+.012);gn.gain.exponentialRampToValueAtTime(.0001,t0+d);
+    osc.connect(gn);gn.connect(a.destination);osc.start(t0);osc.stop(t0+d+.03);},
+  play(kind,n=0){if(!this.on||!this.ctx)return;const now=Date.now();if(kind!=='win'&&now-this.last<90)return;this.last=now;
+    try{if(kind==='good'){this.tone(660,.12);this.tone(990,.16,{at:.07});}
+      else if(kind==='bad')this.tone(220,.22,{type:'triangle',to:150,vol:.09});
+      else if(kind==='beat')this.tone(520,.18,{vol:.035});
+      else if(kind==='win'){[523,659,784,1047].slice(0,n+1).forEach((f,i)=>this.tone(f,.22,{at:i*.11}));}}catch(e){}}};
+
 const FX={p:[],
   burst(x,y,c,n=18,sp=170){if(reduceMQ.matches)n=Math.min(n,4),sp*=.3;for(let i=0;i<n;i++){const a=Math.random()*6.283,v=sp*(.35+Math.random()*.65);this.p.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:.6+Math.random()*.5,age:0,c,r:1.8+Math.random()*2.4});}},
-  text(x,y,s,c=C.green,z=17){this.p.push({x,y,vx:0,vy:reduceMQ.matches?0:-36,life:1.15,age:0,c,s,z});},
+  text(x,y,s,c=C.green,z=17){if(c===C.green)SFX.play('good');else if(c===C.red)SFX.play('bad');this.p.push({x,y,vx:0,vy:reduceMQ.matches?0:-36,life:1.15,age:0,c,s,z});},
   step(dt){for(let i=this.p.length-1;i>=0;i--){const q=this.p[i];q.age+=dt;if(q.age>=q.life){this.p.splice(i,1);continue;}q.x+=q.vx*dt;q.y+=q.vy*dt;const a=1-q.age/q.life;
     if(q.s){tx(q.s,q.x,q.y,{z:q.z,wt:800,c:q.c,a});}else{q.vy+=260*dt;q.vx*=.985;g.save();g.globalAlpha=a;glowOn(q.c,8);g.fillStyle=q.c;g.beginPath();g.arc(q.x,q.y,q.r*a+.4,0,7);g.fill();glowOff();g.restore();}}},
   clear(){this.p.length=0;}};
@@ -110,6 +123,44 @@ function orderGame(o){return api=>{
       if(k>=0){const other=slots[k].card;if(drag.slot>=0)slots[drag.slot].card=other;if(other)other.slot=drag.slot;slots[k].card=drag;drag.slot=k;}
       else if(drag.slot>=0){slots[drag.slot].card=null;drag.slot=-1;}drag=null;}};
 };}
+
+// ---------- mechanic: multiple choice (section quizzes) ----------
+// o.questions:[{q, a:[right, wrong, wrong…], why, ch}]  (the first answer is the right one;
+// options are shuffled when the quiz starts). ch: the chapter to rewatch after a miss.
+function quizGame(o){const make=api=>{
+  const qs=shuffle(o.questions.map(q=>({...q,opts:shuffle(q.a.map((t,k)=>({t,ok:k===0})))})));const n=qs.length;
+  let i=0,picked=-1,right=0,done=false,shown=0;const missed=[],marks=[];
+  const OW=430,OH=92,ox=k=>W/2+(k%2?1:-1)*(OW/2+10),oy=k=>246+Math.floor(k/2)*(OH+18);
+  const opts=()=>qs[i].opts;
+  function ask(){picked=-1;shown=api.now();const q=qs[i];
+    api.status(`Question <b>${i+1}</b> of ${n}: ${esc(q.q)} ${q.opts.map((p,k)=>`<kbd>${k+1}</kbd> ${esc(p.t)}`).join(' · ')}`);}
+  function pick(k){if(done||picked>=0||!opts()[k])return;picked=k;const q=qs[i],ok=q.opts[k].ok;marks.push(ok);
+    const x=ox(k),y=oy(k);if(ok){right++;FX.burst(x,y,C.green,18,140);FX.text(x,y-60,'Right!',C.green,16);}else{missed.push(q);FX.text(x,y-60,'Not quite',C.red,16);}
+    const ans=q.opts.find(p=>p.ok).t;
+    api.status(`${ok?'<b>Right.</b>':`<span class="bad">✕</span> The answer is “${esc(ans)}”.`} ${esc(q.why)} Press <kbd>Enter</kbd> for ${i+1<n?'the next question':'your score'}.`);}
+  function next(){if(done||picked<0)return;if(i+1<n){i++;ask();return;}done=true;
+    const miss=n-right,st=miss===0?3:miss<=1?2:right>=n/2?1:0;
+    const again=[...new Set(missed.map(q=>q.ch))].map(id=>chapters.find(c=>c.id===id)).filter(Boolean).map(c=>c.title);
+    api.win(st,`${right} of ${n} right`,miss?`Worth a rewatch: ${again.join('; ')}.`:'Every answer right. You have this section down.');}
+  api.button('Next question →',next,{primary:true});
+  let started=false;
+  return{
+    draw(now){if(!started){started=true;ask();}const q=qs[i];
+      tx(`${o.title||'Section quiz'} · ${i+1} / ${n}`,W/2,44,{z:13,wt:700,c:C.dim});
+      textBlock(q.q,W/2,118,860,{z:21,wt:700,lh:29});
+      q.opts.forEach((p,k)=>{const x=ox(k),y=oy(k),me=k===picked,after=picked>=0;
+        const c=after?(p.ok?C.green:me?C.red:C.edge):C.edge,a=after&&!p.ok&&!me?.45:1;
+        plate(x,y,OW,OH,{c,fill:after&&(p.ok||me)?hexA(c,.13):C.panel2,glow:after&&(p.ok||me)?14:0,a,r:14});
+        keycap(String(k+1),x-OW/2+20,y-OH/2+20,{a});textBlock(p.t,x+8,y,OW-70,{z:15.5,wt:600,lh:21,a});});
+      if(picked>=0)textBlock(q.why,W/2,492,880,{z:14,wt:500,c:C.dim,lh:19});
+      marks.forEach((ok,k)=>dot(W/2-(n-1)*11+k*22,536,ok?C.green:C.red,4.5));
+      for(let k=marks.length;k<n;k++){g.save();g.strokeStyle=C.edge;g.lineWidth=1.5;g.beginPath();g.arc(W/2-(n-1)*11+k*22,536,4.5,0,7);g.stroke();g.restore();}},
+    click(x,y){const k=opts().findIndex((p,k)=>Math.abs(x-ox(k))<OW/2&&Math.abs(y-oy(k))<OH/2);if(k>=0)pick(k);else if(picked>=0)next();},
+    key(k){if(k==='Enter'||k===' '||k==='n'||k==='N'){next();return;}const d=+k;if(d>=1&&d<=4)pick(d-1);}};
+};make.questions=o.questions;return make;}
+// registry: one quiz per course section, shown at the end of that section in the sidebar
+const QUIZ={};
+function quiz(group,def){QUIZ[group]={...def,group,id:'quiz-'+group.toLowerCase().replace(/[^a-z0-9]+/g,'-')};}
 
 // ---------- mechanic: tune, then run a simulation ----------
 // o.controls(api,p): builds controls that write into p. o.build(p,api): returns a sim with
