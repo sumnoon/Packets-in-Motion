@@ -12,9 +12,9 @@ An animated, interactive course that takes you from "how do two computers talk?"
 
 ## Run it
 
-It's a single self-contained HTML file with no dependencies, no build step and no network requests.
+**Live:** [sumnoon.github.io/Packets-in-Motion](https://sumnoon.github.io/Packets-in-Motion/)
 
-Open `index.html` in any modern browser. That's it.
+Or run it offline: `index.html` is a single self-contained file with no dependencies and no network requests. Download it and open it in any modern browser. That's it.
 
 ## What's inside
 
@@ -73,3 +73,38 @@ On phones the course runs in landscape. Held upright, it asks you to rotate the 
 ## How it works
 
 Everything is drawn on a `<canvas>` by code. Each chapter is a pure `draw(t)` function, so `seek(t)` reproduces any moment exactly, whether you scrub, replay or jump. Simulations such as least-connections balancing, token and leaky buckets and queue backlogs are computed once when the page loads, never frame by frame.
+
+## Development
+
+`index.html` is generated from the files in `src/`. Edit those, then rebuild:
+
+| Path | What it holds |
+| --- | --- |
+| `src/page.html` | The page skeleton. Its `<!-- include: … -->` lines set which files go in and in what order. |
+| `src/styles.css` | All styles |
+| `src/engine.js` | Drawing primitives: servers, databases, packets, easing |
+| `src/chapters/<id>.js` | One lesson each: beats, trade-offs and `draw(t)` |
+| `src/challenges/<id>.js` | One challenge each. `_mechanics.js` holds the shared game types. |
+| `src/player.js` | The player: controls, sidebar, progress, challenge mode |
+
+You need [Node.js](https://nodejs.org/) 22 or newer. There are no packages to install.
+
+```bash
+npm run build
+```
+
+```bash
+npm test
+```
+
+`npm run build` writes `index.html` and inlines the logo and favicon from `assets/` as data URLs. Commit the rebuilt `index.html` with your change; CI fails if it is out of date (`npm run check`).
+
+`npm test` runs the page in Node with a stand-in canvas. Every lesson is drawn from start to finish and seeked back and forth to prove `draw(t)` is pure. Every challenge is played with random input, and the player is driven through every chapter by keyboard. The stand-in canvas throws wherever a browser would: negative radii, bad gradient stops, unparsable colours.
+
+To add a chapter, create `src/chapters/<id>.js` (and `src/challenges/<id>.js`), add an include line for each in `src/page.html`, then build and test.
+
+Every push to `main` deploys the site to GitHub Pages.
+
+## License
+
+[MIT](LICENSE)

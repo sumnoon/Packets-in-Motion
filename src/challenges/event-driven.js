@@ -1,0 +1,6 @@
+/* ---------------- 20. EVENT-DRIVEN: subscribe the services ---------------- */
+chal('event-driven',{title:'Wire up the events',goal:'Each service reacts to one event. Subscribe it to the right one. Nobody calls anybody directly.',
+  hint:'Ask: what just happened that this service cares about?',
+  make:sortGame({bins:[{id:'op',label:'OrderPlaced',sub:'an order came in',c:C.blue},{id:'pf',label:'PaymentFailed',sub:'the card was declined',c:C.red},{id:'is',label:'ItemShipped',sub:'the box left the warehouse',c:C.green}],
+    cards:[{t:'Send the order confirmation email',b:'op',why:'The confirmation goes out when the order is placed.'},{t:'Reserve the items in stock',b:'op',why:'Reserve stock as soon as the order exists.'},{t:'Ask the customer to update their card',b:'pf',why:'Only needed when payment fails.'},
+      {t:'Release the reserved stock',b:'pf',why:'If payment failed, free the items for others.'},{t:'Text the tracking link',b:'is',why:'A tracking link only exists once the box has shipped.'},{t:'Ask for a review 7 days later',b:'is',why:'Ask after delivery is under way.'},{t:'Award loyalty points',b:'op',why:'Points for placing an order, added with zero changes to the order service. That is the magic.'}]})});
