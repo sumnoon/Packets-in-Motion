@@ -9,7 +9,7 @@ const FEED=t=>t<16.6?['p88','p85','p80','p77']:['p91','p88','p85','p80'];
 ch({id:'capstone-feed',group:'Capstone',title:'Capstone: Design a News Feed',dur:58,needs:['caching','queues-pubsub','hot-keys'],related:['capstone','capstone-chat','backpressure'],
 beats:[
 [0,'The goal: a fast home feed','Show each person the newest posts from everyone they follow, in well under a second. Feeds are read about a hundred times more often than people post.'],
-[5,'Fan-out on read','Build the feed when someone opens the app: look up who they follow, fetch each account\'s recent posts and merge them. Posting is cheap, but every feed load does dozens of queries.'],
+[5,'Fan-out on read','Build the feed when someone opens the app: look up who they follow, fetch each account\'s recent posts and merge them. Posting is cheap, but every feed load does hundreds of queries.'],
 [13,'Fan-out on write','Flip it: when Ana posts, a worker adds the post id to each follower\'s precomputed feed, a short list in a cache. Opening the feed becomes one fast lookup.'],
 [21,'The celebrity problem','A star with 30 million followers posts. Fan-out on write now means 30 million cache writes for a single post, and the queue backs up for minutes.'],
 [28,'Hybrid: push for most, pull for stars','Fan out on write for ordinary accounts. For the few huge ones, skip the fan-out and merge their latest posts in when the feed is read.'],

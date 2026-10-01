@@ -3,6 +3,7 @@
 // followers posts at 3 s, and feed loads jump 20× at 8 s.
 function feedModel(p){const NEED=220000,cap=p.workers*1e5;let q=0,fresh=0;
   for(let t=0;t<14;t+=.1){if(p.mode!=='read'){q+=NEED*.1;if(p.mode==='write'&&t>=3&&t<3.1)q+=30e6;q=Math.max(0,q-cap*.1);fresh=Math.max(fresh,q/cap);}}
+  if(p.mode!=='read')fresh=Math.max(fresh,NEED/cap);
   if(p.mode!=='read'&&cap<=NEED)fresh=Math.max(fresh,60);
   const base=p.mode==='read'?820:p.mode==='write'?30:45,spike=p.mode==='read'?2400:p.cache?40:260;
   return{fresh,p99:Math.max(base,spike),base,spike,cost:p.workers*2+(p.cache?3:0)};}

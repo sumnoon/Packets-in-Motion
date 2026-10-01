@@ -13,10 +13,10 @@ beats:[
 [0,'The goal: fast, ordered, never lost','Messages should arrive within a second, in order, and never get lost, whether the other person is online or not.'],
 [5,'Assemble the building blocks','WebSocket gateways keep a connection open to each online user. Behind them: a chat service, a sharded message store, pub/sub, a presence store and push notifications.'],
 [11,'Connect and stay connected','Ana and Ben each open a WebSocket. The load balancer spreads them across gateways, and presence records which gateway holds whom.'],
-[17,'Send: store it first','Ana sends "lunch?". The chat service gives it the next sequence number in the conversation and writes it to the message store, sharded by conversation.'],
+[17,'Send: store it first','Ana sends "lunch?". The chat service gives it the next sequence number in the conversation and writes it to the message store, sharded by a hash of the conversation id.'],
 [24,'Deliver through pub/sub','The chat service publishes the message on the conversation\'s channel. Ben\'s gateway is subscribed and pushes it down his open socket.'],
 [31,'Offline: push, then catch up','Presence says Cy is offline, so a push notification goes to his phone. When he opens the app, he fetches every message after the last sequence number he saw.'],
-[38,'Receipts ride the same path','Ben\'s app sends "read #42" back the same way, and Ana sees two ticks. Small events like typing and receipts are not stored for long.'],
+[38,'Receipts ride the same path','Ben\'s app sends "read #42" back the same way, and Ana sees the message marked as read. A receipt just moves Ben\'s last-read marker; typing indicators are never stored at all.'],
 [43,'A gateway dies','Gateway 2 crashes. Ben\'s app reconnects to gateway 1 and asks for everything after #42. Sequence numbers make the resume exact, and duplicates are ignored.'],
 [50,'Every chapter, one system','Open connections, pub/sub, sharding, presence and idempotent resumes: the building blocks you have watched, working together.']],
 use:['Sequence numbers per conversation give ordering and an exact resume point','Pub/sub lets any gateway reach any other without knowing who is where','Shard messages by conversation, so a chat\'s history lives together'],
@@ -38,7 +38,7 @@ draw(t){
   box(LB[0],LB[1],{label:'LB',w:92,h:48,...A(t,5.6)});
   server(G1[0],G1[1],{label:'Gateway 1',sub:'WebSockets',w:116,h:54,...A(t,5.9)});server(G2[0],G2[1],{label:'Gateway 2',sub:'WebSockets',w:116,h:54,st:t>=G2DEAD?'fail':'ok',...A(t,6.1)});
   server(CH[0],CH[1],{label:'Chat service',sub:'orders · stores',w:124,h:58,...A(t,6.4)});
-  db(S1[0],S1[1],{label:'Shard 1',sub:'conv 1–5k',w:92,h:72,...A(t,6.8)});db(S2[0],S2[1],{label:'Shard 2',sub:'conv 5k–10k',w:92,h:72,...A(t,7)});
+  db(S1[0],S1[1],{label:'Shard 1',sub:'hash(conv)',w:92,h:72,...A(t,6.8)});db(S2[0],S2[1],{label:'Shard 2',sub:'hash(conv)',w:92,h:72,...A(t,7)});
   box(PS[0],PS[1],{label:'Pub/Sub',sub:'channel per chat',c:C.amber,w:124,h:52,...A(t,7.2)});
   box(PR[0],PR[1],{label:'Presence',sub:'who is on which gateway',c:C.accent,w:180,h:52,...A(t,7.6)});
   box(PU[0],PU[1],{label:'Push',sub:'notifications',c:C.green,w:124,h:52,...A(t,8)});
