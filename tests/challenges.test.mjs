@@ -184,6 +184,29 @@ test('lab: the chaos monkey finds every single point of failure', () => {
   assert.equal(lab('spof', ['1', '2', '3', 'a', 'b', 'b', 'c', 'c', 'd', '1', '2'], [], 14).stars, 2, 'no standby database');
   assert.equal(lab('spof', ['1', '2', '3', 'a', 'b', 'b', 'c', 'c', 'd'], [], 14).stars, 1, 'nothing has a twin');
 });
+test('lab: checkout replies after only what the customer must know', () => {
+  // 1 queue · 2 cart · 3 payment · 4 orders DB · 5 email · 6 recs · 7 invoice · 8 warehouse; A is Checkout
+  const all = ['1', '2', '3', '4', '5', '6', '7', '8'];
+  const wire = (direct, queued) => [...all, ...direct.flatMap(l => ['a', l]), 'a', 'b', ...queued.flatMap(l => ['b', l])];
+  assert.equal(lab('sync-async', wire(['c', 'd', 'e'], ['f', 'g', 'h', 'i']), [], 13).stars, 3);
+  assert.equal(lab('sync-async', wire(['c', 'd', 'e', 'i'], ['f', 'g', 'h']), [], 13).stars, 2, 'the warehouse can wait');
+  assert.equal(lab('sync-async', wire(['c', 'e'], ['d', 'f', 'g', 'h', 'i']), [], 13).stars, 1, 'charging later misleads customers');
+  assert.equal(lab('sync-async', wire(['c', 'd', 'e', 'f'], ['g', 'h', 'i']), [], 13).stars, 1, 'waiting for email fails during its outage');
+});
+test('lab: each service subscribes to exactly the events it needs', () => {
+  // 1 email · 2 inventory · 3 card alerts · 4 tracking SMS · 5 reviews · 6 loyalty; A OrderPlaced, B PaymentFailed, C ItemShipped
+  const svc = ['1', '2', '3', '4', '5', '6'];
+  assert.equal(lab('event-driven', [...svc, 'a', 'd', 'a', 'e', 'b', 'e', 'b', 'f', 'c', 'g', 'c', 'h', 'a', 'i'], [], 13).stars, 3);
+  assert.equal(lab('event-driven', [...svc, 'a', 'd', 'a', 'e', 'b', 'f', 'c', 'g', 'c', 'h', 'a', 'i'], [], 13).stars, 2, 'inventory must also hear PaymentFailed');
+  assert.equal(lab('event-driven', [...svc, 'a', 'd', 'a', 'e', 'a', 'f', 'a', 'g', 'a', 'h', 'a', 'i'], [], 13).stars, 0, 'not everything is OrderPlaced');
+});
+test('lab: replication needs followers, automatic failover and a spare', () => {
+  // 1 leader · 2 follower · 3 failover manager; A is the app
+  assert.equal(lab('replication', ['1', '2', '3', 'a', 'b', 'b', 'c', 'a', 'c', 'd', 'b', 'd', 'c', '2', '2'], [], 15).stars, 3);
+  assert.equal(lab('replication', ['1', '2', '3', 'a', 'b', 'b', 'c', 'a', 'c', 'd', 'b', 'd', 'c', '2'], [], 15).stars, 1, 'no spare follower');
+  assert.equal(lab('replication', ['1', '2', 'a', 'b', 'b', 'c', 'a', 'c', '2', '2'], [], 15).stars, 1, 'no failover manager');
+  assert.equal(lab('replication', ['1', 'a', 'b'], [], 15).stars, 0, 'one database');
+});
 test('new chapters: intended answers earn 3 stars', () => {
   assert.equal(runWith('quorums', [[/replicas/i, 3], [/write/i, 2], [/read/i, 2]], 11).stars, 3);
   assert.equal(runWith('bloom-filters', [[/bits/i, 10], [/hash/i, 7]], 9).stars, 3);
