@@ -3,7 +3,7 @@
   const OR=[860,135],EA=[280,360],EB=[610,380];
   const UA=[[95,450],[180,505],[80,330]],UB=[[560,495],[690,500]];
   const oPath=(e)=>crv([e[0]+50,e[1]-20],[(e[0]+OR[0])/2,Math.min(e[1],OR[1])-70],[OR[0]-60,OR[1]+10]);
-ch({id:'cdn',group:'Traffic',title:'CDNs & Edge Caching',dur:37,
+ch({id:'cdn',group:'Traffic',title:'CDNs & Edge Caching',dur:37,needs:['client-server'],related:['caching','cache-invalidation','proxy-gateway'],
 beats:[
 [0,'Far from the server = slow','A user in Tokyo loads a site hosted in Virginia. Every request crosses an ocean, about 200 ms each way, however fast the server is.'],
 [7,'Put copies at the edge','A CDN runs edge servers in cities around the world. Users connect to the nearest one instead of the faraway origin.'],

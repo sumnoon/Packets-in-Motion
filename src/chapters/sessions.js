@@ -3,7 +3,7 @@
 const U=[90,300],LB=[290,300],S={A:[560,160],B:[560,300],C:[560,430]},RD=[830,300];
 const to=k=>[[U[0]+20,U[1]],LB,[S[k][0]-60,S[k][1]]],back=k=>to(k).slice().reverse();
 const look=k=>[[S[k][0]+60,S[k][1]],[RD[0]-48,RD[1]]];
-ch({id:'sessions',group:'Traffic',title:'Sessions: Sticky vs Shared Storage',dur:34,
+ch({id:'sessions',group:'Traffic',title:'Sessions: Sticky vs Shared Storage',dur:34,needs:['load-balancers'],related:['auth','caching','spof'],
 beats:[
 [0,'Logged in… but on which server?','You log in, and Server A remembers you in its own memory. Your next click goes through the load balancer.'],
 [5,'Round robin sends you elsewhere','The next request lands on Server B, which has never heard of you: "please log in again".'],

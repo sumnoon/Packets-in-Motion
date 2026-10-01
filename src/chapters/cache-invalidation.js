@@ -5,7 +5,7 @@ const toC=[[AP[0]+56,AP[1]-24],[CA[0]-90,CA[1]]],toD=[[AP[0]+56,AP[1]],[DB[0]-56
 const price=t=>t<13.5?20:t<19?25:t<27?30:35;
 // the cached copy: [value, filledAt, ttl] or null
 function entry(t){if(t<3.8)return null;if(t<11)return[20,3.8,7.2];if(t<13.6)return null;if(t<19.2)return[20,13.6,8];if(t<23.2)return null;if(t<27.2)return[30,23.2,8];if(t<29)return null;if(t<36.2)return[30,29,7.2];if(t<38.8)return null;return[35,38.8,8];}
-ch({id:'cache-invalidation',group:'Data',title:'Cache Expiry (TTL) & Invalidation',dur:40,
+ch({id:'cache-invalidation',group:'Data',title:'Cache Expiry (TTL) & Invalidation',dur:40,needs:['caching'],related:['cap','event-driven'],
 beats:[
 [0,'A cache is a copy','The app caches a product\'s price so it does not ask the database every time. But a copy can fall out of date.'],
 [5,'TTL: copies expire','Each cached item gets a time to live, here 8 seconds. When it expires, the next read goes to the database and refreshes the copy.'],

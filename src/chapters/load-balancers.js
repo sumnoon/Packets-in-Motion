@@ -15,7 +15,7 @@
   const ring0=[500,300],RR=165,SA={A:40,B:160,C:270},KEYS=[15,70,100,130,185,215,250,300,340];
   const owner=(k,set)=>{let best=null,bd=999;for(const n of set){let d=(SA[n]-k+360)%360;if(d<bd){bd=d;best=n;}}return best;};
   const onR=(deg,r=RR)=>[ring0[0]+r*Math.sin(deg*Math.PI/180),ring0[1]-r*Math.cos(deg*Math.PI/180)];
-ch({id:'load-balancers',group:'Traffic',title:'Load Balancers',dur:41,
+ch({id:'load-balancers',group:'Traffic',title:'Load Balancers',dur:41,needs:['scaling'],related:['sessions','resilience','proxy-gateway'],
 beats:[
 [0,'One server can\'t keep up','All traffic lands on one machine. Requests pile up and start failing.'],
 [5,'Add servers and a load balancer','A load balancer sits in front of a pool of servers. Clients talk to one address; the balancer decides who does the work.'],

@@ -1,5 +1,5 @@
 /* ---------------- 2. LATENCY vs THROUGHPUT, SCALING ---------------- */
-ch({id:'scaling',group:'Foundations',title:'Latency vs Throughput · Vertical vs Horizontal Scaling',dur:38,
+ch({id:'scaling',group:'Foundations',title:'Latency vs Throughput · Vertical vs Horizontal Scaling',dur:38,needs:['client-server'],related:['load-balancers','autoscaling','estimation'],
 beats:[
 [0,'Latency = time for ONE trip','Latency is how long a single request takes, measured in milliseconds. Watch the stopwatch follow one request across.'],
 [4,'Throughput = trips per second','Throughput is how many requests finish each second. It measures volume, not the speed of any single request.'],
@@ -7,7 +7,7 @@ beats:[
 [15,'One server, rising traffic','As more users arrive, a single server climbs to 100% and starts dropping requests (red).'],
 [20.5,'Vertical scaling: a bigger box','Scale UP by buying a bigger machine: more CPU, more RAM. Easy, with no code changes, but cost climbs steeply and there is a ceiling.'],
 [27,'Horizontal scaling: more boxes','Scale OUT by adding ordinary machines and splitting the traffic. Each server is relaxed, and losing one is no longer fatal.'],
-[33,'Need more? Add another','Horizontal scaling grows in small, cheap steps. The price: you need something to spread the traffic (next chapter), and servers must not keep local state.']],
+[33,'Need more? Add another','Horizontal scaling grows in small, cheap steps. The price: you need something to spread the traffic (see Load Balancers), and servers must not keep local state.']],
 use:['Vertical: early on, for databases that are hard to split, when you need a quick win','Horizontal: stateless web/app servers, anything that must grow without limit or survive failures','Watch latency (user experience) AND throughput (capacity), since they are different goals'],
 cons:['Vertical: price grows faster than power, a hard ceiling, still one point of failure, downtime to upgrade','Horizontal: needs load balancing, shared state lives elsewhere (DB/cache), more moving parts','Raising throughput does not lower latency; that needs caching, closer servers or faster code'],
 draw(t){
@@ -66,6 +66,6 @@ draw(t){
     const pr=[['✓ No code changes',C.green,22.3],['$  Cost climbs fast',C.amber,23.5],['✕ Hard size ceiling',C.red,24.7],['✕ Still one point of failure',C.red,25.9]];
     if(t<27.5)pr.forEach(([s,c,t0],i)=>pill(s,775,190+i*42,{c,al:'left',a:V(t,t0,26.8)}));
     if(t>28.5)pill(t<33?'3 servers · each ~36%':'4 servers · each ~27%',855,60,{c:C.green,a:V(t,28.8)});
-    if(t>29)tx('(who decides which server gets each request? → next chapter)',650,535,{z:12.5,c:C.dim,a:V(t,30,37)});
+    if(t>29)tx('(who decides which server gets each request? → Load Balancers)',650,535,{z:12.5,c:C.dim,a:V(t,30,37)});
   }
 }});

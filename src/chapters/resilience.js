@@ -15,7 +15,7 @@
   const ROW1=[];for(let v=0;v<=16;v+=.5)ROW1.push([v,5]);
   const ROW2=[0,1,3,7,15].map(v=>[v,5]);
   const ROW3=[];{const m={};for(let c=0;c<5;c++){let v=0;for(let k=0;k<5;k++){if(k>0)v+=(.35+rnd(c*7+k)*1.3)*Math.pow(2,k-1);if(v<=16){const b=Math.round(v/.2)*.2;m[b]=(m[b]||0)+1;}}}for(const b in m)ROW3.push([+b,m[b]]);}
-ch({id:'resilience',group:'Reliability',title:'Health Checks, Failover, Circuit Breakers & Retries',dur:44,
+ch({id:'resilience',group:'Reliability',title:'Health Checks, Failover, Circuit Breakers & Retries',dur:44,needs:['timeouts','spof'],related:['idempotency','load-balancers','backpressure'],
 beats:[
 [0,'Health checks: are you alive?','Every couple of seconds the load balancer pings each server. A healthy server answers "200 OK".'],
 [4.4,'A server stops answering','Server 2 hangs. One missed check could be a blip, so the balancer waits for 3 misses in a row. Meanwhile, requests sent to it fail.'],

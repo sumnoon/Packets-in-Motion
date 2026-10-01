@@ -1,7 +1,7 @@
 /* ---------------- A4. BACK-PRESSURE & LOAD SHEDDING ---------------- */
 (function(){
 const PR=[150,290],QU=[470,290],DB=[810,290];
-ch({id:'backpressure',group:'Advanced',title:'Back-Pressure & Load Shedding',dur:36,
+ch({id:'backpressure',group:'Advanced',title:'Back-Pressure & Load Shedding',dur:36,needs:['queues-pubsub','rate-limiting'],related:['autoscaling','timeouts','hot-keys'],
 beats:[
 [0,'A fast producer, a slow consumer','The API receives 300 requests/s, but the database can only handle 200/s. The extra 100 every second has to go somewhere.'],
 [5,'An unbounded queue delays the crash','Requests pile up in memory. Everyone waits longer and longer, until memory runs out and the whole service falls over.'],

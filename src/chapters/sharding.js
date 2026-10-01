@@ -6,7 +6,7 @@
   const rangeOf=i=>Math.floor(i/4);
   const slotPos=(s,j)=>[SH[s][0]+(j%2?34:-34),462+Math.floor(j/2)*28];
   const slotIn=(i,map)=>{let j=0;for(let k=0;k<i;k++)if(map(k)===map(i))j++;return j;};
-ch({id:'sharding',group:'Data',title:'Sharding & Partitioning',dur:34,
+ch({id:'sharding',group:'Data',title:'Sharding & Partitioning',dur:34,needs:['replication'],related:['hot-keys','unique-ids','geo'],
 beats:[
 [0,'One table too big for one machine','A billion rows no longer fit on one server\'s disk, and one CPU can\'t answer every query.'],
 [5,'Split rows by a shard key','Sharding splits rows across several databases. Here the shard key is the user\'s name: A–H, I–P and Q–Z each get their own shard.'],

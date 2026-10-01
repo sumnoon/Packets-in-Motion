@@ -3,7 +3,7 @@
 const SV=[[150,170],[150,300],[150,430]],DBP=[540,300];
 const BAR={x:300,y:112,w:620};const F=[['timestamp (ms)',41,C.accent],['machine',10,C.amber],['sequence',12,C.green]];
 const UU=['f47ac10b-58cc…','0b9e3a12-77d2…','c2e1d4a9-10fe…','7a03b5c8-9e44…','3d99ef01-b2a7…','9e5c7722-4f1b…'];
-ch({id:'unique-ids',group:'Advanced',title:'Unique IDs at Scale: Snowflake IDs',dur:34,
+ch({id:'unique-ids',group:'Advanced',title:'Unique IDs at Scale: Snowflake IDs',dur:34,needs:['sharding'],related:['idempotency','capstone'],
 beats:[
 [0,'Every row needs a unique ID','Orders, posts, messages: each one needs an ID nobody else will ever get, even with hundreds of servers creating them at the same moment.'],
 [5,'Auto-increment: one counter','One database hands out 1, 2, 3… Simple and ordered, but every server has to ask it, so it becomes a bottleneck and a single point of failure.'],

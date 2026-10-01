@@ -1,7 +1,7 @@
 /* ---------------- 16. SPOF & REDUNDANCY ---------------- */
 (function(){
   const U=[80,300],X={lb:290,s:520,d:770};
-ch({id:'spof',group:'Reliability',title:'Single Points of Failure & Redundancy',dur:31,
+ch({id:'spof',group:'Reliability',title:'Single Points of Failure & Redundancy',dur:31,needs:['load-balancers'],related:['replication','resilience','consensus'],
 beats:[
 [0,'A chain of single boxes','Requests flow user → load balancer → server → database. It works, as long as every link holds.'],
 [4,'One box dies, everything stops','The server fails and every request hits a dead end. A part whose failure takes down the whole system is a single point of failure (SPOF).'],

@@ -8,7 +8,7 @@ const via=(...k)=>[[LP[0]+22,LP[1]],...k.map(q=>R[q]),[SV[0]-62,SV[1]]];
 const SENT=[{n:1,path:via('a','c','f'),t0:12.6,d:3.3},{n:2,path:via('b','e','g'),t0:13.1,d:2.7},{n:4,path:via('b','d','f'),t0:14.1,d:3.1}];
 const arr=n=>n===3?27.9:(p=>p.t0+p.d)(SENT.find(p=>p.n===n));
 const SLOT=k=>[790+k*46,165];
-ch({id:'packets',group:'Start Here',title:'How Computers Talk: Packets, IP Addresses & Ports',dur:34,
+ch({id:'packets',group:'Start Here',title:'How Computers Talk: Packets, IP Addresses & Ports',dur:34,needs:[],related:['client-server','rest-grpc-ws'],
 beats:[
 [0,'Two computers, one message','Your laptop wants to send a photo to a server far away. The internet only moves small pieces, so the photo is split into packets.'],
 [6,'Every packet carries an address','Each packet is labelled with the destination IP address (like a street address) and a port number (which door to knock on).'],

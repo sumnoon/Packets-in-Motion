@@ -5,7 +5,7 @@ const POS=N.map((n,k)=>{const a=(-90+k*72)*Math.PI/180;return[CX+RAD*Math.cos(a)
 const TO={B:5.2,C:4.0,D:4.8,E:5.6};             // randomized election timeouts (s)
 const HB1=[5.5,6.5,7.5,8.5,9.5], HB2=[20.6,21.6,22.6,23.6,24.6,25.6,26.6,27.6,28.6,29.6,30.6];
 const seg=(a,b)=>{const[x0,y0]=POS[a],[x1,y1]=POS[b],d=Math.hypot(x1-x0,y1-y0),u=[(x1-x0)/d,(y1-y0)/d];return[[x0+u[0]*52,y0+u[1]*34],[x1-u[0]*52,y1-u[1]*34]];};
-ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:38,
+ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:38,needs:['replication'],related:['locks','cap','spof','transactions'],
 beats:[
 [0,'Five nodes must agree','A replicated database needs exactly one leader to order the writes. With five nodes, how do they agree who leads, even when some crash?'],
 [5,'The leader sends heartbeats','Leader A pings every follower a few times a second: "still alive". Each ping resets that follower\'s election timer.'],

@@ -2,7 +2,7 @@
 (function(){
   const Y=[150,300,450],CX=130,SX=860,cp=y=>[[CX+18,y],[SX-60,y]];
   const pushes=[19.2,20.3,20.8,22.1,23.5,24.2,25,27,28.1,29.4,30,31.5,32.8],sends=[21.3,24.6,28.8,32];
-ch({id:'rest-grpc-ws',group:'Communication',title:'REST vs gRPC vs WebSockets',dur:34.5,
+ch({id:'rest-grpc-ws',group:'Communication',title:'REST vs gRPC vs WebSockets',dur:34.5,needs:['client-server'],related:['proxy-gateway','queues-pubsub','microservices'],
 beats:[
 [0,'REST: resources over HTTP + JSON','The client asks for a resource by URL (GET /users/7) and gets a JSON document back. One request, one response, readable text.'],
 [8,'gRPC: compact binary calls','gRPC calls a function on another service using Protocol Buffers: small binary messages over HTTP/2. Many calls share one connection at the same time.'],

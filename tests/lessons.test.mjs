@@ -9,7 +9,7 @@ const chapters = page.get('chapters');
 const CHAL = page.get('CHAL');
 // a fresh frame, as render() starts one
 const drawAt = (c, t) => { page.reset(); c.draw(t); };
-const GROUPS = ['Start Here', 'Foundations', 'Traffic', 'Data', 'Communication', 'Reliability', 'Architecture', 'Advanced', 'Capstone'];
+const GROUPS = ['Start Here', 'Foundations', 'Traffic', 'Data', 'Storage & Search', 'Communication', 'Reliability', 'Architecture', 'Advanced', 'Capstone'];
 
 test('chapter ids are unique, kebab-case and groups are contiguous and in course order', () => {
   const ids = chapters.map(c => c.id);

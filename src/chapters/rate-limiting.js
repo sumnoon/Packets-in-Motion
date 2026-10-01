@@ -10,7 +10,7 @@
   const lbReq=[20.3,21.5,22.7,24.9,25.1,25.3,25.5,25.7,25.9,26.1,26.3,28.8,30,31.2,31.4,31.6,33.2];
   const LB=[];{let lastD=0;lbReq.forEach(s=>{const a=s+1;const inQ=LB.filter(q=>q.ok&&q.dep>a).length;if(inQ>=LCAP){LB.push({s,a,ok:false});return;}const dep=Math.max(a+.35,lastD)+LEAK;lastD=dep;LB.push({s,a,ok:true,dep});});}
   const X0=180,X1=900;
-ch({id:'rate-limiting',group:'Traffic',title:'Rate Limiting: Token Bucket & Leaky Bucket',dur:38.5,
+ch({id:'rate-limiting',group:'Traffic',title:'Rate Limiting: Token Bucket & Leaky Bucket',dur:38.5,needs:['proxy-gateway'],related:['backpressure','resilience','hot-keys'],
 beats:[
 [0,'Why limit?','Without limits, one noisy client, or an attack, can flood a server and ruin it for everyone. A rate limiter decides which requests get in.'],
 [3,'Token bucket: tokens drip in','The bucket holds up to 5 tokens and gains 1 token per second. Every request must take a token to pass.'],

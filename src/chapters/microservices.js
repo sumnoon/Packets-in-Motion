@@ -11,7 +11,7 @@
       const mc=bad?C.red:hot?C.amber:C.accent;if(hot||bad)glowOn(mc,14);rr(gx-65,gy-33,130,66,10);g.fillStyle=C.panel2;g.fill();glowOff();g.strokeStyle=mc;g.lineWidth=1.6;g.stroke();
       tx(m,gx,gy-(idle?6:0),{z:14,wt:650,c:idle?C.faint:C.text});if(idle)tx('idle',gx,gy+13,{z:11,c:C.faint});if(hot)tx('busy!',gx,gy+14,{z:11,c:C.amber,wt:700});});
     if(o.dead)pill('WHOLE APP CRASHED',0,MH/2+18,{c:C.red,z:12});});}
-ch({id:'microservices',group:'Architecture',title:'Monolith vs Microservices',dur:35,
+ch({id:'microservices',group:'Architecture',title:'Monolith vs Microservices',dur:35,needs:['rest-grpc-ws'],related:['proxy-gateway','observability','transactions','event-driven'],
 beats:[
 [0,'Monolith: one app, one deploy','All features live in one codebase and run as one process, sharing one database. Simple to build, test and deploy at first.'],
 [6,'Scaling means copying everything','Only Search is busy, but you can\'t scale just Search. You run whole extra copies of the entire app, idle parts and all.'],

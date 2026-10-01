@@ -97,18 +97,26 @@ function makeDocument(ctx) {
   const listeners = new Map();
   class El {
     constructor(tag, id = '') {
-      Object.assign(this, { tagName: tag.toUpperCase(), id, className: '', children: [], attrs: {}, dataset: {}, hidden: false, disabled: false, value: '', title: '', textContent: '', _html: '' });
+      Object.assign(this, { tagName: tag.toUpperCase(), id, className: '', children: [], attrs: {}, dataset: {}, hidden: false, disabled: false, value: '', title: '', _text: '', _html: '', open: false });
       this.style = { setProperty() {}, removeProperty() {} };
       this.classList = new ClassList(this);
       this.ls = {};
       all.push(this);
     }
     get innerHTML() { return this._html; }
-    set innerHTML(v) { this._html = String(v); if (v === '') this.children = []; }
+    set innerHTML(v) { this._html = String(v); if (v === '') { this.children = []; this._text = ''; } }
+    // text nodes are kept as {text} entries so textContent reads back like the DOM
+    get textContent() { return this._text + this.children.map(c => (c.text !== undefined ? c.text : c.textContent)).join(''); }
+    set textContent(v) { this._text = String(v); this.children = []; }
     appendChild(c) { this.children.push(c); c.parentNode = this; return c; }
-    append(...cs) { cs.forEach(c => this.appendChild(c)); }
+    append(...cs) { cs.forEach(c => (typeof c === 'string' ? this.children.push({ text: c }) : this.appendChild(c))); }
+    remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); }
+    closest(sel) { let e = this; while (e) { if (e.classList && match(sel, [e]).length) return e; e = e.parentNode; } return null; }
+    showModal() { this.open = true; } close() { this.open = false; }
     setAttribute(k, v) { this.attrs[k] = String(v); }
     getAttribute(k) { return this.attrs[k] ?? null; }
+    removeAttribute(k) { delete this.attrs[k]; }
+    contains(el) { return el === this || descendants(this).includes(el); }
     addEventListener(type, fn) { (this.ls[type] ||= []).push(fn); }
     removeEventListener() {}
     dispatch(type, ev = {}) { (this.ls[type] || []).forEach(fn => fn({ target: this, preventDefault() {}, ...ev })); }
@@ -116,11 +124,11 @@ function makeDocument(ctx) {
     querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
     querySelectorAll(sel) { return match(sel, descendants(this)); }
     getBoundingClientRect() { return { left: 0, top: 0, width: 1000, height: 560 }; }
-    focus() {} scrollIntoView() {} setPointerCapture() {} releasePointerCapture() {}
+    focus() {} blur() {} scrollIntoView() {} setPointerCapture() {} releasePointerCapture() {}
     getContext() { return ctx; }
     get offsetWidth() { return 1000; }
   }
-  const descendants = el => el.children.flatMap(c => [c, ...descendants(c)]);
+  const descendants = el => el.children.filter(c => c.tagName).flatMap(c => [c, ...descendants(c)]);
   const match = (sel, list) => {
     const cls = sel.split('.').filter(Boolean);
     if (!sel.startsWith('.')) return [];
@@ -159,7 +167,7 @@ export function loadPage(opts = {}) {
     location: { hash: opts.hash || '' },
     history: { replaceState(_, __, url) { context.location.hash = url; } },
     screen: { orientation: { lock: () => Promise.resolve(), unlock() {} } },
-    devicePixelRatio: 1,
+    devicePixelRatio: 1, innerWidth: 1280, innerHeight: 800,
     requestAnimationFrame: fn => frames.push(fn),
     setTimeout: (fn, ms = 0) => { timers.push({ fn, at: (context.__now || 0) + ms / 1000 }); return timers.length; },
     clearTimeout() {},
@@ -183,3 +191,30 @@ export function loadPage(opts = {}) {
   };
 }
 export { CanvasError };
+
+// ---------- drive one challenge without the player ----------
+// A stand-in for the player's api: records buttons, controls, status and results.
+export function challenge(page, id, def) {
+  const state = { now: 0, buttons: [], controls: [], wins: [], locked: false, status: '' };
+  const api = {
+    now: () => state.now,
+    status(h) { state.status = String(h); },
+    button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary }; state.buttons.push(b); return b; },
+    slider(label, min, max, step, val, fmt, fn) { const c = { kind: 'slider', label, min: +min, max: +max, step: +step, fmt, set: v => { fmt(v); fn(v); } }; state.controls.push(c); return c; },
+    seg(label, opts, val, fn) { const c = { kind: 'seg', label, opts, set: fn }; state.controls.push(c); return c; },
+    toggle(label, val, fn) { let v = !!val; const c = { kind: 'toggle', label, set: x => fn((v = x === undefined ? !v : !!x)) }; state.controls.push(c); return c; },
+    lock(v) { state.locked = !!v; },
+    win(stars, title, msg) { state.wins.push({ stars, title, msg }); },
+  };
+  const FX = page.get('FX');
+  const inst = (def || page.get('CHAL')[id]).make(api);
+  const run = {
+    state, inst,
+    step(seconds, dt = 1 / 30) { for (let f = 0; f < seconds / dt; f++) { state.now += dt; page.reset(); page.runTimers(state.now); inst.draw(state.now, dt); FX.step(dt); } return run; },
+    press(...keys) { keys.forEach(k => inst.key && inst.key(k, state.now)); run.step(0.1); return run; },
+    click(label) { const b = state.buttons.find(b => label.test(b.label)); if (!b) throw new Error('no button ' + label); b.fn(); return run; },
+    control(label) { const c = state.controls.find(c => label.test(c.label)); if (!c) throw new Error('no control ' + label); return c; },
+    get result() { return state.wins[state.wins.length - 1] || null; },
+  };
+  return run.step(0.1);
+}

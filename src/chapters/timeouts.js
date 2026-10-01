@@ -2,7 +2,7 @@
 (function(){
 const U=[90,210],WB=[330,210],PY=[650,210],TP=[330,380];
 const CH=[['Web',150],['Orders',370],['Payments',590],['Bank',810]].map(([n,x])=>({n,x,y:420}));
-ch({id:'timeouts',group:'Reliability',title:'Timeouts & Deadlines',dur:34,
+ch({id:'timeouts',group:'Reliability',title:'Timeouts & Deadlines',dur:34,needs:['client-server'],related:['resilience','backpressure','observability'],
 beats:[
 [0,'A call that never answers','The web server calls the payment service, which has hung. Without a timeout, the web server just waits… and waits.'],
 [5,'Waiting requests pile up','Each new request also gets stuck waiting on payments. The server runs out of workers and stops answering even simple pages.'],

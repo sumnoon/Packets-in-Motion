@@ -60,3 +60,53 @@ test('playing a chapter to the end marks it seen and shows the trade-offs card',
   assert.match(page.context.localStorage.getItem('sdve-seen'), /"packets":1/);
   assert.deepEqual(page.errors, []);
 });
+
+test('screen readers: chapter names, current step, live captions and transcript', () => {
+  const page = loadPage({ player: true, hash: '#caching' });
+  const chapters = page.get('chapters');
+  const i = chapters.findIndex(c => c.id === 'caching'), c = chapters[i];
+  const items = page.document.getElementById('toc').children.filter(e => e.dataset.i !== undefined);
+  const on = items.find(b => b.getAttribute('aria-current') === 'page');
+  assert.equal(on.getAttribute('aria-label'), `${i + 1}. ${c.title}, 0 of 3 stars`);
+  assert.equal(items.filter(b => b.getAttribute('aria-current')).length, 1);
+  assert.ok(page.get('cv').getAttribute('aria-label').startsWith(`${c.title}. Step 1 of ${c.beats.length}: `));
+  page.runTimers(1);
+  assert.equal(page.document.getElementById('srLive').textContent, `${c.title}. Step 1 of ${c.beats.length}: ${c.beats[0][1]}. ${c.beats[0][2]}`);
+  // transcript: one entry per step, toggled with S, remembered
+  const tr = page.document.getElementById('transcript');
+  assert.equal(page.document.getElementById('trList').children.length, c.beats.length);
+  assert.equal(tr.hidden, true);
+  page.key('s');
+  assert.equal(tr.hidden, false);
+  assert.equal(page.document.getElementById('trBtn').getAttribute('aria-expanded'), 'true');
+  assert.equal(page.context.localStorage.getItem('pim-tr'), '1');
+  // a transcript entry seeks there
+  page.document.getElementById('trList').children[2].children[0].click();
+  page.runTimers(2);
+  assert.match(page.document.getElementById('srLive').textContent, /^Step 3 of /);
+  assert.equal(page.document.getElementById('trList').children[2].classList.contains('now'), true);
+  assert.deepEqual(page.errors, []);
+});
+
+test('Space and Enter on a focused button are left to the button', () => {
+  const page = loadPage({ player: true });
+  const before = page.document.getElementById('playBtn').getAttribute('aria-label');
+  page.key(' ', { tagName: 'BUTTON' });
+  assert.equal(page.document.getElementById('playBtn').getAttribute('aria-label'), before);
+  page.key(' ');
+  assert.notEqual(page.document.getElementById('playBtn').getAttribute('aria-label'), before);
+});
+
+test('themes: picked from the sidebar, remembered, high contrast brightens the stage', () => {
+  const page = loadPage({ player: true });
+  const C = page.get('C'), dim = C.dim, sel = page.document.getElementById('theme');
+  assert.equal(page.document.documentElement.getAttribute('data-theme'), 'dark');
+  sel.onchange({ target: { value: 'contrast' } });
+  assert.equal(page.document.documentElement.getAttribute('data-theme'), 'contrast');
+  assert.notEqual(C.dim, dim);
+  assert.equal(page.context.localStorage.getItem('pim-theme'), 'contrast');
+  sel.onchange({ target: { value: 'light' } });
+  assert.equal(C.dim, dim, 'the stage keeps its own palette in the light theme');
+  assert.equal(page.document.documentElement.getAttribute('data-theme'), 'light');
+  assert.deepEqual(page.errors, []);
+});

@@ -1,5 +1,5 @@
 /* ---------------- 1. CLIENT–SERVER & TYPING A URL ---------------- */
-ch({id:'client-server',group:'Foundations',title:'Client–Server & What Happens When You Type a URL',dur:31,
+ch({id:'client-server',group:'Foundations',title:'Client–Server & What Happens When You Type a URL',dur:31,needs:['packets'],related:['cdn','rest-grpc-ws','proxy-gateway'],
 beats:[
 [0,'Clients ask, servers answer','Every app is a conversation. Clients (phones, laptops, browsers) send requests; a server does the work and sends back responses.'],
 [6.5,'You type example.com','Your browser only knows a name. Networks route by numeric IP address, so first it has to find out where example.com lives.'],

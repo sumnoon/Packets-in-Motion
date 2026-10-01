@@ -4,7 +4,7 @@
   const path=[[148,300],[455,300]];
   const bal=t=>t<2.6?100:t<10.5?50:t<13.4?0:t<16.1?100:50;
   const lost=(t,t0)=>{const p=(t-t0)/1.4;if(p<=0)return;if(p<.5){const[x,y]=along(rev(path),p);dot(x,y,C.green,6);}else{const m=along(rev(path),.5);drop(t,t0+.7,m[0],m[1],{label:'✕ lost'});}};
-ch({id:'idempotency',group:'Reliability',title:'Idempotency',dur:32,
+ch({id:'idempotency',group:'Reliability',title:'Idempotency',dur:32,needs:['resilience'],related:['queues-pubsub','transactions','unique-ids'],
 beats:[
 [0,'Pay $50, then the network hiccups','The server charges the card, but the response is lost on the way back. The client can\'t tell whether the payment happened.'],
 [8,'Retry… and get charged twice','The client retries, which is the right instinct. But the server treats it as a brand-new payment and charges again.'],

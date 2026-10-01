@@ -2,7 +2,7 @@
 (function(){
   const U=[90,260],API=[320,260],CH=[640,130],EM0=[640,260],PDF0=[640,390],EM1=[840,300],PDF1=[840,430],QU=[520,430];
   const hop=(a,b,da=56,db_=56)=>{const d=Math.hypot(b[0]-a[0],b[1]-a[1]),ux=(b[0]-a[0])/d,uy=(b[1]-a[1])/d;return[[a[0]+ux*da,a[1]+uy*da],[b[0]-ux*db_,b[1]-uy*db_]];};
-ch({id:'sync-async',group:'Communication',title:'Synchronous vs Asynchronous Processing',dur:32,
+ch({id:'sync-async',group:'Communication',title:'Synchronous vs Asynchronous Processing',dur:32,needs:['queues-pubsub'],related:['timeouts','event-driven'],
 beats:[
 [0,'Synchronous: wait for everything','You place an order. The API charges the card, sends the email and builds the invoice PDF one after another, and only then replies.'],
 [11,'You wait for the slowest parts','Total wait = the sum of every step. And if the email service is down, the whole order fails.'],

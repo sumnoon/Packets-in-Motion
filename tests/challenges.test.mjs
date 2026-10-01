@@ -2,7 +2,7 @@
 // number keys, every control) without throwing, and scores 0–3 stars when it ends.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { loadPage } from './harness.mjs';
+import { loadPage, challenge } from './harness.mjs';
 
 const page = loadPage();
 const CHAL = page.get('CHAL');
@@ -99,4 +99,28 @@ test('simulation challenges finish and score once they run', () => {
     for (let f = 0; f < 120 * 30 && !state.wins.length; f++) { state.now += 1 / 30; page.reset(); page.runTimers(state.now); inst.draw(state.now, 1 / 30); }
     assert.equal(state.wins.length, 1, `${id}: no result after running`);
   }
+});
+
+// the puzzles must stay solvable: the intended design earns 3 stars, a naive one does not
+const runWith = (id, set, seconds) => {
+  const r = challenge(page, id);
+  for (const [label, v] of set) r.control(label).set(v);
+  r.click(/run|ship|chaos/i).step(seconds);
+  return r.result;
+};
+test('capstone: chat app has a 3-star design', () => {
+  assert.equal(runWith('capstone-chat', [[/gateways/i, 4], [/shards/i, 3], [/pub\/sub/i, true], [/push/i, true], [/resume/i, true]], 17).stars, 3);
+  assert.equal(runWith('capstone-chat', [[/gateways/i, 4], [/shards/i, 3], [/pub\/sub/i, true], [/push/i, true]], 17).stars, 2);
+});
+test('capstone: news feed needs the hybrid', () => {
+  assert.equal(runWith('capstone-feed', [[/strategy/i, 'hybrid'], [/workers/i, 3], [/page cache/i, true]], 15).stars, 3);
+  assert.ok(runWith('capstone-feed', [[/strategy/i, 'write'], [/workers/i, 6], [/page cache/i, true]], 15).stars < 3);
+});
+test('new chapters: intended answers earn 3 stars', () => {
+  assert.equal(runWith('quorums', [[/replicas/i, 3], [/write/i, 2], [/read/i, 2]], 11).stars, 3);
+  assert.equal(runWith('bloom-filters', [[/bits/i, 10], [/hash/i, 7]], 9).stars, 3);
+  assert.equal(runWith('streams', [[/partitions/i, 6], [/consumers/i, 4]], 13).stars, 3);
+  assert.equal(runWith('deployments', [[/strategy/i, 'canary'], [/rollback/i, true]], 13).stars, 3);
+  assert.equal(runWith('locks', [[/lease/i, 6], [/fencing/i, true]], 19).stars, 3);
+  assert.ok(runWith('locks', [[/lease/i, 6]], 19).stars < 3, 'without fencing a stale write gets through');
 });
