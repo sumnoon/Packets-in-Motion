@@ -3334,7 +3334,7 @@ function labAt(S,key,def,lo,hi){if(!S.chaos)return def;const m=S._at||(S._at={})
 // an incident's victim: the busiest one, or in chaos mode a random one
 function labPick(S,key,list,busiest){if(!S.chaos||!list.length)return busiest;const m=S._pick||(S._pick={});if(!(key in m))m[key]=Math.floor(S.rng()*list.length);return list[m[key]%list.length];}
 function labShuffle(S,arr){const a=arr.slice();if(!S.chaos)return a;for(let i=a.length-1;i>0;i--){const j=Math.floor(S.rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-// a component taught in an earlier chapter stays locked until you have watched that chapter
+// opt-in: a component taught in an earlier chapter stays locked until you have watched that chapter
 const LAB_TEACH={lb:'load-balancers',app:'client-server',db:'sql-nosql',standby:'replication',replica:'replication',limiter:'rate-limiting',
   cache:'caching',feedcache:'caching',pagecache:'caching',queue:'queues-pubsub',worker:'queues-pubsub',fanq:'queues-pubsub',fanw:'queues-pubsub',
   pubsub:'queues-pubsub',gateway:'rest-grpc-ws',store:'sharding',postdb:'sharding'};
@@ -3380,10 +3380,11 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   const count=kind=>G.nodes.filter(n=>n.kind===kind).length;
   const canAdd=kind=>count(kind)<(K[kind].max||8)&&G.nodes.length<LET.length;
   const allowed=(a,b)=>a!==b&&(o.links[a.kind]||[]).includes(b.kind);
-  // locked: a component taught in an earlier chapter you have not watched yet
-  const seenCh=labStore('sdve-seen',{}),myIdx=chapters.findIndex(c=>c.id===id);let unlocked=labStore('pim-lab-unlock',false)===true;
-  const lockOf=kind=>{if(unlocked)return null;const cid=K[kind].teach||LAB_TEACH[kind],j=cid?chapters.findIndex(c=>c.id===cid):-1;return j>=0&&j<myIdx&&!seenCh[cid]?{n:j+1,title:chapters[j].title}:null;};
-  const lockMsg=kind=>{const L=lockOf(kind);return`${K[kind].label} unlocks when you watch chapter ${L.n}, ${L.title}. Or press Unlock all components.`;};
+  // locks (opt-in, off by default): a component taught in an earlier chapter waits until you have watched it
+  const seenCh=labStore('sdve-seen',{}),myIdx=chapters.findIndex(c=>c.id===id);let locksOn=labStore('pim-lab-locks',false)===true;
+  const taughtEarlier=kind=>{const cid=K[kind].teach||LAB_TEACH[kind],j=cid?chapters.findIndex(c=>c.id===cid):-1;return j>=0&&j<myIdx?{cid,n:j+1,title:chapters[j].title}:null;};
+  const lockOf=kind=>{if(!locksOn)return null;const T=taughtEarlier(kind);return T&&!seenCh[T.cid]?T:null;};
+  const lockMsg=kind=>{const L=lockOf(kind);return`${K[kind].label} unlocks when you watch chapter ${L.n}, ${L.title}. Or turn off the component locks.`;};
   const hasEdge=(a,b)=>G.edges.some(e=>e.a===a.id&&e.b===b.id);
   G.out=(n,kinds)=>G.edges.filter(e=>e.a===n.id).map(e=>node(e.b)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
   G.inn=(n,kinds)=>G.edges.filter(e=>e.b===n.id).map(e=>node(e.a)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
@@ -3433,7 +3434,9 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   function share(){if(running)return;const base=String((typeof location!=='undefined'&&location.href)||'').split(/[?#]/)[0],url=`${base}?lab=${id}&d=${labEncode(id,G)}#${id}`;
     let copied=false;try{if(typeof navigator!=='undefined'&&navigator.clipboard){navigator.clipboard.writeText(url).catch(()=>{});copied=true;}}catch(e){}
     say(`${copied?'Link copied. Send it to anyone':'Copy this link and send it to anyone'} to share your $${cost()}/h design: ${url}`);}
-  if(PAL.some(k=>lockOf(k))){const ub=api.button('Unlock all components',()=>{unlocked=true;labPut('pim-lab-unlock',true);if(ub&&ub.style)ub.style.display='none';say('Every component is unlocked, in every lab.');});}
+  // the locks are one setting for every lab, offered where a lab uses components from earlier chapters
+  if(PAL.some(taughtEarlier))api.toggle('Lock components until I have watched their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
+    say(v?'Component locks on, in every lab: a component from a chapter you have not watched waits until you watch it.':'Component locks off: every component is available.');});
   let chaosOn=!!LAB_CHAOS_ON[id];
   api.toggle('Chaos mode: incidents strike at random times and places',chaosOn,v=>{chaosOn=v;LAB_CHAOS_ON[id]=v;LAB_STREAK[id]=0;say(v?'Chaos mode on: each run, the incidents strike at a random time and hit a random component. Survive three runs in a row for the chaos-proof badge.':'Chaos mode off.');});
   // what the run did to each component and wire, for the weak spots afterwards

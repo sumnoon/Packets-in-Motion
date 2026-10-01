@@ -5,8 +5,6 @@ import assert from 'node:assert/strict';
 import { loadPage, challenge } from './harness.mjs';
 
 const page = loadPage();
-// every lab component unlocked, as if each chapter had been watched (the lock test turns this off)
-page.context.localStorage.setItem('pim-lab-unlock', 'true');
 const CHAL = page.get('CHAL');
 const FX = page.get('FX');
 const W = 1000, H = 560;
@@ -277,27 +275,32 @@ test('lab: a design survives a share link, and a tampered link is refused', () =
   assert.equal(decode('capstone-chat', '1~0.7.25_1.30.25_1.30.25_1.30.25~~0'), null, 'more load balancers than allowed');
   assert.equal(decode('nope', code), null);
 });
-test('lab: components from chapters you have not watched stay locked', () => {
+test('lab: component locks are opt-in, and lock what you have not watched yet', () => {
   const ls = page.context.localStorage;
   labReset();
-  ls.setItem('pim-lab-unlock', 'false');
   try {
     let r = challenge(page, 'spof');
+    r.press('1');
+    assert.match(r.state.status, /<b>B<\/b> Load balancer/, 'off by default: everything is available');
+    labReset();
+    r = challenge(page, 'spof');
+    r.control(/lock components/i).set(true);
+    assert.equal(ls.getItem('pim-lab-locks'), 'true');
+    r = challenge(page, 'spof');
     assert.match(r.state.status, /<kbd>1<\/kbd> Load balancer \(locked: watch chapter 6\)/);
     r.press('1');
-    assert.match(r.state.status, /Load balancer unlocks when you watch chapter 6, /);
+    assert.match(r.state.status, /Load balancer unlocks when you watch chapter 6, .*Or turn off the component locks\./);
     assert.doesNotMatch(r.state.status, /<b>B<\/b>/);
     ls.setItem('sdve-seen', JSON.stringify({ 'load-balancers': 1 }));
     r = challenge(page, 'spof');
     r.press('1');
     assert.match(r.state.status, /<b>B<\/b> Load balancer/, 'watching the chapter unlocks it');
     assert.match(r.state.status, /App server \(locked: watch chapter 2\)/);
-    r.click(/unlock all/i);
+    r.control(/lock components/i).set(false);
     r.press('2');
     assert.match(r.state.status, /<b>C<\/b> App server/);
-    assert.equal(ls.getItem('pim-lab-unlock'), 'true');
-    assert.equal(challenge(page, 'scaling').state.buttons.some(b => /unlock all/i.test(b.label)), false, 'the scaling lab teaches its own components');
-  } finally { ls.setItem('pim-lab-unlock', 'true'); ls.setItem('sdve-seen', '{}'); }
+    assert.equal(challenge(page, 'scaling').state.controls.some(c => /lock components/i.test(c.label)), false, 'the scaling lab only uses its own components');
+  } finally { ls.setItem('pim-lab-locks', 'false'); ls.setItem('sdve-seen', '{}'); }
 });
 test('lab: hints go a level deeper with each press, then outline a design', () => {
   labReset();
