@@ -6,7 +6,10 @@
 const ONLINE=100000,SOCK=40000,CHAT=12000,SHARD=3000,DIRECT=20000;
 chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,000 people online, a message storm, the busiest gateway crashing and 10% of members offline. Reach at least 99.5% of recipients within a second (a push counts for offline members) and spend at most $22/h.',
   hint:'People → load balancer → WebSocket gateways (room for everyone even after one dies) → chat service → enough store shards for the storm. Deliver through pub/sub to every gateway, push to the offline, and let clients resume from their last sequence number.',
-  make:labGame({id:'capstone-chat',budget:22,dur:16,scale:400,
+  make:labGame({id:'capstone-chat',
+    hints:['Count connections: how many people does a gateway hold, and how many are left if one dies?','A load balancer in front of gateways with room to lose one, a chat service, enough store shards for the storm, pub/sub back to every gateway, and push for offline members. Clients should resume from their last sequence number.'],
+    solution:{nodes:['lb','gateway','chat','store','pubsub','push','gateway','gateway','gateway','store','store'],edges:[[0,1],[1,2],[2,3],[3,4],[3,5],[5,2],[3,6]],opts:{resume:true}},
+    loadNote:(n,u)=>n.kind==='gateway'?`${Math.round(u*40)}k people on a 40k gateway`:n.kind==='store'?'more writes than a shard takes':n.kind==='chat'?'more messages than it handles':null,budget:22,dur:16,scale:400,
     intro:'Drag components onto the board and wire them from People. A message goes phone → gateway → chat service → store, then out to the recipient’s gateway or phone.',
     fixedKinds:{users:{label:'People',shape:'user',w:44,h:44}},
     fixed:[{kind:'users',x:70,y:250,label:'100k online'}],

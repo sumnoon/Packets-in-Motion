@@ -110,8 +110,10 @@ const runWith = (id, set, seconds) => {
 };
 // capstones are architecture labs: build the design with keys (digits add, letter pairs wire), then load-test it
 const LAB_SAVE = page.get('LAB_SAVE');
+// a fresh start: no saved design, weak spots, hints, undo history, failures or best costs
+const labReset = () => ['LAB_SAVE', 'LAB_POST', 'LAB_HINT', 'LAB_UNDO', 'LAB_FAILS', 'LAB_BEST'].forEach(n => { const o = page.get(n); for (const k in o) delete o[k]; });
 const lab = (id, keys, opts, seconds) => {
-  for (const k in LAB_SAVE) delete LAB_SAVE[k];
+  labReset();
   const r = challenge(page, id);
   r.press(...keys);
   for (const [label, v] of opts) r.control(label).set(v);
@@ -206,6 +208,78 @@ test('lab: replication needs followers, automatic failover and a spare', () => {
   assert.equal(lab('replication', ['1', '2', '3', 'a', 'b', 'b', 'c', 'a', 'c', 'd', 'b', 'd', 'c', '2'], [], 15).stars, 1, 'no spare follower');
   assert.equal(lab('replication', ['1', '2', 'a', 'b', 'b', 'c', 'a', 'c', '2', '2'], [], 15).stars, 1, 'no failover manager');
   assert.equal(lab('replication', ['1', 'a', 'b'], [], 15).stars, 0, 'one database');
+});
+test('lab: every outline shown by the third hint earns 3 stars', () => {
+  const DEFS = page.get('LAB_DEFS');
+  assert.ok(Object.keys(DEFS).length >= 10);
+  for (const [id, o] of Object.entries(DEFS)) {
+    labReset();
+    // build the outline the way the hint lays it out: stateless servers without wires copy the first of their kind
+    const F = o.fixed.length, kinds = [...o.fixed.map(f => f.kind), ...o.solution.nodes], es = o.solution.edges.map(e => e.slice());
+    kinds.forEach((k, i) => {
+      if (i < F || !o.kinds[k].clone || es.some(([a, b]) => a === i || b === i)) return;
+      const first = kinds.indexOf(k);
+      es.filter(([a, b]) => a === first || b === first).forEach(([a, b]) => es.push([a === first ? i : a, b === first ? i : b]));
+    });
+    const nodes = kinds.map((k, i) => i < F ? { ...o.fixed[i], id: 'f' + i, fixed: true } : { id: 'n' + i, kind: k, x: 500, y: 250 });
+    LAB_SAVE[id] = { nodes, edges: es.map(([a, b]) => ({ a: nodes[a].id, b: nodes[b].id })), seq: kinds.length, opts: { ...(o.solution.opts || {}) } };
+    const r = challenge(page, id);
+    r.press('Enter').step(o.dur + 1);
+    assert.equal(r.result.stars, 3, `${id}: the outline should earn 3 stars`);
+    assert.equal(o.hints.length, 2, `${id}: two hint levels before the outline`);
+  }
+});
+test('lab: hints go a level deeper with each press, then outline a design', () => {
+  labReset();
+  const r = challenge(page, 'scaling');
+  assert.equal(r.inst.hintLabel(), 'Hint');
+  const h1 = r.inst.hint('full'), h2 = r.inst.hint('full'), h3 = r.inst.hint('full');
+  assert.match(h1.text, /^Hint 1 of 3: Watch the moment/);
+  assert.match(h2.text, /^Hint 2 of 3: Put a load balancer/);
+  assert.match(h3.text, /^Hint 3 of 3: full One 3-star design is outlined faintly on the board: Users → Load balancer, Load balancer → 4 × Medium server\./);
+  assert.equal(h3.label, 'Hide outline');
+  assert.equal(r.inst.hint('full').text, null, 'a fourth press hides the outline');
+  assert.equal(challenge(page, 'scaling').inst.hintLabel(), 'Hide outline', 'the hint level survives Try again, with the outline back on');
+});
+test('lab: undo reverses adds, wires and removals', () => {
+  labReset();
+  const r = challenge(page, 'scaling');
+  r.press('1', '3', 'a', 'b');
+  assert.match(r.state.status, /<b>A<\/b> Your users → B/);
+  r.press('z');   // a plain letter still selects; only Ctrl+Z undoes
+  r.inst.key('z', 0, { ctrlKey: true });
+  assert.doesNotMatch(r.state.status, /Your users → B/);
+  r.click(/^undo$/i);
+  assert.doesNotMatch(r.state.status, /<b>C<\/b>/, 'the medium server is gone');
+  r.press('b', 'Delete');
+  assert.doesNotMatch(r.state.status, /<b>B<\/b> Load balancer/);
+  r.click(/^undo$/i);
+  assert.match(r.state.status, /<b>B<\/b> Load balancer/);
+});
+test('lab: a failed run marks its weak spots on the board, until you change the design', () => {
+  labReset();
+  const r = challenge(page, 'scaling');
+  r.press('3', 'a', 'b', '3', '3', '3', 'Enter').step(19);
+  assert.ok(r.result.stars < 3);
+  assert.match(r.result.msg, /see where it broke on the board/);
+  const again = challenge(page, 'scaling');
+  assert.match(again.state.status, /Weak spots from your last run:<\/span> Your users → Medium server: failing from 11\.0 s/);
+  again.press('1');
+  assert.doesNotMatch(again.state.status, /Weak spots/, 'an edit clears them');
+});
+test('lab: the cheapest 3-star cost is kept, with a lean medal to chase', () => {
+  labReset();
+  let r = challenge(page, 'scaling');
+  r.press('1', '3', 'a', 'b', 'b', 'c', '3', '3', '3', 'Enter').step(19);
+  assert.equal(r.result.stars, 3);
+  assert.match(r.result.msg, /A 3-star design exists for \$10\/h\. Can you find it\?/);
+  assert.equal(page.get('LAB_BEST').scaling, 13);
+  for (const k in LAB_SAVE) delete LAB_SAVE[k];
+  r = challenge(page, 'scaling');
+  r.press('1', '2', 'a', 'b', 'b', 'c', '2', '2', '2', '2', '2', '3', 'b', 'i', 'Enter').step(19);
+  assert.equal(r.result.stars, 3);
+  assert.match(r.result.msg, /New best: \$10\/h, down from \$13\/h\. Lean medal/);
+  assert.match(challenge(page, 'scaling').state.status, /Your cheapest 3-star design: \$10\/h/);
 });
 test('new chapters: intended answers earn 3 stars', () => {
   assert.equal(runWith('quorums', [[/replicas/i, 3], [/write/i, 2], [/read/i, 2]], 11).stars, 3);

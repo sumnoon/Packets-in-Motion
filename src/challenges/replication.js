@@ -7,7 +7,14 @@
 const R=150,WRITES=45,READS=105,CAP=60,PROMOTE=1;
 chal('replication',{title:'Keep it serving',goal:'Build it yourself: 150 requests/s (30% writes), each database node takes 60/s, and the leader crashes halfway. Serve at least 95% of requests and spend at most $6/h.',
   hint:'Writes go to the leader; spread reads over followers that replicate from it. A failover manager promotes a follower when the leader dies, and that costs you a follower, so keep a spare.',
-  make:labGame({id:'replication',budget:6,dur:14,scale:12,
+  make:labGame({id:'replication',
+    hints:['Writes must go to the leader, but reads can go to any database that has a copy. Count the work per node.','Followers wired from the leader take the reads. A failover manager wired to the leader and the followers promotes one when the leader dies. Count the followers left after that.'],
+    solution:{nodes:['leader','follower','follower','follower','failover'],edges:[[0,1],[0,2],[1,2],[5,1],[5,2]]},
+    loadNote:n=>n.kind==='leader'||n.kind==='follower'?'over its 60 requests/s':null,
+    blame(S,G,gen){const m=[],L=G.of('leader')[0];
+      if(S.why.nolead>100&&L)m.push({id:L.id,note:'nobody took over when it died'});
+      if(S.why.stale>1)G.of('follower').filter(f=>!G.inn(f,['leader']).length).forEach(f=>m.push({id:f.id,note:'gets no data from the leader'}));
+      return m.concat(gen.filter(x=>x.id));},budget:6,dur:14,scale:12,
     intro:'The app sends writes and reads. Add a leader database and followers, wire the leader to each follower so it copies the data, and decide where reads go.',
     fixedKinds:{app:{label:'App',shape:'server',w:110,h:56,sub:'150 req/s'}},
     fixed:[{kind:'app',x:90,y:250,label:'App'}],

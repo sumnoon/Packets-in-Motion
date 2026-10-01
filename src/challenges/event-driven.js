@@ -17,7 +17,14 @@ const WRONG={email:'Email sent an order confirmation for an event that was not a
   reviews:'Reviews were requested before anything shipped.',points:'Points were awarded for something other than placing an order.'};
 chal('event-driven',{title:'Wire up the events',goal:'Build it yourself: add the services and subscribe each one to the events it must react to. Every service gets exactly what it needs, and nobody calls anybody directly.',
   hint:'Ask of each service: what just happened that it cares about? Inventory cares about two events: reserve stock when an order is placed, release it when payment fails.',
-  make:labGame({id:'event-driven',budget:6,dur:12,scale:1.2,runLabel:'Start the events',
+  make:labGame({id:'event-driven',
+    hints:['For each service, ask: what just happened that it cares about?','Inventory needs two events. Tracking texts and review requests only make sense once something has shipped.'],
+    solution:{nodes:['email','stock','card','sms','reviews','points'],edges:[[0,3],[0,4],[1,4],[1,5],[2,6],[2,7],[0,8]]},
+    blame(S,G){const m=[];
+      Object.keys(NEEDS).forEach(k=>{const s=G.of(k)[0];if(!s)return;
+        Object.keys(TOPICS).forEach(tp=>{const src=G.of(tp)[0];if(!NEEDS[k][tp]&&G.out(src).includes(s))m.push({edge:src.id+'>'+s.id,note:'should not react to this'});});
+        const miss=Object.keys((S.missed[k]||{})).filter(tp=>S.missed[k][tp]>.01);if(miss.length)m.push({id:s.id,note:`never hears ${miss.map(tp=>TOPICS[tp].label).join(' or ')}`});});
+      return m;},budget:6,dur:12,scale:1.2,runLabel:'Start the events',
     intro:'Three kinds of events stream in on the left. Drag in the services that react, then wire each event to the services that care about it.',
     fixedKinds:Object.fromEntries(Object.entries(TOPICS).map(([k,v])=>[k,{label:v.label,shape:'box',c:v.c,w:176,h:52,sub:v.sub}])),
     fixed:[{kind:'placed',x:110,y:130,label:'OrderPlaced'},{kind:'failed',x:110,y:250,label:'PaymentFailed'},{kind:'shipped',x:110,y:370,label:'ItemShipped'}],

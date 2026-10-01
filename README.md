@@ -61,6 +61,8 @@ Ten challenges are **architecture labs**: you design the system yourself. Drag c
 - **Build the chat app**: keep 100,000 people connected through a message storm, a gateway crash and offline members.
 - **Build the news feed**: get posts to followers fast, survive a celebrity post and a 20× spike in feed loads.
 
+After a run that falls short, the board marks the weak spots: the component that overloaded and when, or the wire where requests failed. Hint goes a level deeper with each press: a nudge, then the components you need, then a faint outline of a 3-star design to trace. Ctrl+Z (or Undo) reverses any change, and each lab remembers your cheapest 3-star design, with a lean medal where a cheaper one exists.
+
 Labs work with the keyboard too: digits add components, pressing two components' letters wires them, Delete removes the selection, and Enter runs the test. The status line reads the whole design aloud.
 
 Each section with more than one chapter ends with a **section quiz**: six multiple-choice questions with an explanation for every answer, scored with stars like the challenges. A miss names the chapter worth rewatching.

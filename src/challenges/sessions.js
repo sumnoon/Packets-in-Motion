@@ -7,7 +7,15 @@
 const N=30,RATE=10;
 chal('sessions',{title:'Keep everyone logged in',goal:'Build it yourself: 30 users click around, then a server dies, then the session store\'s machine dies. Finish with zero forced re-logins and spend at most $7/h.',
   hint:'A session kept in one server\'s memory is lost when the load balancer sends you elsewhere or that server dies. Wire every server to a shared session store, and give the store a replica so its machine can die too.',
-  make:labGame({id:'sessions',budget:7,dur:13,scale:.6,
+  make:labGame({id:'sessions',
+    hints:['A session only helps if the next server you land on can find it.','Wire every server to a session store, and wire the store to a replica.'],
+    solution:{nodes:['lb','app','app','store','replica'],edges:[[0,1],[1,2],[2,4],[4,5]]},lean:6,
+    blame(S,G,gen){const m=[];
+      if(S.why.mem)G.of('app').filter(a=>!G.out(a,['store']).length).forEach(a=>m.push({id:a.id,note:'sessions only in its own memory'}));
+      if(S.why.dead)S.dead.forEach(d=>m.push({id:d,note:'its sessions died with it'}));
+      if(S.why.store){const st=G.of('store')[0];if(st)m.push({id:st.id,note:'no replica: every session lost at 9 s'});}
+      if(S.why.direct){const u=G.of('users')[0];S.dead.forEach(d=>m.push({edge:u.id+'>'+d,note:'users stranded here'}));}
+      return m.length?m:gen;},budget:7,dur:13,scale:.6,
     intro:'30 users are logged in. Build a path from Users to your servers and decide where their sessions live, then press Run.',
     fixedKinds:{users:{label:'Users',shape:'user',w:44,h:44}},
     fixed:[{kind:'users',x:70,y:250,label:'30 users'}],
