@@ -18,18 +18,19 @@ Or run it offline: `index.html` is a single self-contained file with no dependen
 
 ## What's inside
 
-32 chapters in 9 sections, from zero to advanced:
+43 chapters in 10 sections, from zero to advanced:
 
 | Section | Chapters |
 | --- | --- |
 | Start Here | How computers talk: packets, IP addresses & ports |
-| Foundations | Client–server & typing a URL · Latency vs throughput, vertical vs horizontal scaling · Autoscaling |
-| Traffic | Load balancers · Sessions: sticky vs shared storage · Reverse proxies & API gateways · CDNs & edge caching · Rate limiting |
-| Data | SQL vs NoSQL · Indexing · Replication · Sharding · Caching & LRU · Cache expiry (TTL) & invalidation · Hot keys & request coalescing · CAP & consistency |
-| Communication | REST vs gRPC vs WebSockets · Message queues & pub/sub · Sync vs async |
-| Reliability | SPOFs & redundancy · Timeouts & deadlines · Health checks, failover, circuit breakers, retries · Idempotency |
+| Foundations | Client–server & typing a URL · Latency vs throughput, vertical vs horizontal scaling · Autoscaling · Back-of-the-envelope estimation |
+| Traffic | Load balancers · Sessions: sticky vs shared storage · Reverse proxies & API gateways · Authentication: sessions, JWTs & OAuth · CDNs & edge caching · Rate limiting |
+| Data | SQL vs NoSQL · Indexing · Replication · Quorums (N, W, R) · Sharding · Caching & LRU · Cache expiry (TTL) & invalidation · Hot keys & request coalescing · Bloom filters · CAP & consistency |
+| Storage & Search | B-trees vs LSM trees · Search with inverted indexes · Geospatial indexes: geohash & quadtrees |
+| Communication | REST vs gRPC vs WebSockets · Message queues & pub/sub · Sync vs async · Stream vs batch processing |
+| Reliability | SPOFs & redundancy · Timeouts & deadlines · Health checks, failover, circuit breakers, retries · Idempotency · Safe deploys: blue-green, canary & feature flags |
 | Architecture | Monolith vs microservices · Event-driven · Observability |
-| Advanced | Consensus & leader election (Raft) · Two-phase commit & sagas · Snowflake IDs · Back-pressure & load shedding |
+| Advanced | Consensus & leader election (Raft) · Distributed locks, leases & fencing tokens · Conflict resolution: vector clocks & CRDTs · Two-phase commit & sagas · Snowflake IDs · Back-pressure & load shedding |
 | Capstone | Design a URL shortener, end to end |
 
 Each chapter has a 28–62 s animation, play/pause/replay, a scrubber with step markers, synced captions, and a "When to use it / Trade-offs" card at the end.

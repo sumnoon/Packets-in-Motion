@@ -630,7 +630,7 @@ draw(t){
 }});
 
 /* ---------------- 2. LATENCY vs THROUGHPUT, SCALING ---------------- */
-ch({id:'scaling',group:'Foundations',title:'Latency vs Throughput · Vertical vs Horizontal Scaling',dur:38,needs:['client-server'],related:['load-balancers','autoscaling','sharding'],
+ch({id:'scaling',group:'Foundations',title:'Latency vs Throughput · Vertical vs Horizontal Scaling',dur:38,needs:['client-server'],related:['load-balancers','autoscaling','estimation'],
 beats:[
 [0,'Latency = time for ONE trip','Latency is how long a single request takes, measured in milliseconds. Watch the stopwatch follow one request across.'],
 [4,'Throughput = trips per second','Throughput is how many requests finish each second. It measures volume, not the speed of any single request.'],
@@ -638,7 +638,7 @@ beats:[
 [15,'One server, rising traffic','As more users arrive, a single server climbs to 100% and starts dropping requests (red).'],
 [20.5,'Vertical scaling: a bigger box','Scale UP by buying a bigger machine: more CPU, more RAM. Easy, with no code changes, but cost climbs steeply and there is a ceiling.'],
 [27,'Horizontal scaling: more boxes','Scale OUT by adding ordinary machines and splitting the traffic. Each server is relaxed, and losing one is no longer fatal.'],
-[33,'Need more? Add another','Horizontal scaling grows in small, cheap steps. The price: you need something to spread the traffic (next chapter), and servers must not keep local state.']],
+[33,'Need more? Add another','Horizontal scaling grows in small, cheap steps. The price: you need something to spread the traffic (see Load Balancers), and servers must not keep local state.']],
 use:['Vertical: early on, for databases that are hard to split, when you need a quick win','Horizontal: stateless web/app servers, anything that must grow without limit or survive failures','Watch latency (user experience) AND throughput (capacity), since they are different goals'],
 cons:['Vertical: price grows faster than power, a hard ceiling, still one point of failure, downtime to upgrade','Horizontal: needs load balancing, shared state lives elsewhere (DB/cache), more moving parts','Raising throughput does not lower latency; that needs caching, closer servers or faster code'],
 draw(t){
@@ -697,7 +697,7 @@ draw(t){
     const pr=[['✓ No code changes',C.green,22.3],['$  Cost climbs fast',C.amber,23.5],['✕ Hard size ceiling',C.red,24.7],['✕ Still one point of failure',C.red,25.9]];
     if(t<27.5)pr.forEach(([s,c,t0],i)=>pill(s,775,190+i*42,{c,al:'left',a:V(t,t0,26.8)}));
     if(t>28.5)pill(t<33?'3 servers · each ~36%':'4 servers · each ~27%',855,60,{c:C.green,a:V(t,28.8)});
-    if(t>29)tx('(who decides which server gets each request? → next chapter)',650,535,{z:12.5,c:C.dim,a:V(t,30,37)});
+    if(t>29)tx('(who decides which server gets each request? → Load Balancers)',650,535,{z:12.5,c:C.dim,a:V(t,30,37)});
   }
 }});
 
@@ -743,6 +743,68 @@ draw(t){
     pk(t,s0,.8,[[30,360],[315,360],[445,360],[SX(k)-56,SY(k)]],cpu>1?C.amber:C.blue,{r:4});});
   const ev=[[10.4,'CPU 82% > 70% → launch server 3'],[13,'still hot → launch server 4'],[15.5,'overloaded while booting → launch 5'],[17.6,'launch 6'],[26,'CPU 36% < 40% → remove one'],[29.2,'after cooldown → remove another'],[32.4,'and another']];
   ev.forEach(([at,s])=>{if(t>at&&t<at+2.6)pill(s,W/2+60,212,{c:at>25?C.amber:C.accent,z:12.5,a:V(t,at,at+2.4)});});
+}});})();
+
+/* ---------------- 2c. BACK-OF-THE-ENVELOPE ESTIMATION ---------------- */
+(function(){
+const NX=50,NY=96,NW=410;
+// the envelope: [appears at, the sum, the answer, colour]
+const LINES=[[6.6,'10 M users × 50 views','= 500 M views a day',C.accent],[8.4,'÷ ~100,000 s in a day','(86,400, rounded up)',C.dim],[10.2,'≈ 5,000 reads / s','the average QPS',C.green],
+  [13.6,'× 3 for the evening peak','≈ 15,000 reads / s',C.green],[19.6,'10 M uploads × 500 KB','= 5 TB a day',C.amber],[21.6,'× 365','≈ 1.8 PB a year',C.amber],[26.6,'15,000 / s × 500 KB','≈ 7.5 GB / s at peak',C.blue]];
+// requests per second through one day, 0–1; the evening peak is ~2.5× the average
+const day=h=>.3+.18*Math.sin((h-10)/24*2*Math.PI)+.6*Math.exp(-Math.pow((h-20.5)/2.4,2));
+const AVG=(()=>{let s=0;for(let h=0;h<24;h+=.1)s+=day(h);return s/240;})();
+ch({id:'estimation',group:'Foundations',title:'Back-of-the-Envelope Estimation',dur:36,needs:['scaling'],related:['caching','cdn','sharding'],
+beats:[
+[0,'Estimate before you build','How big will this be? A few multiplications answer it well enough to choose a design. Let\'s size a photo app with 10 million daily users.'],
+[6,'Requests per second','10 M users × 50 views = 500 M views a day. A day has about 100,000 seconds, so that is about 5,000 requests per second (QPS) on average.'],
+[13,'Plan for the peak','Traffic is not flat. Evenings run two to three times the average, so plan for about 15,000 reads per second.'],
+[19,'Storage adds up','10 M uploads a day × 500 KB = 5 TB a day, about 1.8 PB a year. That calls for object storage, not one database.'],
+[26,'Bandwidth','15,000 photos a second × 500 KB is about 7.5 GB a second at peak. No single origin should serve that: put a CDN in front.'],
+[31,'Round numbers, right decisions','Being within a factor of two is plenty. The goal is to spot which part needs a cache, a CDN or sharding before you build it.']],
+use:['Before a design review or interview: size reads, writes, storage and bandwidth','Checking whether one machine is enough, or you need many','Spotting the part of a system that will hit a limit first'],
+cons:['Round numbers hide detail: a 2× error is normal, so leave headroom','Averages hide peaks and hot spots: always ask about the busiest minute','An estimate is a starting point; measure once real traffic arrives'],
+draw(t){
+  // the app being sized
+  const ia=A(t,.3,5.8);if(ia.a>0){box(250,230,{label:'Photo app',sub:'view · upload',w:170,h:64,...ia});
+    [['10 M daily users',1.2],['50 photo views each a day',2],['1 upload each a day',2.8],['500 KB per photo',3.6]].forEach(([s,t0],k)=>pill(s,250,310+k*42,{c:C.blue,z:13,a:ia.a*V(t,t0)}));}
+  // the envelope
+  const na=V(t,6.2);if(na>0){panel(NX,NY,NW,LINES.length*54+26,{a:na});tx('the envelope',NX+16,NY-14,{z:12,c:C.dim,al:'left',a:na});
+    LINES.forEach(([t0,a,b,c],i)=>{const v=V(t,t0);if(v<=0)return;const y=NY+30+i*54;tx(a,NX+20,y,{z:14,f:MONO,al:'left',a:v});tx(b,NX+20,y+21,{z:14,f:MONO,wt:750,al:'left',c,a:v});});}
+  // 1. a hundred dots, each 100,000 people, all asking for photos
+  const p1=V(t,.2,12.8);
+  if(p1>0){const GX=k=>575+(k%10)*20,GY=k=>110+Math.floor(k/10)*20;
+    for(let k=0;k<100;k++){const a=V(t,.3+k*.025,12.8);if(a>0)dot(GX(k),GY(k),C.blue,3.2,a);}
+    tx('10 M daily users',665,330,{z:15,wt:700,a:V(t,2.6,12.8)});tx('each dot = 100,000 people',665,352,{z:12,c:C.dim,a:V(t,3,12.8)});
+    server(880,220,{label:'Photos',sub:'app',w:112,...A(t,4,12.8)});
+    each(t,6.5,12.3,.09,.7,(i,s)=>{const k=(i*37)%100;pk(t,s,.7,[[GX(k),GY(k)],[824,220]],C.blue,{r:3});});
+    if(t>10.2)pill('≈ 5,000 requests / s',880,282,{c:C.green,z:13,a:V(t,10.2,12.8)});}
+  // 2. one day of traffic: average versus peak
+  const p2=V(t,13.2,18.8);
+  if(p2>0){const X=h=>520+h/24*430,Y=v=>330-v*190,top=AVG*3;
+    tx('requests per second through one day',735,96,{z:12,c:C.dim,a:p2});
+    ln([[520,330],[950,330]],{c:C.line,a:p2});[['0:00',0,'left'],['12:00',12,'center'],['24:00',24,'right']].forEach(([s,h,al])=>tx(s,X(h),348,{z:11,c:C.dim,al,a:p2}));
+    const pd=P(t,13.4,15.4);g.save();g.globalAlpha=p2;g.beginPath();for(let h=0;h<=24*pd;h+=.25){const x=X(h),y=Y(day(h)/top);h?g.lineTo(x,y):g.moveTo(x,y);}g.strokeStyle=C.blue;g.lineWidth=2.5;g.stroke();g.restore();
+    const ay=Y(AVG/top);ln([[520,ay],[950,ay]],{c:C.green,dash:[5,6],a:p2*V(t,15.4)});tx('average ≈ 5,000/s',948,ay+14,{z:12,c:C.green,al:'right',a:p2*V(t,15.4)});
+    ln([[520,Y(1)],[950,Y(1)]],{c:C.amber,dash:[5,6],a:p2*V(t,16.4)});tx('plan for 3× ≈ 15,000/s',948,Y(1)-10,{z:12,c:C.amber,al:'right',a:p2*V(t,16.4)});
+    if(t>15.8)ring(t,15.8,X(20.5),Y(day(20.5)/top),C.amber,26);}
+  // 3. storage: five terabytes a day, every day
+  const p3=V(t,19.2,25.8);
+  if(p3>0){const n=Math.max(1,Math.ceil(P(t,19.6,24.4)*12));
+    for(let k=0;k<n;k++)db(605+(k%4)*90,150+Math.floor(k/4)*84,{label:'5 TB',w:62,h:48,col:C.amber,a:p3*V(t,19.6+k*.36)});
+    const days=Math.round(lerp(1,365,P(t,21.6,24.8)));tx(`day ${days}: ${(days*5).toLocaleString()} TB`,740,428,{z:17,wt:750,f:MONO,c:C.amber,a:p3});
+    pill('→ object storage, not one database',740,470,{c:C.accent,z:12.5,a:p3*V(t,23.6)});}
+  // 4. bandwidth: one origin cannot serve it, a CDN can
+  const p4=V(t,26.2,30.8);
+  if(p4>0){server(560,300,{label:'Origin',w:110,a:p4});for(let k=0;k<5;k++)user(935,200+k*50,{r:11,a:p4});
+    const cdn=V(t,28.4,30.8);ln([[616,300],[910,300]],{c:hexA(C.blue,.45),w:lerp(18,3,cdn),a:p4});
+    each(t,26.4,30.6,.06,.6,(i,s)=>{const k=i%5;pk(t,s,.6,[[616,300],[760,300],[922,200+k*50]],C.blue,{r:3.5,a:p4});});
+    if(t<28.6)pill('7.5 GB/s from one origin?',760,250,{c:C.red,z:12.5,a:p4*V(t,26.8,28.4)});
+    box(760,300,{label:'CDN',sub:'edge caches',c:C.amber,w:110,h:52,a:p4*cdn});pill('the origin only sends misses',640,380,{c:C.green,z:12,a:p4*V(t,29)});}
+  // 5. what the numbers decided
+  const p5=V(t,31.2);
+  if(p5>0)[['15,000 reads / s','→ cache + read replicas',C.green],['5 TB a day','→ object storage',C.amber],['7.5 GB / s','→ CDN in front',C.blue]].forEach(([a,b,c],k)=>{const y=160+k*112,v=V(t,31.3+k*.5);
+    plate(735,y,400,86,{c,a:v});tx(a,735,y-15,{z:20,wt:800,f:MONO,c,a:v});tx(b,735,y+17,{z:14,a:v});});
 }});})();
 
 /* ---------------- 3. LOAD BALANCERS ---------------- */
@@ -835,7 +897,7 @@ draw(t){
 const U=[90,300],LB=[290,300],S={A:[560,160],B:[560,300],C:[560,430]},RD=[830,300];
 const to=k=>[[U[0]+20,U[1]],LB,[S[k][0]-60,S[k][1]]],back=k=>to(k).slice().reverse();
 const look=k=>[[S[k][0]+60,S[k][1]],[RD[0]-48,RD[1]]];
-ch({id:'sessions',group:'Traffic',title:'Sessions: Sticky vs Shared Storage',dur:34,needs:['load-balancers'],related:['caching','spof'],
+ch({id:'sessions',group:'Traffic',title:'Sessions: Sticky vs Shared Storage',dur:34,needs:['load-balancers'],related:['auth','caching','spof'],
 beats:[
 [0,'Logged in… but on which server?','You log in, and Server A remembers you in its own memory. Your next click goes through the load balancer.'],
 [5,'Round robin sends you elsewhere','The next request lands on Server B, which has never heard of you: "please log in again".'],
@@ -874,7 +936,7 @@ draw(t){
 /* ---------------- 4. REVERSE PROXIES & API GATEWAYS ---------------- */
 (function(){
   const CL=[[95,170],[95,300],[95,430]],PX=[420,300],SV=[[790,170],[790,300],[790,430]];
-ch({id:'proxy-gateway',group:'Traffic',title:'Reverse Proxies & API Gateways',dur:34,needs:['load-balancers'],related:['rate-limiting','microservices','cdn'],
+ch({id:'proxy-gateway',group:'Traffic',title:'Reverse Proxies & API Gateways',dur:34,needs:['load-balancers'],related:['auth','rate-limiting','microservices'],
 beats:[
 [0,'Without a proxy: every server is exposed','Clients connect straight to each server. Every server needs a public address, its own security and its own certificates.'],
 [5,'Reverse proxy: one front door','A reverse proxy stands in front of the servers. Clients only ever see the proxy; the servers hide on a private network.'],
@@ -925,6 +987,65 @@ draw(t){
   if(t>9&&t<14.8)tx('🔒 encrypted until the proxy',PX[0],228,{z:12,c:C.accent,a:V(t,9.4,14.5)});
   if(t>29.5){pill('Reverse proxy: forward · hide servers · TLS · cache',PX[0]+60,492,{c:C.accent,a:V(t,29.8),z:13});
     pill('API gateway: + auth · rate limits · routing by API · metrics',PX[0]+60,528,{c:C.green,a:V(t,30.8),z:13});}
+}});})();
+
+/* ---------------- 4b. AUTHENTICATION: SESSIONS, JWTs & OAUTH ---------------- */
+(function(){
+const U=[110,300],SV=[470,300],ST=[820,300];                       // browser, server, session store
+const SVS=[160,300,440].map(y=>[560,y]),BOT=[110,470];              // JWT: three servers, a thief
+const OA={u:[110,330],app:[440,330],idp:[800,190],api:[800,450]};  // OAuth: you, the app, the provider, the API
+const toS=[[U[0]+20,U[1]],[SV[0]-58,SV[1]]],toStore=[[SV[0]+58,SV[1]],[ST[0]-50,ST[1]]];
+ch({id:'auth',group:'Traffic',title:'Authentication: Sessions, JWTs & OAuth',dur:38,needs:['sessions'],related:['proxy-gateway','microservices','rate-limiting'],
+beats:[
+[0,'Who is asking?','HTTP remembers nothing between requests, so every request must carry proof of who sent it, and the server checks it every time.'],
+[5,'Session cookie','Log in once: the server stores a session and gives the browser a random id in a cookie. Each request sends the cookie, and the server looks it up.'],
+[13,'JWT: a signed token','Instead of a lookup, the server signs a token that holds the user id and an expiry. Any server can check the signature without asking a database.'],
+[21,'The catch: you cannot take it back','A JWT stays valid until it expires, even after logout or theft. Keep JWTs short-lived and use a refresh token to get new ones.'],
+[27,'OAuth: log in through someone else','The app sends you to an identity provider. You approve there, and the app receives an access token. Your password never reaches the app.'],
+[34,'Pick by situation','One web app: session cookies. Many services checking identity: short-lived JWTs. Third-party login or API access: OAuth.']],
+use:['Session cookies: classic web apps, instant logout, admin tools','JWTs: many services or regions verifying identity without a shared store','OAuth: "log in with…" buttons and letting one app use another\'s API on your behalf'],
+cons:['Sessions need a shared store that every server can reach','JWTs cannot be revoked early without a blocklist, and they grow with every claim','OAuth adds redirects, token storage and expiry handling: use a well-tested library'],
+draw(t){
+  // ---- 1. sessions
+  const p1=V(t,.2,12.6);
+  if(p1>0){user(U[0],U[1],{label:'browser',r:18,a:p1});server(SV[0],SV[1],{label:'Server',w:116,a:p1});db(ST[0],ST[1],{label:'Sessions',sub:'store',w:104,h:84,a:p1*V(t,5.4)});
+    ln(toS,{a:p1*.4});ln(toStore,{a:p1*.4*V(t,5.4)});
+    each(t,1,4.2,1.1,1.6,(i,s)=>{pk(t,s,.8,toS,C.blue,{label:i===1?'GET /orders · who am I?':null,a:p1});pk(t,s+.8,.7,rev(toS),C.red,{r:4.5,label:i===1?'401: log in first':null,a:p1});});
+    pk(t,5.6,1.1,toS,C.blue,{label:'POST /login · password',a:p1});pk(t,6.8,.8,toStore,C.amber,{label:'save session 8f3a',a:p1});
+    pk(t,7.8,1.1,rev(toS),C.green,{label:'Set-Cookie: sid=8f3a',a:p1});
+    if(t>8.9)pill('cookie sid=8f3a',U[0],U[1]-48,{c:C.amber,z:12,f:MONO,a:p1*V(t,8.9)});
+    each(t,9.4,12,1.2,2.8,(i,s)=>{pk(t,s,.7,toS,C.blue,{label:i===0?'GET /orders + cookie':null,a:p1});pk(t,s+.7,.5,toStore,C.amber,{r:4,a:p1});pk(t,s+1.2,.5,rev(toStore),C.amber,{r:4,label:i===0?'8f3a → user 42':null,a:p1});pk(t,s+1.7,.7,rev(toS),C.green,{r:4.5,a:p1});});}
+  // ---- 2. JWT: signed, checked anywhere, and impossible to recall
+  const p2=V(t,13,26.6);
+  if(p2>0){user(U[0],U[1],{label:'browser',r:18,a:p2});SVS.forEach((p,k)=>server(p[0],p[1],{label:`Server ${'ABC'[k]}`,sub:'has the key',w:122,a:p2*V(t,13.2+k*.2)}));
+    // the token
+    draw(805,300,{a:p2*V(t,13.6)},()=>{rr(-150,-92,300,184,12);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=1.5;g.stroke();
+      tx('JWT',-134,-70,{z:12,wt:800,c:C.dim,al:'left'});
+      [['header','{alg: "HS256"}',C.red],['payload','{user: 42, exp: 10:15}',C.accent],['signature','x9Kq…  (secret key)',C.blue]].forEach(([k,v,c],i)=>{tx(k,-134,-36+i*42,{z:11.5,c:C.dim,al:'left'});tx(v,-134,-18+i*42,{z:13,f:MONO,wt:700,c,al:'left'});});});
+    const toK=k=>[[U[0]+20,U[1]],[SVS[k][0]-61,SVS[k][1]]];
+    each(t,14.4,20.6,.9,1.6,(i,s)=>{const k=(i*2+1)%3;pk(t,s,.8,toK(k),C.blue,{label:i===0?'request + JWT':null,a:p2});pop(t,s+.85,SVS[k][0],SVS[k][1]-44,'signature ✓',C.green,{z:12,d:.9});pk(t,s+.9,.7,rev(toK(k)),C.green,{r:4.5,a:p2});});
+    if(t>15.6&&t<21)pill('no session store: every server checks the signature itself',W/2-60,520,{c:C.green,z:12.5,a:p2*V(t,15.6,20.8)});
+    // logout does not help; a stolen token keeps working
+    if(t>21.2)pill('logged out at 10:02',U[0],U[1]-48,{c:C.dim,z:12,a:p2*V(t,21.2)});
+    user(BOT[0],BOT[1],{label:'thief',c:C.red,r:15,a:p2*V(t,22)});
+    const thief=[[BOT[0]+18,BOT[1]],[SVS[2][0]-61,SVS[2][1]]];pk(t,22.6,1,thief,C.red,{label:'stolen JWT',a:p2});pop(t,23.7,SVS[2][0],SVS[2][1]-44,'signature ✓',C.amber,{z:12,d:1.2});
+    if(t>23.9)pill('still valid until 10:15',SVS[2][0]+20,SVS[2][1]+50,{c:C.red,z:12,a:p2*V(t,23.9)});
+    if(t>24.8)pill('fix: 5-minute JWTs + a refresh token to get new ones',W/2-60,520,{c:C.accent,z:12.5,a:p2*V(t,24.8)});}
+  // ---- 3. OAuth
+  const p3=V(t,26.8,33.8);
+  if(p3>0){user(OA.u[0],OA.u[1],{label:'you',r:18,a:p3});server(OA.app[0],OA.app[1],{label:'Print shop',sub:'the app',w:126,a:p3});
+    box(OA.idp[0],OA.idp[1],{label:'Identity provider',sub:'knows your password',w:176,h:58,a:p3});box(OA.api[0],OA.api[1],{label:'Photos API',sub:'your photos',w:150,h:56,c:C.blue,a:p3});
+    const u2i=[[OA.u[0]+18,OA.u[1]-10],[OA.idp[0]-88,OA.idp[1]]],a2i=[[OA.app[0]+63,OA.app[1]-14],[OA.idp[0]-88,OA.idp[1]+18]],a2p=[[OA.app[0]+63,OA.app[1]+10],[OA.api[0]-75,OA.api[1]]];
+    pk(t,27.2,.9,[[OA.u[0]+18,OA.u[1]],[OA.app[0]-63,OA.app[1]]],C.blue,{label:'① log in with…',a:p3});
+    pk(t,28.2,1,u2i,C.blue,{label:'② sign in + approve "read photos"',a:p3});
+    pk(t,29.3,1,[[OA.idp[0]-88,OA.idp[1]+8],[OA.app[0]+63,OA.app[1]-24]],C.amber,{label:'③ one-time code',a:p3});
+    pk(t,30.4,.8,a2i,C.amber,{r:5,a:p3});pk(t,31.2,.8,rev(a2i),C.green,{label:'④ access token',a:p3});
+    pk(t,32.1,.9,a2p,C.green,{label:'⑤ GET /photos + token',a:p3});
+    if(t>29)pill('your password never reaches the app',OA.idp[0],OA.idp[1]-56,{c:C.green,z:12,a:p3*V(t,29)});}
+  // ---- summary
+  const p4=V(t,34.1);
+  if(p4>0)[['Session cookie','one web app · instant logout',C.amber],['Short-lived JWT','many services · no shared lookup',C.accent],['OAuth','log in with… · access another API',C.green]].forEach(([a,b,c],k)=>{const x=190+k*310,v=V(t,34.2+k*.4);
+    plate(x,300,280,110,{c,a:v});tx(a,x,282,{z:19,wt:800,c,a:v});tx(b,x,316,{z:13,a:v});});
 }});})();
 
 /* ---------------- 5. CDN & EDGE CACHING ---------------- */
@@ -1137,7 +1258,7 @@ draw(t){
   const LEAVES=[['ana','bo','cy'],['dan','eve','ivy'],['kim','lee','max'],['raj','sam','zoe']],LX=[470,600,730,860],ROOT=[665,165];
   const rowOf=e=>EM.indexOf(e)+1,TX=60,TY=88,RH=31,rowY=i=>TY+RH*(i+1)+RH/2;
   const slot=(e)=>{for(let l=0;l<4;l++){const j=LEAVES[l].indexOf(e);if(j>=0)return[l,j];}};
-ch({id:'indexing',group:'Data',title:'Database Indexing',dur:28.5,needs:['sql-nosql'],related:['sharding','caching'],
+ch({id:'indexing',group:'Data',title:'Database Indexing',dur:28.5,needs:['sql-nosql'],related:['storage-engines','search','sharding'],
 beats:[
 [0,'Find one row in a big table','Query: find the user whose email is raj@mail.com. Rows are stored in the order they were inserted, not sorted by email.'],
 [2.5,'No index: check every row','The database scans row by row until it has checked them all, since there could be more matches. Work grows with table size: O(n).'],
@@ -1184,7 +1305,7 @@ cons:['Every write also updates each index, so write-heavy tables slow down','In
 (function(){
   const L=[500,190],F1=[270,400],F2=[730,400],WR=[120,190],R1=[95,400],R2=[905,400];
   const E=(a,b,da=48,db_=48)=>{const d=Math.hypot(b[0]-a[0],b[1]-a[1]),ux=(b[0]-a[0])/d,uy=(b[1]-a[1])/d;return[[a[0]+ux*da,a[1]+uy*da],[b[0]-ux*db_,b[1]-uy*db_]];};
-ch({id:'replication',group:'Data',title:'Replication: Leader–Follower & Multi-Leader',dur:40,needs:['sql-nosql'],related:['cap','consensus','spof'],
+ch({id:'replication',group:'Data',title:'Replication: Leader–Follower & Multi-Leader',dur:40,needs:['sql-nosql'],related:['quorums','cap','consensus','spof'],
 beats:[
 [0,'One database, every request','All reads and writes hit one database. If it slows down or dies, the whole app goes with it.'],
 [4,'Leader–follower replication','Add follower copies. The leader streams every change to them through a replication log.'],
@@ -1255,6 +1376,63 @@ cons:['Asynchronous replication means stale reads (read-your-own-writes needs ca
   }
 }});})();
 
+/* ---------------- 9b. QUORUMS: N, W & R ---------------- */
+(function(){
+const CL=[140,300],R=[[620,150],[620,300],[620,450]];
+const to=k=>[[CL[0]+22,CL[1]+(k-1)*14],[R[k][0]-52,R[k][1]]];
+// which version each replica holds at time t (r2 dies at 30.4)
+const VER=[[[6.4,2],[25,3],[32,4]],[[6.7,2],[28.8,3]],[[16.4,2],[29.4,3],[32.2,4]]];
+const ver=(k,t)=>VER[k].reduce((v,[at,n])=>t>=at?n:v,1);
+const dead=(k,t)=>k===1&&t>=30.4;
+// N, W, R in force, and when each was introduced
+const cfg=t=>t>=24&&t<30?{w:1,r:1}:{w:2,r:2};
+ch({id:'quorums',group:'Data',title:'Quorums: Tuning Reads & Writes with N, W & R',dur:38,needs:['replication'],related:['cap','consensus','conflicts'],
+beats:[
+[0,'N copies of every value','The key cart:7 is stored on N = 3 replicas. Reads and writes do not have to wait for all three.'],
+[5,'Write quorum: W','A write counts as done once W replicas confirm it. With W = 2, the client gets its answer after the two fastest acks. The third catches up later.'],
+[11,'Read quorum: R','A read asks R replicas and keeps the newest version it sees. With R = 2 it waits for two answers: one of them may be behind.'],
+[17,'R + W > N: always fresh','2 + 2 > 3, so every read set overlaps every write set in at least one replica. A read always reaches someone who has the latest write.'],
+[24,'R + W ≤ N: fast, but stale','With W = 1 and R = 1, a read can land on a replica the write has not reached yet, and return an old value.'],
+[30,'Lose a replica, keep going','Back to W = 2, R = 2. One replica dies, yet both reads and writes still find two live replicas. Tune W and R to your mix of reads and writes.']],
+use:['Leaderless stores such as Cassandra and DynamoDB-style databases','Choosing per request: W = N for safety, R = 1 for speed','Riding out a slow or dead replica without failing requests'],
+cons:['Bigger W or R means waiting for slower replicas','R + W > N still allows odd cases (concurrent writes, failed partial writes); add versioning','Small W and R are fast but may return stale data'],
+draw(t){
+  const c=cfg(t),fresh=c.r+c.w>3;
+  user(CL[0],CL[1],{label:'client',r:20,...A(t,.2)});
+  R.forEach((p,k)=>{const v=ver(k,t),d=dead(k,t);ln(to(k),{a:V(t,.6)*.35,dash:d?[4,6]:null});
+    db(p[0],p[1],{label:`Replica ${k+1}`,sub:d?'':`cart:7 = v${v}`,w:110,h:84,st:d?'fail':t>=26.6&&t<29.4&&k===2?'hot':'ok',...A(t,.4+k*.15)});});
+  // the settings panel
+  const pa=V(t,.8);if(pa>0){panel(805,196,170,210,{a:pa});
+    [['N',3,.8],['W',c.w,5.2],['R',c.r,11.2]].forEach(([k,v,t0],i)=>{const a=pa*V(t,t0);tx(`${k} =`,840,236+i*44,{z:20,wt:750,f:MONO,c:C.dim,a});tx(String(v),905,236+i*44,{z:22,wt:800,f:MONO,c:i===1?C.blue:i===2?C.green:C.text,a});});
+    if(t>17)tx(`${c.r} + ${c.w} ${fresh?'>':'≤'} 3`,890,372,{z:17,wt:800,f:MONO,c:fresh?C.green:C.red,a:pa*V(t,17.2)});}
+  // write v2 with W = 2
+  [[0,5.6,.8],[1,5.6,1.1],[2,5.6,10.8]].forEach(([k,s,d])=>pk(t,s,d,to(k),C.blue,{label:k===0?'write v2':null}));
+  pk(t,6.4,.8,rev(to(0)),C.green,{r:4.5,label:'ack'});pk(t,6.7,.8,rev(to(1)),C.green,{r:4.5,label:'ack'});
+  if(t>7.5&&t<11)pill('written: 2 of 3 confirmed',CL[0],CL[1]-56,{c:C.green,z:12.5,a:V(t,7.5,10.8)});
+  if(t>7.6&&t<16.4)pill('still catching up…',R[2][0]+118,R[2][1],{c:C.amber,z:12,a:V(t,7.6,16.2)});
+  // read with R = 2: one answer is old, the newest wins
+  pk(t,11.4,.7,to(1),C.blue,{label:'read'});pk(t,11.4,.7,to(2),C.blue,{r:5});
+  pk(t,12.2,.7,rev(to(1)),C.green,{label:'v2'});pk(t,12.2,.7,rev(to(2)),C.amber,{label:'v1'});
+  if(t>13&&t<17)pill('newest of the two: v2 ✓',CL[0],CL[1]-56,{c:C.green,z:12.5,a:V(t,13,16.8)});
+  // the overlap
+  const oa=V(t,17.4,23.6);if(oa>0){g.save();g.globalAlpha=oa;g.setLineDash([6,5]);g.lineWidth=2;
+    rr(548,92,144,262,16);g.strokeStyle=C.blue;g.stroke();rr(540,244,160,268,18);g.strokeStyle=C.green;g.stroke();g.restore();
+    tx('wrote here (W)',548,82,{z:12,c:C.blue,al:'left',a:oa});tx('read here (R)',540,530,{z:12,c:C.green,al:'left',a:oa});
+    pill('in both sets: has v2',R[1][0]-150,R[1][1],{c:C.accent,z:12,a:oa});}
+  // W = 1, R = 1: fast and stale
+  pk(t,24.4,.6,to(0),C.blue,{label:'write v3'});pk(t,24.4,4.4,to(1),C.blue,{r:5});pk(t,24.4,5,to(2),C.blue,{r:5});
+  pk(t,25,.6,rev(to(0)),C.green,{r:4.5,label:'ack'});if(t>25.6&&t<30)pill('written (W = 1)',CL[0],CL[1]-56,{c:C.green,z:12.5,a:V(t,25.6,29.8)});
+  pk(t,26,.6,to(2),C.blue,{label:'read (R = 1)'});pk(t,26.6,.6,rev(to(2)),C.red,{label:'v2'});
+  if(t>27.2&&t<30)pill('stale: the latest is v3',CL[0],CL[1]+62,{c:C.red,z:12.5,a:V(t,27.2,29.8)});
+  // one replica down, W = 2 and R = 2 still work
+  if(t>30.4&&t<31.6)pop(t,30.4,R[1][0],R[1][1]-50,'✕',C.red,{z:22,d:1.2});
+  pk(t,31.4,.6,to(0),C.blue,{label:'write v4'});pk(t,31.4,.8,to(2),C.blue,{r:5});pk(t,31.4,.5,to(1),C.blue,{r:5,a:.5});
+  pk(t,32,.6,rev(to(0)),C.green,{r:4.5});pk(t,32.2,.6,rev(to(2)),C.green,{r:4.5});
+  if(t>32.8&&t<34)pill('written: 2 of 3',CL[0],CL[1]-56,{c:C.green,z:12.5,a:V(t,32.8,33.8)});
+  pk(t,34,.6,to(0),C.blue,{label:'read'});pk(t,34,.6,to(2),C.blue,{r:5});pk(t,34.6,.6,rev(to(0)),C.green,{label:'v4'});pk(t,34.6,.6,rev(to(2)),C.green,{r:5});
+  if(t>35.2)pill('1 replica down: reads and writes still succeed ✓',W/2-60,530,{c:C.green,z:12.5,a:V(t,35.2)});
+}});})();
+
 /* ---------------- 10. SHARDING ---------------- */
 (function(){
   const CL=[110,190],RT=[420,190],SH=[[250,390],[500,390],[750,390]];
@@ -1263,7 +1441,7 @@ cons:['Asynchronous replication means stale reads (read-your-own-writes needs ca
   const rangeOf=i=>Math.floor(i/4);
   const slotPos=(s,j)=>[SH[s][0]+(j%2?34:-34),462+Math.floor(j/2)*28];
   const slotIn=(i,map)=>{let j=0;for(let k=0;k<i;k++)if(map(k)===map(i))j++;return j;};
-ch({id:'sharding',group:'Data',title:'Sharding & Partitioning',dur:34,needs:['replication'],related:['hot-keys','unique-ids','indexing'],
+ch({id:'sharding',group:'Data',title:'Sharding & Partitioning',dur:34,needs:['replication'],related:['hot-keys','unique-ids','geo'],
 beats:[
 [0,'One table too big for one machine','A billion rows no longer fit on one server\'s disk, and one CPU can\'t answer every query.'],
 [5,'Split rows by a shard key','Sharding splits rows across several databases. Here the shard key is the user\'s name: A–H, I–P and Q–Z each get their own shard.'],
@@ -1315,7 +1493,7 @@ cons:['Cross-shard JOINs and transactions become hard or impossible','A bad shar
   const LRU=[[0,['D','C','B','A']],[30.9,['B','D','C','A']],[33.9,['E','B','D','C']],[35.9,['C','E','B','D']],[38.9,['F','C','E','B']]];
   const OPS=[[29.3,'get B',C.green],[31.9,'put E  (cache full)',C.amber],[34.4,'get C',C.green],[36.9,'put F  (cache full)',C.amber]];
   const SX=k=>320+k*120;
-ch({id:'caching',group:'Data',title:'Caching Strategies & LRU Eviction',dur:42,needs:['sql-nosql'],related:['cache-invalidation','hot-keys','cdn'],
+ch({id:'caching',group:'Data',title:'Caching Strategies & LRU Eviction',dur:42,needs:['sql-nosql'],related:['cache-invalidation','hot-keys','bloom-filters','cdn'],
 beats:[
 [0,'Cache-aside: check the cache first','The app asks the fast in-memory cache first. On a miss, it reads the slow database, then saves the answer in the cache for next time.'],
 [7,'Cache hit: skip the database','Later reads for the same key come straight from memory in about 1 ms instead of 50 ms. Watch the hit rate climb.'],
@@ -1465,11 +1643,55 @@ draw(t){
   if(t>29.2)pill('copies on 3 nodes: spread the load',CA[0]-10,516,{c:C.accent,z:12,a:V(t,29.2)});
 }});})();
 
+/* ---------------- 11d. BLOOM FILTERS ---------------- */
+(function(){
+const NB=16,BX=k=>212+k*38,BY=170,KX=110,DB=[840,420],AP=[500,420];
+// three hash functions per key: which bits each key lands on
+const ADD=[['alice',[2,7,11],5.4],['bob',[4,7,13],7.4],['carol',[1,9,14],9.4]];
+const ASK=[['dave',[3,9,12],12.4,'no'],['erin',[2,4,14],18.4,'fp'],['bob',[4,7,13],25.4,'yes']];
+const setAt=k=>{let s=1e9;ADD.forEach(([,h,t0])=>{if(h.includes(k))s=Math.min(s,t0+1.1);});return s;};
+const hashPath=(from,k)=>crv(from,[(from[0]+BX(k))/2,from[1]-60],[BX(k),BY+20]);
+ch({id:'bloom-filters',group:'Data',title:'Bloom Filters: Skip Work You Do Not Need',dur:36,needs:['caching'],related:['storage-engines','hot-keys','cdn'],
+beats:[
+[0,'Is it even there?','Before an expensive disk or network lookup, ask a cheap question first: could this key possibly exist? A Bloom filter answers from a few bits in memory.'],
+[5,'Adding a key','Run the key through k = 3 hash functions. Each one picks a bit in the array; set all three bits to 1.'],
+[12,'Checking a key','Hash it the same way. If any of its bits is 0, the key was never added: skip the lookup completely.'],
+[18,'False positives','If all its bits happen to be 1, set by other keys, the filter says "maybe". The real lookup finds nothing: one wasted read.'],
+[25,'Never a false negative','A key that was added always finds all its bits set, so the filter never says no to a key that exists.'],
+[30,'Size it to taste','About 10 bits per key with 7 hash functions gives roughly 1% false positives. Databases, caches and CDNs use Bloom filters to skip work.']],
+use:['LSM-tree databases skip files that cannot hold a key','Caches and CDNs avoid caching one-hit wonders, or skip lookups for unknown keys','Checking "seen before?" across billions of items with little memory'],
+cons:['A "maybe" can be wrong: there is always some false positive rate','You cannot remove keys from a plain Bloom filter (counting filters can)','It must be sized up front; overfilling it drives false positives up'],
+draw(t){
+  // the bit array
+  const ba=V(t,.4);tx('bit array (in memory)',BX(0)-20,BY-52,{z:12,c:C.dim,al:'left',a:ba});
+  for(let k=0;k<NB;k++){const on=t>=setAt(k),fl=ASK.some(([,h,t0])=>h.includes(k)&&t>=t0+1&&t<t0+3.2);
+    draw(BX(k),BY,{a:ba*V(t,.4+k*.03)},()=>{rr(-16,-20,32,40,7);g.fillStyle=on?hexA(C.amber,.25):C.panel;g.fill();g.strokeStyle=fl?C.accent:on?C.amber:C.line;g.lineWidth=fl?2.5:1.5;g.stroke();});
+    tx(on?'1':'0',BX(k),BY+1,{z:16,wt:800,f:MONO,c:on?C.amber:C.faint,a:ba});tx(String(k),BX(k),BY+34,{z:10,c:C.faint,f:MONO,a:ba});}
+  server(AP[0],AP[1],{label:'App',w:112,...A(t,.8)});db(DB[0],DB[1],{label:'Disk',sub:'slow lookup',w:110,h:86,...A(t,1)});
+  // adding keys
+  ADD.forEach(([key,h,t0],i)=>{const y=300+i*44,a=V(t,t0-.3,11.6);if(a<=0)return;pill(key,KX,y,{c:C.blue,z:13,f:MONO,a});
+    h.forEach(k=>{const pth=hashPath([KX+40,y],k);if(t>t0&&t<t0+2.2)ln(pth,{c:hexA(C.blue,.5),dash:[4,5],p:P(t,t0,t0+.9),a});pk(t,t0,1.1,pth,C.blue,{r:4.5});});});
+  if(t>5.6&&t<11.8)pill('h1, h2, h3 → 3 bits per key',KX+40,450,{c:C.dim,z:12,a:V(t,5.6,11.6)});
+  // checking keys
+  ASK.forEach(([key,h,t0,res],i)=>{const a=V(t,t0-.3,t0+5.4);if(a<=0)return;const from=[AP[0]-40,AP[1]-34];pill(`check "${key}"`,AP[0],AP[1]-62,{c:C.accent,z:13,f:MONO,a});
+    h.forEach(k=>{pk(t,t0,1,hashPath(from,k),C.accent,{r:4.5});if(t>t0+1&&t<t0+3.2&&t<setAt(k))ring(t,t0+1,BX(k),BY,C.red,26);});
+    const toDb=[[AP[0]+56,AP[1]],[DB[0]-55,DB[1]]];
+    if(res==='no'){if(t>t0+1.3)pill('a 0 bit → definitely not here · disk skipped',AP[0],AP[1]+60,{c:C.green,z:12.5,a:a*V(t,t0+1.3)});}
+    else{if(t>t0+1.3)pill('all 1s → maybe: check the disk',AP[0],AP[1]+60,{c:C.amber,z:12.5,a:a*V(t,t0+1.3,t0+2.8)});pk(t,t0+1.6,.8,toDb,C.amber,{r:5});
+      pk(t,t0+2.6,.8,rev(toDb),res==='fp'?C.red:C.green,{label:res==='fp'?'not found':'found ✓'});
+      if(t>t0+3.4)pill(res==='fp'?'false positive: one wasted read':'keys that exist always pass',AP[0],AP[1]+60,{c:res==='fp'?C.red:C.green,z:12.5,a:a*V(t,t0+3.4)});}});
+  if(t>19.6&&t<24)pill('bits 2, 4 and 14 were set by alice, bob and carol',BX(7),BY+66,{c:C.amber,z:12,a:V(t,19.6,23.8)});
+  // sizing
+  const sa=V(t,30.4);if(sa>0){panel(60,236,420,128,{a:sa});tx('per key',78,262,{z:12,c:C.dim,al:'left',a:sa});
+    [['10 bits + 7 hashes','≈ 1% false positives'],['15 bits + 10 hashes','≈ 0.1%']].forEach(([a,b],k)=>{tx(a,78,292+k*40,{z:14,f:MONO,wt:700,al:'left',a:sa*V(t,30.6+k*.6)});tx(b,462,292+k*40,{z:14,f:MONO,wt:800,c:C.green,al:'right',a:sa*V(t,30.6+k*.6)});});
+    pill('1 billion keys ≈ 1.2 GB of memory at 1%',270,392,{c:C.accent,z:12,a:sa*V(t,31.8)});}
+}});})();
+
 /* ---------------- 12. CAP & CONSISTENCY ---------------- */
 (function(){
   const N1=[320,280],N2=[680,280],CA_=[130,440],CB=[870,440];
   const pA=[[146,430],[288,322]],pB=[[854,430],[712,322]],link=[[372,280],[628,280]];
-ch({id:'cap',group:'Data',title:'CAP Theorem & Consistency Models',dur:38,needs:['replication'],related:['consensus','transactions','cache-invalidation'],
+ch({id:'cap',group:'Data',title:'CAP Theorem & Consistency Models',dur:38,needs:['replication'],related:['quorums','conflicts','consensus','transactions'],
 beats:[
 [0,'Same data on two nodes','Two replicas hold the same value, x = 1. Client A talks to Node 1, client B talks to Node 2.'],
 [3,'Normally: write, then sync','A writes x = 2 to Node 1. Node 1 copies it to Node 2, so B reads 2 as well. Everyone agrees.'],
@@ -1529,6 +1751,175 @@ cons:['CAP only bites during a partition; the rest of the time the trade-off is 
     pill('fast & available, briefly stale',640,470,{c:C.amber,z:12,a:V(t,34.3)});
   }
 }});})();
+
+/* ---------------- S1. STORAGE ENGINES: B-TREES vs LSM TREES ---------------- */
+(function(){
+// B-tree side
+const ROOT=[265,130],LEAF=[[90,'1–399'],[205,'400–699'],[325,'700–849'],[440,'850–999']].map(([x,r])=>({x,y:290,r}));
+const DISK=[265,440],SLOT=k=>[DISK[0]-150+(k%10)*33,DISK[1]-18+Math.floor(k/10)*36];
+const BW=[[5.6,1,7],[12.2,3,15],[13.1,0,3],[14,2,11],[14.9,1,18],[15.8,3,5]];   // writes: time, leaf, disk slot
+// LSM side
+const MEM=[660,170],SST=[[640,340],[810,340]],MERGED=[725,455];
+const B1=[[17.6,'k42'],[18.4,'k09'],[19.2,'k88'],[20,'k17']],B2=[[21.9,'k61'],[22.4,'k05'],[22.9,'k77'],[23.3,'k23']];
+const sorted=a=>a.slice().sort();
+ch({id:'storage-engines',group:'Storage & Search',title:'Storage Engines: B-Trees vs LSM Trees',dur:40,needs:['indexing'],related:['bloom-filters','search','sql-nosql'],
+beats:[
+[0,'Where the bytes land','Every database must turn writes into files on disk. The two common designs are the B-tree and the log-structured merge tree (LSM tree).'],
+[5,'B-tree: update in place','Keys live in sorted pages arranged as a shallow tree. A write walks down to its page and rewrites that page where it sits. Reads take a few steps.'],
+[12,'The cost of in-place writes','Each write lands on a different page somewhere on disk. Under a flood of writes, all that random I/O becomes the bottleneck.'],
+[17,'LSM tree: write to memory first','Each write is appended to a write-ahead log for safety and added to a sorted in-memory table, the memtable. Both are fast.'],
+[21,'Flush in one go','When the memtable fills, it is written out in order as one immutable file, an SSTable. Writes stay sequential and cheap.'],
+[25,'Reads check newest first','A read checks the memtable, then the SSTables from newest to oldest. Bloom filters let it skip files that cannot hold the key.'],
+[31,'Compaction','In the background, SSTables are merged into bigger ones and old versions are dropped, so reads stay fast.'],
+[36,'Pick by workload','Read-heavy with updates in place: a B-tree (PostgreSQL, MySQL). A firehose of writes: an LSM tree (Cassandra, RocksDB).']],
+use:['B-tree: OLTP databases with many reads, updates and range scans','LSM tree: write-heavy logs, metrics, time series and chat history','Both: knowing which one you run explains its latency spikes'],
+cons:['B-tree: random writes and page splits slow heavy write loads','LSM tree: reads may check several files; compaction uses disk and CPU in bursts','LSM tree: the same data is rewritten several times as files merge'],
+draw(t){
+  const bt=t<17?1:t<36?.4:1,ls=V(t,16.6);
+  // ---- B-tree
+  const ba=A(t,.5);if(ba.a>0){tx('B-tree',265,72,{z:15,wt:750,c:C.accent,a:ba.a*bt});
+    box(ROOT[0],ROOT[1],{label:'400 | 700 | 850',w:170,h:44,z:13,c:C.accent,a:ba.a*bt});
+    LEAF.forEach(l=>{ln([[ROOT[0],ROOT[1]+22],[l.x,l.y-22]],{a:ba.a*bt*.4});const hot=BW.some(([s,k])=>LEAF[k]===l&&t>s+.9&&t<s+1.6);box(l.x,l.y,{label:l.r,sub:'page',w:100,h:44,z:13,c:hot?C.amber:C.edge,glow:hot,a:ba.a*bt});});
+    draw(DISK[0],DISK[1],{a:ba.a*bt},()=>{rr(-170,-44,340,88,12);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.line;g.lineWidth=1.5;g.stroke();});
+    tx('disk pages',DISK[0]-160,DISK[1]-58,{z:11.5,c:C.dim,al:'left',a:ba.a*bt});
+    for(let k=0;k<20;k++){const[x,y]=SLOT(k),hit=BW.some(([s,,d])=>d===k&&t>s+1.2&&t<s+2);g.save();g.globalAlpha=ba.a*bt;rr(x-12,y-12,24,24,4);g.fillStyle=hit?hexA(C.amber,.5):C.panel2;g.fill();g.strokeStyle=hit?C.amber:C.line;g.stroke();g.restore();}
+    BW.forEach(([s,k,d],i)=>{const L=LEAF[k];pk(t,s,.9,[[ROOT[0],ROOT[1]-40],[ROOT[0],ROOT[1]+22],[L.x,L.y-22]],C.blue,{r:5,label:i===0?'write k=512':null,a:bt});pk(t,s+.9,.5,[[L.x,L.y+22],SLOT(d)],C.amber,{r:4,a:bt});});
+    pk(t,8.6,1.3,[[ROOT[0],ROOT[1]-40],[ROOT[0],ROOT[1]+22],[LEAF[1].x,LEAF[1].y-22]],C.green,{label:'read k=512: 2 steps'});
+    if(t>12.4&&t<17)pill('random I/O: every write seeks a new spot',DISK[0],DISK[1]+66,{c:C.red,z:12,a:V(t,12.4,16.8)});}
+  if(ls<=0)return;
+  ln([[500,90],[500,510]],{c:C.line,dash:[4,6],a:ls});
+  tx('LSM tree',725,72,{z:15,wt:750,c:C.green,a:ls});
+  // memtable + write-ahead log
+  const inMem=t<21.2?B1.filter(([s])=>t>=s+.6):t<23.6?B2.filter(([s])=>t>=s+.6):[];
+  draw(MEM[0],MEM[1],{a:ls},()=>{rr(-100,-52,200,104,12);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.green;g.lineWidth=2;g.stroke();});
+  tx('memtable (sorted, in memory)',MEM[0],MEM[1]-66,{z:11.5,c:C.dim,a:ls});
+  sorted(inMem.map(([,k])=>k)).forEach((k,i)=>tx(k,MEM[0]-60+(i%2)*120,MEM[1]-22+Math.floor(i/2)*40,{z:15,wt:750,f:MONO,a:ls}));
+  const wal=[...B1,...B2].filter(([s])=>t>=s+.6).length;tx('write-ahead log',880,MEM[1]-66,{z:11.5,c:C.dim,a:ls});
+  for(let i=0;i<8;i++){g.save();g.globalAlpha=ls;rr(820+(i%4)*30,MEM[1]-40+Math.floor(i/4)*30,24,24,4);g.fillStyle=i<wal?hexA(C.amber,.35):C.panel2;g.fill();g.strokeStyle=i<wal?C.amber:C.line;g.stroke();g.restore();}
+  [...B1,...B2].forEach(([s,k])=>{pk(t,s,.6,[[540,MEM[1]],[MEM[0]-100,MEM[1]]],C.blue,{r:5,label:k});});
+  // flushes and SSTables
+  const merged=V(t,32);
+  [[21.2,B1,0],[23.6,B2,1]].forEach(([s,b,j])=>{const p=P(t,s,s+.8);if(t<s)return;const[x,y]=L2(MEM,SST[j],p);
+    draw(x,y,{a:ls*(t<31?1:1-P(t,31,32.4))},()=>{rr(-70,-34,140,68,10);g.fillStyle=C.panel2;g.fill();g.strokeStyle=C.amber;g.lineWidth=1.8;g.stroke();});
+    if(p>=1){tx(`SSTable ${j+1}`,x,y-12,{z:13,wt:750,a:ls*(t<31?1:1-P(t,31,32.4))});tx(sorted(b.map(e=>e[1])).join(' '),x,y+12,{z:10.5,f:MONO,c:C.dim,a:ls*(t<31?1:1-P(t,31,32.4))});}});
+  if(t>21.2&&t<23.4)pill('flush: one sequential write',MEM[0],MEM[1]+80,{c:C.amber,z:12,a:V(t,21.3,23.2)});
+  // a read: memtable, newest file (skipped by its Bloom filter), older file (hit)
+  pk(t,25.4,.6,[[540,MEM[1]+20],[MEM[0]-100,MEM[1]+20]],C.accent,{label:'read k42'});
+  pop(t,26,MEM[0],MEM[1]-6,'not here',C.dim,{z:12,d:1});
+  pk(t,26.4,.7,[[MEM[0]+40,MEM[1]+52],[SST[1][0],SST[1][1]-34]],C.accent,{r:4.5});pop(t,27.1,SST[1][0],SST[1][1]-50,'Bloom: skip',C.amber,{z:12,d:1.2});
+  pk(t,27.4,.7,[[MEM[0]-40,MEM[1]+52],[SST[0][0],SST[0][1]-34]],C.accent,{r:4.5});pop(t,28.1,SST[0][0],SST[0][1]-50,'found ✓',C.green,{z:13,d:1.4});
+  // compaction
+  if(merged>0){draw(MERGED[0],MERGED[1],{a:ls*merged},()=>{rr(-130,-34,260,68,10);g.fillStyle=C.panel2;g.fill();g.strokeStyle=C.green;g.lineWidth=2;g.stroke();});
+    tx('SSTable 3 (merged)',MERGED[0],MERGED[1]-12,{z:13,wt:750,a:ls*merged});tx(sorted([...B1,...B2].map(e=>e[1])).join(' '),MERGED[0],MERGED[1]+12,{z:10.5,f:MONO,c:C.dim,a:ls*merged});}
+  if(t>31&&t<36)pill('compaction: merge, drop old versions',MERGED[0],MERGED[1]+58,{c:C.green,z:12,a:V(t,31.2,35.8)});
+  // the choice
+  if(t>36){pill('reads & in-place updates',265,510,{c:C.accent,z:12.5,a:V(t,36.2)});pill('heavy writes',725,510,{c:C.green,z:12.5,a:V(t,36.6)});}
+}});})();
+
+/* ---------------- S2. SEARCH: INVERTED INDEXES ---------------- */
+(function(){
+const DOCS=[['D1','Caching with Redis'],['D2','Redis streams for events'],['D3','CDN caches images'],['D4','Sharding Postgres by user']];
+const DX=60,DY=k=>110+k*92,DW=250;
+// the index, in the order its rows appear: term → documents
+const IDX=[['cache',[1,3]],['redis',[1,2]],['stream',[2]],['event',[2]],['cdn',[3]],['image',[3]],['shard',[4]],['postgres',[4]],['user',[4]]];
+const IX=560,IY=k=>104+k*38,ROW0=11.4;
+const TOK=[['Caching','cache',true],['with','',false],['Redis','redis',true]];
+const SH=[[620,300],[770,300],[920,300]];
+ch({id:'search',group:'Storage & Search',title:'Search: Inverted Indexes',dur:36,needs:['indexing'],related:['storage-engines','sharding','caching'],
+beats:[
+[0,'Find every document with a word','To find documents that mention "cache", reading every one is fine for four documents and hopeless for forty million.'],
+[5,'Break text into terms','Each document is tokenized: split into words, lower-cased, common words like "with" dropped, and each word trimmed to a root, so "Caching" becomes "cache".'],
+[11,'The inverted index','For every term, keep the list of documents that contain it, its postings list. It is the index at the back of a book, built for every word.'],
+[18,'Answer a query','"cache AND redis": fetch the two postings lists and intersect them. Only documents in both lists match. OR takes the union instead.'],
+[24,'Rank the results','Score each match: rare terms count more than common ones, and a match in the title counts more than one in the body. Show the best first.'],
+[30,'Shard the index','A big index is split by document across many machines. A query goes to every shard, each returns its best matches, and the results are merged.']],
+use:['Site and product search, log search, autocomplete','Any "find documents containing these words" question at scale','Engines such as Elasticsearch, OpenSearch and Lucene are built on it'],
+cons:['The index is extra storage and must be updated on every write','New documents appear in results after a short indexing delay','Relevance needs tuning: synonyms, typos and languages all need care'],
+draw(t){
+  // documents
+  DOCS.forEach(([id,title],k)=>{const a=V(t,.3+k*.2),y=DY(k),scan=t>1.5&&t<5&&Math.floor((t-1.5)/.7)%4===k,used=t>=24&&t<30&&(k===0||k===2);
+    plate(DX+DW/2,y,DW,70,{c:scan?C.amber:used?C.green:C.edge,a,r:12,glow:scan?12:0});
+    tx(id,DX+16,y-14,{z:12,wt:800,f:MONO,c:C.dim,al:'left',a});tx(title,DX+16,y+10,{z:14.5,wt:650,al:'left',a});});
+  if(t>1.2&&t<5.4){pill('query: cache',W/2,80,{c:C.accent,z:13,f:MONO,a:V(t,1.2,5.2)});pill('reading every document… now imagine 40 million',W/2+60,520,{c:C.red,z:12.5,a:V(t,2.4,5.2)});}
+  // tokenizing D1
+  if(t>5&&t<11.6){const a=V(t,5.2,11.4);TOK.forEach(([w,tok,keep],i)=>{const x=400,y=150+i*62,p=P(t,6.2+i*.6,7+i*.6);
+      pill(w,lerp(DX+80+i*60,x,p),lerp(DY(0)+10,y,p),{c:C.blue,z:13,f:MONO,a});
+      if(t>7.6+i*.6){if(keep)pill(tok,x+130,y,{c:C.green,z:13,f:MONO,a:a*V(t,7.6+i*.6)});else tx('dropped',x+110,y,{z:12,c:C.faint,al:'left',a:a*V(t,7.6+i*.6)});}});
+    pill('lower-case · drop common words · trim to a root',W/2,520,{c:C.dim,z:12,a:a*V(t,8.4)});}
+  // the index
+  const ia=V(t,ROW0-.2,29.8);if(ia>0){tx('term',IX,80,{z:12,wt:700,c:C.dim,al:'left',f:MONO,a:ia});tx('postings list',IX+150,80,{z:12,wt:700,c:C.dim,al:'left',f:MONO,a:ia});
+    const q=t>=18&&t<24,qr=t>=24&&t<30;
+    IDX.forEach(([term,docs],k)=>{const a=V(t,ROW0+k*.45,29.8);if(a<=0)return;const y=IY(k),hot=(q&&(term==='cache'||term==='redis'))||(qr&&term==='cache');
+      tx(term,IX,y,{z:14,wt:750,f:MONO,c:hot?C.accent:C.text,al:'left',a});
+      docs.forEach((d,j)=>{const both=q&&d===1,dim=q&&hot&&d!==1;pill(`D${d}`,IX+170+j*60,y,{c:both?C.green:hot?C.accent:C.blue,z:12,f:MONO,a:a*(dim?.45:1)});});});}
+  if(t>18.4&&t<24){pill('cache AND redis',W/2-40,500,{c:C.accent,z:13,f:MONO,a:V(t,18.4,23.8)});pill('[D1, D3] ∩ [D1, D2] = [D1]',W/2+180,500,{c:C.green,z:13,f:MONO,a:V(t,19.6,23.8)});}
+  // ranking
+  if(t>24.2&&t<30){const a=V(t,24.2,29.8);pill('query: cache',DX+DW/2,62,{c:C.accent,z:13,f:MONO,a});
+    [['D1','in the title, rare in the collection',.92],['D3','in the title, as "caches"',.71]].forEach(([d,why,s],k)=>{const y=470+k*38,x=DX;
+      tx(`${k+1}. ${d}`,x,y,{z:14,wt:800,f:MONO,al:'left',a});meter(x+80,y-5,150,10,s*P(t,24.6+k*.4,25.6+k*.4),C.green);tx(why,x+244,y,{z:12,c:C.dim,al:'left',a});});}
+  // sharded index
+  const sa=V(t,30.2);if(sa>0){SH.forEach(([x,y],k)=>box(x,y,{label:`Shard ${k+1}`,sub:'part of the docs',w:130,h:52,c:C.blue,a:sa*V(t,30.2+k*.2)}));
+    pill('query: cache AND redis',770,150,{c:C.accent,z:13,f:MONO,a:sa});
+    SH.forEach(([x,y],k)=>{pk(t,30.8,.7,[[770,166],[x,y-26]],C.accent,{r:4.5});pk(t,32+k*.15,.7,[[x,y+26],[770,430]],C.green,{r:4.5,label:k===1?'its top 10':null});});
+    if(t>33)pill('merge → the overall top 10',770,446,{c:C.green,z:12.5,a:V(t,33)});}
+}});})();
+
+/* ---------------- S3. GEOSPATIAL INDEXES: GEOHASH & QUADTREES ---------------- */
+(function(){
+const MX=270,MY=80,MW=460,MH=440,X=u=>MX+u*MW,Y=v=>MY+v*MH;
+// 160 drivers: most downtown, the rest spread out (fixed, so every frame matches)
+const PTS=Array.from({length:160},(_,i)=>{const r=rnd(i+7),a=rnd(i+301)*6.283;
+  if(i<100){const d=.03+.2*Math.pow(r,1.4);return[clamp(.62+Math.cos(a)*d,.02,.98),clamp(.36+Math.sin(a)*d*1.1,.02,.98)];}
+  return[.03+rnd(i+51)*.94,.03+rnd(i+91)*.94];});
+const RIDER=[.555,.47];
+const B32='0123456789bcdefghjkmnpqrstuvwxyz';
+const cell1=[Math.floor(RIDER[0]*4),Math.floor(RIDER[1]*4)];                       // the rider's coarse cell
+const code1=(cx,cy)=>'9q'+B32[cy*4+cx];
+const FINE=.25/4,cell2=[Math.floor(RIDER[0]/FINE),Math.floor(RIDER[1]/FINE)];           // the rider's fine cell (16×16 grid)
+const inNine=([u,v])=>Math.abs(Math.floor(u/FINE)-cell2[0])<=1&&Math.abs(Math.floor(v/FINE)-cell2[1])<=1;
+const NEAR=PTS.filter(inNine),BEST=NEAR.reduce((b,p)=>Math.hypot(p[0]-RIDER[0],p[1]-RIDER[1])<Math.hypot(b[0]-RIDER[0],b[1]-RIDER[1])?p:b,NEAR[0]||PTS[0]);
+// quadtree: split any square holding more than 6 drivers (up to 5 levels deep)
+const QT=[];(function split(x,y,s,d,pts){QT.push({x,y,s,d});if(pts.length<=6||d>=5)return;const h=s/2;
+  [[0,0],[1,0],[0,1],[1,1]].forEach(([i,j])=>split(x+i*h,y+j*h,h,d+1,pts.filter(([u,v])=>u>=x+i*h&&u<x+(i+1)*h&&v>=y+j*h&&v<y+(j+1)*h)));})(0,0,1,0,PTS);
+ch({id:'geo',group:'Storage & Search',title:'Geospatial Indexes: Geohash & Quadtrees',dur:36,needs:['indexing'],related:['search','sharding','hot-keys'],
+beats:[
+[0,'Who is nearby?','A rider wants the closest drivers. Measuring the distance to every driver in the city, on every request, does not scale.'],
+[5,'Cut the map into cells','Lay a grid over the map. Each cell gets a short code, and each driver is stored under the code of the cell they are in.'],
+[11,'Geohash: cells inside cells','Split a cell again and add a character to its code. Codes that share a prefix are close together, so an ordinary index on the code finds a whole area.'],
+[18,'Search the cell and its neighbours','The closest driver may sit just over a cell edge, so look in the rider\'s cell and the eight around it, then rank the few drivers found.'],
+[25,'Quadtree: split where it is busy','A quadtree splits a square into four only when it holds too many drivers. Downtown ends up with tiny cells; the suburbs stay coarse.'],
+[31,'A few cells instead of every driver','Either way, the server reads a handful of small cells and ranks a dozen drivers instead of the whole city.']],
+use:['Ride hailing, food delivery, "stores near me", dating apps','Any query for points inside a radius or a box','Sharding location data by cell code'],
+cons:['Cells are not circles: always check neighbours and then measure real distance','Dense areas overload one cell; quadtrees or finer cells fix that','Moving points (drivers) must be re-indexed as they cross cells'],
+draw(t){
+  const ma=V(t,.2);if(ma<=0)return;
+  draw(0,0,{a:ma},()=>{rr(MX,MY,MW,MH,14);g.fillStyle='#0d1424';g.fill();g.strokeStyle=C.line;g.lineWidth=1.5;g.stroke();
+    g.strokeStyle=hexA(C.edge,.25);g.lineWidth=6;g.beginPath();g.moveTo(X(0),Y(.55));g.bezierCurveTo(X(.3),Y(.5),X(.5),Y(.7),X(1),Y(.62));g.moveTo(X(.45),Y(0));g.bezierCurveTo(X(.5),Y(.35),X(.4),Y(.7),X(.48),Y(1));g.stroke();});
+  tx('downtown',X(.72),Y(.08),{z:12,c:C.dim,a:ma*V(t,1.4,25)});
+  const nine=t>=18.4&&t<25.4,quad=V(t,25.4);
+  PTS.forEach((p,i)=>{const hot=nine&&inNine(p),best=nine&&p===BEST&&t>21;dot(X(p[0]),Y(p[1]),best?C.green:hot?C.amber:hexA(C.amber,.55),best?5.5:hot?4:2.8,ma*V(t,.3+i*.008)*(nine&&!hot?.35:1));});
+  user(X(RIDER[0]),Y(RIDER[1]),{label:'rider',r:13,...A(t,1.6)});
+  // 1. distance to every driver
+  if(t>2.2&&t<5.6){const a=V(t,2.2,5.4);PTS.forEach((p,i)=>{if(i%3===0)ln([[X(RIDER[0]),Y(RIDER[1])],[X(p[0]),Y(p[1])]],{c:hexA(C.red,.35),w:1,a:a*clamp((t-2.2)*2-i/80)});});
+    pill('160 distance checks per request… for 50,000 drivers?',W/2,544,{c:C.red,z:12.5,a});}
+  // 2. coarse grid with codes
+  const ga=V(t,5.2,25.2);if(ga>0){for(let i=1;i<4;i++){ln([[X(i/4),Y(0)],[X(i/4),Y(1)]],{c:hexA(C.blue,.5),a:ga});ln([[X(0),Y(i/4)],[X(1),Y(i/4)]],{c:hexA(C.blue,.5),a:ga});}
+    for(let cy=0;cy<4;cy++)for(let cx=0;cx<4;cx++){const me=cx===cell1[0]&&cy===cell1[1];tx(code1(cx,cy),X(cx/4)+8,Y(cy/4)+14,{z:12,wt:700,f:MONO,al:'left',c:me&&t>8?C.accent:hexA(C.blue,.9),a:ga*V(t,6+(cy*4+cx)*.08)});}
+    if(t>8&&t<11)pill(`rider is in cell ${code1(...cell1)}`,W/2,544,{c:C.accent,z:12.5,f:MONO,a:V(t,8,10.8)});}
+  // 3. the rider's cell, split again
+  const fa=V(t,11.2,25.2);if(fa>0){const x0=cell1[0]/4,y0=cell1[1]/4;g.save();g.globalAlpha=fa;rr(X(x0),Y(y0),MW/4,MH/4,4);g.strokeStyle=C.accent;g.lineWidth=2.5;g.stroke();g.restore();
+    for(let i=1;i<4;i++){ln([[X(x0+i*FINE),Y(y0)],[X(x0+i*FINE),Y(y0+.25)]],{c:hexA(C.accent,.6),a:fa});ln([[X(x0),Y(y0+i*FINE)],[X(x0+.25),Y(y0+i*FINE)]],{c:hexA(C.accent,.6),a:fa});}
+    const fine=code1(...cell1)+B32[(cell2[1]-cell1[1]*4)*4+(cell2[0]-cell1[0]*4)];
+    if(t>12.4&&t<18.4){pill(`finer cell: ${fine}`,W/2-90,544,{c:C.accent,z:12.5,f:MONO,a:V(t,12.4,18.2)});pill(`same prefix ${code1(...cell1)} → close together`,W/2+130,544,{c:C.green,z:12.5,f:MONO,a:V(t,13.4,18.2)});}}
+  // 4. nine fine cells around the rider
+  if(nine){const a=V(t,18.4,25.2);g.save();g.globalAlpha=a;g.setLineDash([5,4]);rr(X((cell2[0]-1)*FINE),Y((cell2[1]-1)*FINE),MW*FINE*3,MH*FINE*3,6);g.strokeStyle=C.green;g.lineWidth=2.5;g.stroke();g.restore();
+    if(t>21)ln([[X(RIDER[0]),Y(RIDER[1])],[X(BEST[0]),Y(BEST[1])]],{c:C.green,w:2.5,a:V(t,21),p:P(t,21,21.6)});
+    pill(`9 cells → ${NEAR.length} drivers to rank, not 160`,W/2,544,{c:C.green,z:12.5,a:V(t,19.4,25.2)});}
+  // 5. quadtree
+  if(quad>0){QT.forEach(q=>{if(!q.d)return;const a=quad*V(t,25.6+q.d*.7);if(a<=0)return;g.save();g.globalAlpha=a*.85;g.strokeStyle=q.d>=4?C.accent:hexA(C.blue,.75);g.lineWidth=q.d>=4?1:1.5;g.strokeRect(X(q.x),Y(q.y),q.s*MW,q.s*MH);g.restore();});
+    if(t>28.6&&t<31.4){pill('downtown: small squares',X(.75),Y(.03)-18,{c:C.accent,z:12,a:V(t,28.6,31.2)});pill('suburbs: one big square',X(.18),Y(.97)+18,{c:C.blue,z:12,a:V(t,29.2,31.2)});}}
+  if(t>31.2)pill('read a few cells, rank a dozen drivers: done in milliseconds',W/2,544,{c:C.green,z:12.5,a:V(t,31.4)});
+}});})();
 </script>
 <script>
 /* ---------------- 13. REST vs gRPC vs WEBSOCKETS ---------------- */
@@ -1580,7 +1971,7 @@ cons:['REST: chatty (many round trips), over/under-fetching, verbose JSON','gRPC
   const ta=k=>22.6+k*.85,NE=13,cellX=k=>200+k*50+25;
   const readE=k=>ta(k)+.7,batch=[24.5,27,29.5,32,34.5],readA=k=>batch.find(b=>b>=ta(k)+.3),readS=k=>Math.max(ta(k)+.5,23.5+k*1.35);
   const GR=[['Email',260,readE],['Analytics',520,readA],['Shipping',780,readS]];
-ch({id:'queues-pubsub',group:'Communication',title:'Message Queues & Pub/Sub',dur:41,needs:['rest-grpc-ws'],related:['sync-async','event-driven','backpressure','idempotency'],
+ch({id:'queues-pubsub',group:'Communication',title:'Message Queues & Pub/Sub',dur:41,needs:['rest-grpc-ws'],related:['streams','event-driven','backpressure','idempotency'],
 beats:[
 [0,'Direct call: both must be up','The producer calls the consumer directly and waits. If the consumer is slow, the producer is stuck. If it\'s down, the request fails.'],
 [7,'Put a queue in the middle','The producer drops messages into a queue (amber) and moves on instantly. The consumer pulls them at its own pace.'],
@@ -1693,6 +2084,59 @@ cons:['Harder to reason about: the result arrives later, so you need status chec
       tx(`${Math.round(ms*P(t,t0,t0+1.2)).toLocaleString()} ms`,x0+w+12,y,{z:14,wt:750,al:'left',c,f:MONO,a:ba});});
     const ex=P(t,28.6,29.8);draw(0,0,{a:ba*ex},()=>{g.setLineDash([6,6]);rr(x0+990*sc,324,(2310-990)*sc*ex,32,8);g.strokeStyle=C.amber;g.lineWidth=1.5;g.stroke();g.setLineDash([]);});
     tx('background work (you are not waiting)',x0+990*sc+10,380,{z:12.5,al:'left',c:C.amber,a:ba*ex});}
+}});})();
+
+/* ---------------- 15b. STREAM vs BATCH PROCESSING ---------------- */
+(function(){
+const SRC=[['shop',180],['app',300],['sensors',420]].map(([n,y])=>({n,x:90,y}));
+const LX=300,SW=27,WIN=13,LY=p=>180+p*120,CX=860,CY=[240,420];
+// partition p gets its e-th event at this time; a consumer reads ~0.6 s behind
+const T0=13.6,RATE=[2.1,1.7,1.9];
+const count=(p,t)=>t<T0?0:Math.floor((t-T0)*RATE[p])+1;
+const CRASH=26,TAKE=27.6;
+function offset(p,t){const behind=count(p,t-.6);if(p<2||t<CRASH)return behind;const saved=count(2,CRASH-.6);if(t<TAKE)return saved;return Math.min(behind,saved+Math.floor((t-TAKE)*6));}
+const owner=(p,t)=>p<2?0:t<TAKE?1:0;
+ch({id:'streams',group:'Communication',title:'Stream vs Batch Processing',dur:38,needs:['queues-pubsub'],related:['event-driven','sync-async','observability'],
+beats:[
+[0,'Two ways to process events','Orders, clicks and sensor readings never stop arriving. You can crunch them later in big batches, or handle each one as it arrives.'],
+[5,'Batch: collect, then crunch','Events pile up in storage all day. At night a batch job reads the whole day at once and writes the report. Efficient and simple, but the answer is hours old.'],
+[13,'Stream: process as they arrive','Events are appended to a log such as Kafka. Consumers read them seconds after they happen and keep running totals up to date.'],
+[19,'Partitions and offsets','The log is split into partitions so several consumers can share the work. Each consumer remembers its offset: how far it has read in each partition.'],
+[26,'Crash, take over, resume','A consumer dies. Another one takes over its partition and carries on from the last saved offset, so no event is skipped.'],
+[32,'Pick by freshness','Fraud checks and live dashboards need streams. Monthly invoices and model training are fine as batches. Many systems run both.']],
+use:['Stream: fraud detection, live dashboards, alerts, feeding search and caches','Batch: reports, billing runs, backfills, training models on history','Both together: stream for "now", batch to recompute exact history'],
+cons:['Streams are always on: more moving parts, state and failure handling','Batch results are hours old, and a failed run means rerunning everything','Exactly-once results need idempotent consumers or transactional writes'],
+draw(t){
+  SRC.forEach((s,k)=>{box(s.x,s.y,{label:s.n,w:96,h:44,z:13,c:C.blue,...A(t,.2+k*.15,31.8)});});
+  // ---- batch
+  const ba=V(t,.4,12.8);
+  if(ba>0){db(480,300,{label:'Storage',sub:'all of today',w:120,h:94,a:ba});SRC.forEach((s,k)=>ln([[s.x+48,s.y],[420,300]],{a:ba*.35}));
+    each(t,.8,9.4,.18,.7,(i,st)=>{const s=SRC[i%3];pk(t,st,.7,[[s.x+48,s.y],[420,300]],C.blue,{r:3.5,a:ba});});
+    const n=Math.floor(clamp((t-.8)/8.6)*412000);tx(`${n.toLocaleString()} events`,480,372,{z:13,wt:700,f:MONO,c:C.amber,a:ba});
+    if(t>9.2)pill('02:00 · nightly batch job',720,200,{c:C.accent,z:12.5,a:ba*V(t,9.2)});
+    server(720,300,{label:'Batch job',sub:t>9.6&&t<11?'crunching…':'',w:124,a:ba*V(t,9.2),st:t>9.6&&t<11?'hot':'ok'});
+    pk(t,9.6,.8,[[540,300],[658,300]],C.amber,{r:9,label:'the whole day'});
+    if(t>10.9){draw(890,300,{a:ba*V(t,10.9)},()=>{rr(-64,-46,128,92,10);g.fillStyle=C.panel2;g.fill();g.strokeStyle=C.edge;g.lineWidth=1.5;g.stroke();});
+      tx('Report',890,286,{z:14,wt:750,a:ba*V(t,10.9)});tx('about yesterday',890,308,{z:11.5,c:C.dim,a:ba*V(t,10.9)});
+      pill('answers are hours old',890,372,{c:C.amber,z:12,a:ba*V(t,11.4)});}}
+  // ---- stream
+  const sa=V(t,13.2,31.8);
+  if(sa>0){for(let p=0;p<3;p++){const y=LY(p),n=count(p,t),first=Math.max(0,n-WIN),off=offset(p,t),own=owner(p,t),down=own===1&&t>=CRASH&&t<TAKE;
+      tx(`P${p}`,LX-34,y,{z:13,wt:800,f:MONO,c:C.dim,a:sa});ln([[LX-12,y-22],[LX+WIN*SW,y-22]],{c:C.line,a:sa});ln([[LX-12,y+22],[LX+WIN*SW,y+22]],{c:C.line,a:sa});
+      for(let e=first;e<n;e++){const x=LX+(e-first)*SW,read=e<off;g.save();g.globalAlpha=sa;rr(x,y-14,SW-5,28,5);g.fillStyle=read?hexA(C.green,.22):hexA(C.blue,.35);g.fill();g.strokeStyle=read?hexA(C.green,.6):C.blue;g.lineWidth=1.2;g.stroke();g.restore();}
+      const ox=LX+Math.max(0,off-first)*SW-2;if(t>19)draw(ox,y+30,{a:sa*V(t,19.2)},()=>{g.beginPath();g.moveTo(0,-6);g.lineTo(-6,4);g.lineTo(6,4);g.closePath();g.fillStyle=down?C.amber:C.green;g.fill();});
+      if(t>19.6)tx(`offset ${off}`,ox+10,y+36,{z:11,f:MONO,c:down?C.amber:C.green,al:'left',a:sa*V(t,19.6)});
+      const cy=CY[own];ln([[LX+WIN*SW+6,y],[CX-62,cy]],{c:hexA(own?C.blue:C.green,.5),dash:down?[4,6]:null,a:sa});}
+    tx('the log (Kafka)',LX+WIN*SW/2,118,{z:12,c:C.dim,a:sa});
+    each(t,T0,31.6,.2,.5,(i,st)=>{const s=SRC[i%3],p=i%3;pk(t,st,.5,[[s.x+48,s.y],[LX-14,LY(p)]],C.blue,{r:3.5,a:sa});});
+    server(CX,CY[0],{label:'Consumer 1',sub:t>=TAKE?'P0 · P1 · P2':'P0 · P1',w:132,a:sa});
+    server(CX,CY[1],{label:'Consumer 2',sub:t<CRASH?'P2':'',w:132,st:t>=CRASH?'fail':'ok',a:sa});
+    const total=Math.max(0,offset(0,t)+offset(1,t)+offset(2,t));if(t>15)pill(`orders so far: ${total*37}`,CX,CY[0]-64,{c:C.green,z:12.5,f:MONO,a:sa*V(t,15)});
+    if(t>CRASH+.2&&t<TAKE)pill('P2 waits at its saved offset',LX+WIN*SW/2,LY(2)+64,{c:C.amber,z:12,a:V(t,CRASH+.2,TAKE-.1)});
+    if(t>TAKE&&t<31.6)pill('Consumer 1 takes P2 and resumes from that offset',LX+WIN*SW/2,LY(2)+64,{c:C.green,z:12,a:V(t,TAKE,31.4)});}
+  // ---- the choice
+  const ca=V(t,32);if(ca>0)[['Stream','fraud checks · live dashboards · alerts',C.green],['Batch','invoices · reports · model training',C.accent]].forEach(([a,b,c],k)=>{const x=300+k*400,v=V(t,32.2+k*.5);
+    plate(x,300,330,120,{c,a:v});tx(a,x,278,{z:22,wt:800,c,a:v});tx(b,x,316,{z:13.5,a:v});});
 }});})();
 
 /* ---------------- 16. SPOF & REDUNDANCY ---------------- */
@@ -1906,6 +2350,66 @@ cons:['Must store keys and results (with an expiry), which adds storage and a lo
   pill('GET · PUT · DELETE: naturally idempotent',330,440,{c:C.green,z:12.5,a:V(t,27.3)});
   pill('POST /pay: needs an Idempotency-Key header',330,480,{c:C.amber,z:12.5,a:V(t,28)});
 }});})();
+
+/* ---------------- 18b. DEPLOYING SAFELY: BLUE-GREEN, CANARY & FEATURE FLAGS ---------------- */
+(function(){
+const UY=k=>160+k*70,LB=[300,300],SY=k=>132+k*112;
+const fromU=k=>[[104,UY(k)],[LB[0]-60,LB[1]]];
+const toS=(x,y)=>[[LB[0]+60,LB[1]],[x-56,y]];
+// canary: how much traffic v2 gets
+const share=t=>t<20?0:t<22.4?.05:t<24.4?.25:t<26?.5:1;
+const flagRung=t=>t<28.2?0:t<29.6?1:t<31.2?2:3;
+ch({id:'deployments',group:'Reliability',title:'Deploying Safely: Blue-Green, Canary & Feature Flags',dur:38,needs:['load-balancers'],related:['observability','resilience','microservices'],
+beats:[
+[0,'Shipping is the risky part','Most outages start with a change. A new version can hide a bug that only shows up under real traffic.'],
+[5,'All at once','Replace every server with v2 together. If v2 is broken, every user hits the bug until someone notices and redeploys v1.'],
+[11,'Blue-green','Run v2 (green) beside v1 (blue). Point the load balancer at green in one step, and if anything breaks, point it straight back.'],
+[19,'Canary','Send 5% of traffic to v2 and watch its error rate. Healthy? Widen to 25%, 50%, 100%. Broken? Roll back after hurting only a few users.'],
+[27,'Feature flags','Ship the new code switched off. Turn it on for staff, then 1% of users, then everyone. Turning it off again needs no deploy at all.'],
+[33,'Small steps, fast undo','Every safe release has the same shape: expose a little, measure, then widen or roll back.']],
+use:['Blue-green: quick, all-or-nothing switches with an instant way back','Canary: big user bases where a bug at 5% is cheaper than at 100%','Feature flags: separating "deployed" from "released", A/B tests, kill switches'],
+cons:['Blue-green doubles the servers during the switch','Canaries need good metrics and enough traffic to judge quickly','Old flags pile up as dead code: remove them once a feature is fully out'],
+draw(t){
+  for(let k=0;k<5;k++){const r=flagRung(t),lit=t>=27.4&&t<33&&(r===3||(r>=1&&k===0)||(r>=2&&k===1));user(90,UY(k),{r:14,c:C.blue,...A(t,.1+k*.05)});
+    if(lit){g.save();g.strokeStyle=C.accent;g.lineWidth=2;g.beginPath();g.arc(90,UY(k),19,0,7);g.stroke();g.restore();}}
+  box(LB[0],LB[1],{label:'Load balancer',w:120,h:54,...A(t,.3)});
+  // ---- 0–11: one fleet; all at once
+  const f1=V(t,.4,10.8);
+  if(f1>0){const v2=t>=5.6;for(let k=0;k<4;k++){const y=SY(k);server(720,y,{label:v2?'v2':'v1',sub:v2?'new':'stable',w:110,h:54,st:v2&&t>6.4?'fail':'ok',down:'BUGGY',a:f1});ln(toS(720,y),{a:f1*.35});}
+    each(t,.6,10.4,.16,1.3,(i,s)=>{const k=i%5,sv=i%4,bad=s>=6.2&&i%3===0;pk(t,s,.5,fromU(k),C.blue,{r:3.5,a:f1});pk(t,s+.5,.4,toS(720,SY(sv)),C.blue,{r:3.5,a:f1});
+      pk(t,s+.9,.4,[[LB[0]-60,LB[1]],[104,UY(k)]],bad?C.red:C.green,{r:3.5,a:f1});});
+    if(t>1&&t<5.4)pill('every outage starts with a change',LB[0],LB[1]+90,{c:C.dim,z:12.5,a:V(t,1,5.2)});
+    if(t>6.6)pill('everyone hits the bug',LB[0],LB[1]+90,{c:C.red,z:12.5,a:f1*V(t,6.6)});}
+  // ---- 11–19: blue-green
+  const f2=V(t,11.2,18.8);
+  if(f2>0){const live=t<13.6?'b':t<16.6?'g':'b';
+    for(let k=0;k<3;k++){server(640,SY(k)+56,{label:'v1',sub:'blue',w:104,h:50,col:C.blue,st:'blue',a:f2});server(850,SY(k)+56,{label:'v2',sub:'green',w:104,h:50,col:C.green,st:t>15&&t<16.6?'fail':'good',down:'',a:f2});}
+    tx('blue (live)',640,98,{z:12.5,wt:700,c:C.blue,a:f2*(live==='b'?1:.4)});tx('green (new)',850,98,{z:12.5,wt:700,c:C.green,a:f2*(live==='g'?1:.4)});
+    for(let k=0;k<3;k++){ln(toS(640,SY(k)+56),{c:live==='b'?hexA(C.blue,.6):C.line,w:live==='b'?2.5:1,a:f2});ln([[LB[0]+60,LB[1]],[798,SY(k)+56]],{c:live==='g'?hexA(C.green,.6):C.line,w:live==='g'?2.5:1,dash:live==='g'?null:[4,6],a:f2});}
+    each(t,11.6,18.4,.18,1.2,(i,s)=>{const k=i%5,g_=s>=13.6&&s<16.6,x=g_?850:640,y=SY(i%3)+56,bad=g_&&s>15&&i%3===0;pk(t,s,.5,fromU(k),C.blue,{r:3.5,a:f2});pk(t,s+.5,.4,toS(x,y),C.blue,{r:3.5,a:f2});pk(t,s+.9,.4,[[LB[0]-60,LB[1]],[104,UY(k)]],bad?C.red:C.green,{r:3.5,a:f2});});
+    if(t>13.6&&t<15)pill('switch: all traffic → green',LB[0],LB[1]+90,{c:C.green,z:12.5,a:V(t,13.6,14.8)});
+    if(t>15&&t<16.6)pill('errors on green!',LB[0],LB[1]+90,{c:C.red,z:12.5,a:V(t,15,16.4)});
+    if(t>16.6)pill('switched back: rollback in 1 second',LB[0],LB[1]+90,{c:C.green,z:12.5,a:f2*V(t,16.6)});}
+  // ---- 19–27: canary
+  const f3=V(t,19.2,26.8);
+  if(f3>0){const sh=share(t),nNew=sh>=1?4:sh>=.5?2:sh>=.25?1:0;
+    for(let k=0;k<4;k++){const isNew=k<nNew;server(680,SY(k),{label:isNew?'v2':'v1',sub:isNew?'new':'stable',w:104,h:50,col:isNew?C.amber:undefined,st:isNew?'hot':'ok',a:f3});ln(toS(680,SY(k)),{a:f3*.35});}
+    server(860,300,{label:'v2 canary',sub:'',w:120,h:54,col:C.amber,st:'hot',a:f3*V(t,19.6)});ln([[LB[0]+60,LB[1]],[800,300]],{c:hexA(C.amber,.6),dash:[4,5],a:f3*V(t,19.6)});
+    each(t,19.8,26.4,.15,1.2,(i,s)=>{const k=i%5,can=(i*7%20)/20<Math.max(share(s),.05);const y=SY(i%4),x=can?(share(s)>=.25&&i%2?680:860):680,yy=can&&x===860?300:y;
+      pk(t,s,.5,fromU(k),C.blue,{r:3.5,a:f3});pk(t,s+.5,.4,toS(x,yy),can?C.amber:C.blue,{r:3.5,a:f3});});
+    draw(860,440,{a:f3*V(t,20.2)},()=>{rr(-110,-44,220,88,12);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=1.5;g.stroke();});
+    tx(`v2 traffic: ${Math.round(sh*100)}%`,860,422,{z:15,wt:800,f:MONO,c:C.amber,a:f3*V(t,20.2)});tx('v2 errors: 0.1% ✓ healthy',860,452,{z:12.5,c:C.green,a:f3*V(t,20.8)});
+    if(t>22.4)pill('healthy → widen',LB[0],LB[1]+90,{c:C.green,z:12.5,a:f3*V(t,22.4)});}
+  // ---- 27–33: feature flags
+  const f4=V(t,27.2,32.8);
+  if(f4>0){for(let k=0;k<4;k++){server(700,SY(k),{label:'v3',sub:'flag inside',w:104,h:50,a:f4});ln(toS(700,SY(k)),{a:f4*.35});}
+    const r=flagRung(t);draw(890,300,{a:f4},()=>{rr(-86,-110,172,220,12);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=1.5;g.stroke();});
+    tx('new checkout',890,214,{z:13,wt:750,a:f4});
+    [['off',0],['staff',1],['1% of users',2],['everyone',3]].forEach(([s,k])=>{const on=r===k;pill(s,890,252+k*40,{c:on?C.accent:C.edge,z:12.5,a:f4*(on?1:.55)});});
+    if(t>28.2)pill('no deploy needed to turn it on, or off',LB[0],LB[1]+90,{c:C.accent,z:12.5,a:f4*V(t,28.4)});}
+  // ---- summary
+  const f5=V(t,33.2);if(f5>0)['expose a little','measure','widen or roll back'].forEach((s,k)=>{const x=480+k*170,v=V(t,33.3+k*.5);plate(x,300,150,70,{c:[C.amber,C.blue,C.green][k],a:v});tx(s,x,301,{z:14,wt:750,a:v});if(k)tx('→',x-85,301,{z:18,c:C.dim,a:v});});
+}});})();
 </script>
 <script>
 /* ---------------- 19. MONOLITH vs MICROSERVICES ---------------- */
@@ -1987,7 +2491,7 @@ cons:['Monolith: grows tangled, slow builds, one bad deploy or bug affects every
   const C0=23.4;const recv=(t0,x0,x)=>t0+(x-x0)/SPD;
   const invGets=recv(C0,BX0,430)+.5,sr=invGets+.8;const shipGets=recv(sr+.5,430,650)+.5,sh=shipGets+.8;const emGets=recv(sh+.5,650,870)+.5;
   EVTS.push([C0,'OrderPlaced',BX0],[sr+.5,'StockReserved',430],[sh+.5,'Shipped',650]);
-ch({id:'event-driven',group:'Architecture',title:'Event-Driven Architecture',dur:33,needs:['queues-pubsub'],related:['microservices','transactions','cache-invalidation'],
+ch({id:'event-driven',group:'Architecture',title:'Event-Driven Architecture',dur:33,needs:['queues-pubsub'],related:['streams','microservices','transactions'],
 beats:[
 [0,'Request-driven: the caller knows everyone','Order service calls Inventory, Email and Analytics directly, one by one, and waits. Adding a feature means changing Order service.'],
 [7,'Event-driven: announce what happened','Order service just publishes a fact, "OrderPlaced", to an event bus. It doesn\'t know or care who is listening.'],
@@ -2037,7 +2541,7 @@ cons:['Harder to follow: there is no single place that shows the whole flow (use
   const series=(f)=>Array.from({length:48},(_,i)=>f(i/47,i));
   const RPS=series((u,i)=>120+18*Math.sin(u*9)+8*(rnd(i)-.5)),ERR=series((u,i)=>u>.55&&u<.72?3.5+rnd(i+50):.4+.3*rnd(i+90)),P99=series((u,i)=>u>.55&&u<.72?820+80*rnd(i):190+30*Math.sin(u*7)+20*rnd(i+7));
   const SP=[['gateway',0,480],['orders',15,462],['payments',40,440],['db query',48,70],['bank API call',80,428]];
-ch({id:'observability',group:'Architecture',title:'Observability: Logs, Metrics & Traces',dur:36,needs:['microservices'],related:['timeouts','autoscaling','resilience'],
+ch({id:'observability',group:'Architecture',title:'Observability: Logs, Metrics & Traces',dur:36,needs:['microservices'],related:['deployments','timeouts','autoscaling'],
 beats:[
 [0,'One click, many services','A single request hops through the gateway, the Orders service, the Payments service and the database. When it\'s slow, where do you even look?'],
 [4,'Logs: what happened, in detail','Each service writes timestamped lines describing events. Great for the details of a single error, but there are millions of lines to search.'],
@@ -2093,7 +2597,7 @@ const POS=N.map((n,k)=>{const a=(-90+k*72)*Math.PI/180;return[CX+RAD*Math.cos(a)
 const TO={B:5.2,C:4.0,D:4.8,E:5.6};             // randomized election timeouts (s)
 const HB1=[5.5,6.5,7.5,8.5,9.5], HB2=[20.6,21.6,22.6,23.6,24.6,25.6,26.6,27.6,28.6,29.6,30.6];
 const seg=(a,b)=>{const[x0,y0]=POS[a],[x1,y1]=POS[b],d=Math.hypot(x1-x0,y1-y0),u=[(x1-x0)/d,(y1-y0)/d];return[[x0+u[0]*52,y0+u[1]*34],[x1-u[0]*52,y1-u[1]*34]];};
-ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:38,needs:['replication'],related:['cap','spof','transactions'],
+ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:38,needs:['replication'],related:['locks','cap','spof','transactions'],
 beats:[
 [0,'Five nodes must agree','A replicated database needs exactly one leader to order the writes. With five nodes, how do they agree who leads, even when some crash?'],
 [5,'The leader sends heartbeats','Leader A pings every follower a few times a second: "still alive". Each ping resets that follower\'s election timer.'],
@@ -2133,6 +2637,110 @@ draw(t){
   pk(t,32.2,.8,[[CX-120,CY+10],[POS[2][0]-40,POS[2][1]-26]],C.blue,{label:'SET y = 7'});
   [1,4].forEach(k=>pk(t,33.1,.9,seg(2,k),C.blue,{r:4}));
   if(t>34.1)pill('only 2 of 5 reachable → write refused (safe)',CX,CY,{c:C.red,z:12.5,a:V(t,34.1)});
+}});})();
+
+/* ---------------- A1b. DISTRIBUTED LOCKS, LEASES & FENCING TOKENS ---------------- */
+(function(){
+const LS=[500,118],WA=[180,300],WB=[180,460],ST=[820,380],LEASE=6;
+const toL=w=>[[w[0]+60,w[1]-12],[LS[0]-110,LS[1]+16]],toS=w=>[[w[0]+60,w[1]+8],[ST[0]-58,ST[1]]];
+// renewals A sends before its pause, and the moment its lease runs out
+const RENEW=[9,11.5,14,16.5],GRANT_A=6.2,GRANT_B=22.6;
+const expiryA=t=>RENEW.filter(r=>r<=t).reduce((e,r)=>r+LEASE,GRANT_A+LEASE);
+const holder=t=>t<GRANT_A?null:t<GRANT_B?'A':'B';
+const PAUSE=[17.2,24];
+ch({id:'locks',group:'Advanced',title:'Distributed Locks, Leases & Fencing Tokens',dur:38,needs:['consensus'],related:['transactions','idempotency','timeouts'],
+beats:[
+[0,'Only one may write','Two workers update the same record. If both read, change and write at once, one of the updates is lost. They need a lock.'],
+[5,'Ask a lock service','Worker A asks a lock service (a small consensus cluster) for the lock and gets it. Worker B asks too and has to wait.'],
+[10,'Leases: locks that expire','If A crashed while holding the lock, B would wait forever. So the lock is a lease that expires after a few seconds unless A keeps renewing it.'],
+[17,'The pause problem','A freezes in a long garbage collection pause. Its lease runs out, B gets the lock and writes. Then A wakes up, still believing it holds the lock, and writes too.'],
+[25,'Fencing tokens','Each grant comes with a number that only goes up: A got 33, B got 34. Storage remembers the highest token it has seen and rejects the write from 33.'],
+[32,'The resource must help','A lease alone cannot stop a client that is paused or slow. Make the resource check the token, or design so that no lock is needed.']],
+use:['One leader-only job at a time: a scheduler, a migration, a payout run','Guarding a resource that cannot merge concurrent writes','Lock services such as ZooKeeper, etcd or Consul provide leases and increasing tokens'],
+cons:['Leases depend on timing: pauses and clock jumps break naive locks','Every lock is a point of contention and a possible bottleneck','Fencing needs the storage to check tokens; not every system can'],
+draw(t){
+  box(LS[0],LS[1],{label:'Lock service',sub:'3 nodes · consensus',w:220,h:58,c:C.accent,...A(t,4.8)});
+  const paused=t>=PAUSE[0]&&t<PAUSE[1];
+  server(WA[0],WA[1],{label:'Worker A',sub:paused?'paused (GC)':holder(t)==='A'?'holds lock':t>=PAUSE[1]&&t<25.4?'thinks it still has it':'',w:120,st:paused?'hot':holder(t)==='A'?'acc':'ok',col:holder(t)==='A'&&!paused?C.accent:undefined,...A(t,.2)});
+  server(WB[0],WB[1],{label:'Worker B',sub:holder(t)==='B'?'holds lock':t>=6.6&&t<GRANT_B?'waiting':'',w:120,st:holder(t)==='B'?'acc':'ok',col:holder(t)==='B'?C.accent:undefined,...A(t,.4)});
+  if(paused)spin(t,WA[0],WA[1]-48,{c:C.amber});
+  const fenced=t>=25;
+  db(ST[0],ST[1],{label:'Storage',sub:fenced&&t>=25.4?'highest token: 34':'record #7',w:136,h:92,...A(t,.6)});
+  // 0–5: no lock, one update lost
+  pk(t,1.2,1,toS(WA),C.blue,{label:'A: set total = 10'});pk(t,1.5,1,toS(WB),C.blue,{label:'B: set total = 12'});
+  if(t>2.6&&t<5)pill('A\'s update silently overwritten',ST[0],ST[1]+80,{c:C.red,z:12.5,a:V(t,2.6,4.8)});
+  // 5–10: lock and wait
+  pk(t,5.4,.8,toL(WA),C.blue,{label:'lock?'});pk(t,GRANT_A,.8,rev(toL(WA)),C.green,{label:'yes · token 33'});
+  pk(t,6.6,.8,toL(WB),C.blue,{label:'lock?'});pk(t,7.4,.8,rev(toL(WB)),C.amber,{label:'wait'});
+  pk(t,8.2,.9,toS(WA),C.blue,{label:'write · token 33'});
+  // the lease meter
+  const la=V(t,GRANT_A);if(la>0){const h=holder(t),exp=h==='A'?expiryA(t):GRANT_B+LEASE+Math.floor(Math.max(0,t-GRANT_B)/2.5)*2.5,left=clamp((exp-t)/LEASE);
+    draw(LS[0],LS[1]+76,{a:la},()=>{rr(-140,-18,280,36,10);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.line;g.lineWidth=1.2;g.stroke();});
+    tx(`lease: ${h} · token ${h==='A'?33:34}`,LS[0]-126,LS[1]+76,{z:12.5,wt:700,f:MONO,al:'left',a:la});meter(LS[0]+60,LS[1]+71,66,10,left,left<.3?C.red:C.green);}
+  RENEW.forEach((r,i)=>pk(t,r-.6,.6,toL(WA),C.green,{r:4,label:i===0?'renew':null}));
+  // 17–25: A pauses, its lease expires, B takes over, then A writes anyway
+  if(t>22.4&&t<23.4)pill('A\'s lease expired',LS[0],LS[1]+118,{c:C.amber,z:12,a:V(t,22.4,23.2)});
+  pk(t,GRANT_B,.8,rev(toL(WB)),C.green,{label:'yes · token 34'});
+  pk(t,23.4,.9,toS(WB),C.blue,{label:'write · token 34'});
+  pk(t,24.3,.9,toS(WA),C.red,{label:'write · token 33 (stale!)'});
+  if(t>25.2&&t<26)pill('without fencing: B\'s update is lost',ST[0],ST[1]+80,{c:C.red,z:12.5,a:V(t,25.2,25.9)});
+  // 25–32: the same two writes, with fencing
+  if(t>25.6&&t<32)pill('↺ again, storage checks tokens',W/2,540,{c:C.accent,z:12.5,a:V(t,25.6,31.8)});
+  pk(t,26.4,.9,toS(WB),C.blue,{label:'token 34'});pop(t,27.3,ST[0],ST[1]-60,'34 ≥ 34 ✓ accepted',C.green,{z:13,d:1.6});
+  const rej=[[WA[0]+60,WA[1]+8],[ST[0]-58,ST[1]]];const p=(t-28.2)/.9;
+  if(p<1)pk(t,28.2,.9,rej,C.red,{label:'token 33'});else if(p<2.4){const[x,y]=along(rej,1-(p-1)/1.4*.4);dot(x,y,C.red,5,1-(p-1)/1.4);}
+  pop(t,29.1,ST[0],ST[1]-60,'33 < 34 ✕ rejected',C.red,{z:13,d:1.8});
+  // the lesson
+  if(t>32.2){pill('lease + fencing token, checked by the resource',W/2,500,{c:C.green,z:13,a:V(t,32.2)});pill('or: make the operation idempotent and drop the lock',W/2,536,{c:C.accent,z:12.5,a:V(t,33.2)});}
+}});})();
+
+/* ---------------- A1c. CONFLICT RESOLUTION: VECTOR CLOCKS & CRDTs ---------------- */
+(function(){
+const RA=[300,190],RB=[700,190],UA=[100,190],UB=[900,190];
+const ab=[[RA[0]+80,RA[1]-10],[RB[0]-80,RB[1]-10]],ba=[[RB[0]-80,RB[1]+10],[RA[0]+80,RA[1]+10]];
+// what each replica holds: [value, clock or note, colour] at time t
+function stateOf(r,t){
+  if(t<2)return['cart = { }','',C.dim];
+  if(t<4.2)return r?['cart = { pen }','10:00:01.5',C.blue]:['cart = { book }','10:00:01.2',C.blue];
+  if(t<12)return t<6.4?(r?['{ pen }  vs  { book }','conflict!',C.amber]:['{ book }  vs  { pen }','conflict!',C.amber]):['cart = { pen }','later timestamp wins',C.red];
+  if(t<13.2)return['cart = { }','[A:0, B:0]',C.dim];
+  if(t>=28.4)return['{ book, mug, pen }','merged by union',C.green];
+  if(r===0)return t<17.6?['cart = { book }','[A:1, B:0]',C.blue]:t<20.4?['cart = { book, pen }','[A:1, B:1]',C.green]:t<22.6?['{ book, pen, mug }','[A:2, B:1]',C.blue]:t<26?['two siblings kept','[A:2, B:1] ∥ [A:1, B:2]',C.amber]:['cart = { book, mug }','add-set',C.blue];
+  return t<14.6?['cart = { }','[A:0, B:0]',C.dim]:t<15.6?['cart = { book }','[A:1, B:0]',C.blue]:t<20.4?['cart = { book, pen }','[A:1, B:1]',C.blue]:t<22.6?['cart = { book }','[A:1, B:2]',C.blue]:t<26?['two siblings kept','[A:2, B:1] ∥ [A:1, B:2]',C.amber]:['cart = { pen }','add-set',C.blue];}
+ch({id:'conflicts',group:'Advanced',title:'Conflict Resolution: Vector Clocks & CRDTs',dur:38,needs:['replication','cap'],related:['quorums','consensus','event-driven'],
+beats:[
+[0,'Two writes, no single leader','In multi-leader or leaderless stores, two replicas can accept writes to the same key at the same moment, then sync with each other later.'],
+[5,'Last write wins','The simplest rule keeps the write with the later timestamp. Easy, but the other write is silently lost, and clocks on different machines drift.'],
+[12,'Vector clocks','Each replica counts its own writes, and every version carries all the counts, like [A:1, B:1]. Compare two versions count by count.'],
+[19,'Before, after, or concurrent','If every count in X is ≤ the same count in Y, X came first and can be dropped. If each is ahead somewhere, they are concurrent: a real conflict for the app to merge.'],
+[26,'CRDTs merge by design','Some data types merge automatically. A cart kept as an add-only set merges by union; a like counter keeps one count per replica and adds them up.'],
+[32,'Choose your merge','Last write wins for caches and settings, vector clocks plus app logic for documents, CRDTs for counters, sets and collaborative editing.']],
+use:['Multi-region writes, offline-first apps, collaborative editors','Shopping carts, likes and presence: merge instead of overwrite','Detecting real conflicts rather than guessing with timestamps'],
+cons:['Last write wins loses data whenever writes are concurrent','Vector clocks grow with every replica, and the app must still merge siblings','CRDTs fit specific shapes (sets, counters, text); removals need extra care'],
+draw(t){
+  user(UA[0],UA[1],{label:'Ana',r:15,...A(t,.2,32)});user(UB[0],UB[1],{label:'Ben',r:15,...A(t,.3,32)});
+  [[RA,'Replica A',0],[RB,'Replica B',1]].forEach(([p,n,r])=>{const a=V(t,.4,32);if(a<=0)return;box(p[0],p[1],{label:n,w:160,h:54,a});const[v,c,col]=stateOf(r,t);
+    plate(p[0],p[1]+96,240,84,{c:col,a,fill:hexA(col,.08)});tx(v,p[0],p[1]+82,{z:15,wt:750,f:MONO,a});if(c)tx(c,p[0],p[1]+108,{z:12.5,f:MONO,c:col,a});});
+  const toA=[[UA[0]+18,UA[1]],[RA[0]-80,RA[1]]],toB=[[UB[0]-18,UB[1]],[RB[0]+80,RB[1]]];
+  // concurrent adds, then sync
+  pk(t,1.2,.8,toA,C.blue,{label:'+ book'});pk(t,1.2,.8,toB,C.blue,{label:'+ pen'});pk(t,3.2,1,ab,C.amber,{r:5,label:'sync'});pk(t,3.2,1,ba,C.amber,{r:5});
+  // last write wins
+  if(t>6.4&&t<12){pill('10:00:01.5 > 10:00:01.2 → keep { pen }',W/2,370,{c:C.red,z:12.5,f:MONO,a:V(t,6.4,11.8)});pill('Ana\'s book silently lost',W/2,410,{c:C.red,z:12.5,a:V(t,7.4,11.8)});
+    pill('and if B\'s clock runs fast, "later" may be the older write',W/2,450,{c:C.amber,z:12,a:V(t,8.6,11.8)});}
+  // vector clocks: a clean "happened before"
+  if(t>12&&t<13.4)pill('↺ again, with vector clocks',W/2,40,{c:C.accent,z:12.5});
+  pk(t,13.4,.8,toA,C.blue,{label:'+ book'});pk(t,14.6,1,ab,C.amber,{r:5,label:'sync'});pk(t,15.8,.8,toB,C.blue,{label:'+ pen'});pk(t,16.8,.8,ba,C.amber,{r:5,label:'sync'});
+  if(t>17.6&&t<19.4)pill('[A:1, B:0] ≤ [A:1, B:1] → B\'s version is newer: keep it ✓',W/2,410,{c:C.green,z:12.5,f:MONO,a:V(t,17.6,19.2)});
+  // concurrent
+  pk(t,19.6,.8,toA,C.blue,{label:'+ mug'});pk(t,19.6,.8,toB,C.blue,{label:'− pen'});pk(t,21.2,1,ab,C.amber,{r:5,label:'sync'});pk(t,21.2,1,ba,C.amber,{r:5});
+  if(t>22.6&&t<26){pill('A is ahead on A, B is ahead on B → concurrent',W/2,410,{c:C.amber,z:12.5,a:V(t,22.6,25.8)});pill('keep both, let the app merge them',W/2,450,{c:C.accent,z:12.5,a:V(t,23.4,25.8)});}
+  // CRDTs
+  if(t>26.2&&t<32){pk(t,27.4,1,ab,C.green,{r:5,label:'merge'});pk(t,27.4,1,ba,C.green,{r:5});
+    if(t>28.4){pill('{ book, mug } ∪ { pen } = { book, mug, pen }',W/2,400,{c:C.green,z:13,f:MONO,a:V(t,28.4,31.8)});pill('likes: A counted 3, B counted 2 → 5',W/2,442,{c:C.green,z:13,f:MONO,a:V(t,29.4,31.8)});
+      pill('same answer on every replica, in any order',W/2,484,{c:C.accent,z:12.5,a:V(t,30.2,31.8)});}}
+  // the choice
+  const ca=V(t,32.2);if(ca>0)[['Last write wins','caches · settings',C.red],['Vector clocks','documents · app merges',C.amber],['CRDTs','counters · sets · editors',C.green]].forEach(([a,b,c],k)=>{const x=190+k*310,v=V(t,32.3+k*.4);
+    plate(x,300,270,100,{c,a:v});tx(a,x,284,{z:18,wt:800,c,a:v});tx(b,x,314,{z:13,a:v});});
 }});})();
 
 /* ---------------- A2. DISTRIBUTED TRANSACTIONS: 2PC & SAGAS ---------------- */
@@ -2339,7 +2947,9 @@ cons:['301 (permanent) redirects are cached by browsers: great for speed, but cl
     else{if(fi%4===0)pop(t,f.s+.55,GW[0]-40,GW[1]+54,'429',C.red,{z:12,d:.7});drop(t,f.s+.55,190,322,{label:false,dx:-30});}});
   if(t>51.6&&t<56)pill('429 Too Many Requests',GW[0],392,{c:C.red,z:12.5,a:V(t,51.8,55.6)});
   // ---- chapter tags
-  const TAGS=[[DNS[0],DNS[1]+44,'Ch 1'],[GW[0],GW[1]+48,'Ch 4 · 6'],[LB[0],LB[1]+48,'Ch 3 · 17'],[AP[0][0],AP[0][1]-50,'Ch 2 · 16'],[AP[1][0],AP[1][1]+50,'Ch 2 · 19'],[CA[0]-106,CA[1],'Ch 5 · 11'],[800,356,'Ch 7 – 10'],[QU[0],QU[1]+48,'Ch 14 · 15'],[AN[0],AN[1]+48,'Ch 21']];
+  // chapter numbers as the sidebar shows them, looked up by id so new chapters never break them
+  const n=id=>chapters.findIndex(c=>c.id===id)+1,ns=(...ids)=>'Ch '+ids.map(n).join(' · ');
+  const TAGS=[[DNS[0],DNS[1]+44,ns('client-server')],[GW[0],GW[1]+48,ns('proxy-gateway','rate-limiting')],[LB[0],LB[1]+48,ns('load-balancers','resilience')],[AP[0][0],AP[0][1]-50,ns('scaling','spof')],[AP[1][0],AP[1][1]+50,ns('scaling','microservices')],[CA[0]-106,CA[1],ns('cdn','caching')],[800,356,`Ch ${n('sql-nosql')} – ${n('sharding')}`],[QU[0],QU[1]+48,ns('queues-pubsub','sync-async')],[AN[0],AN[1]+48,ns('observability')]];
   TAGS.forEach(([x,y,s],i)=>pill(s,x,y,{c:C.accent,z:12,a:V(t,56.3+i*.25),wt:700}));
 }});})();
 </script>
@@ -2597,6 +3207,25 @@ chal('autoscaling',{title:'Tune the autoscaler',goal:'Traffic rises to a peak, w
           const why=[!ok[0]&&'too many requests dropped: scale out earlier (a lower threshold) or keep a higher minimum for the spike',!ok[1]&&'too expensive: scale in sooner or lower the minimum',!ok[2]&&'it flapped between adding and removing: add a cooldown, or leave more room between the two thresholds'].filter(Boolean).join('; ');
           return{stars:ok[0]?2:1,title:ok[0]?`${n} of 3 goals`:`${(d*100).toFixed(1)}% of requests dropped`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
 
+/* ---------------- 2c. ESTIMATION: size the chat app ---------------- */
+chal('estimation',{title:'Size the chat app',goal:'50 M daily users each send 20 messages a day, about 1 KB each. Evenings run 3× the average. Estimate the peak messages per second and the storage per day.',
+  hint:'Messages a day ÷ ~100,000 seconds gives the average. Multiply by 3 for the peak. Storage is messages a day × size.',
+  make:api=>{const QPS=['100','300','1k','3k','10k','30k','100k','300k','1M'],STO=['1 GB','3 GB','10 GB','30 GB','100 GB','300 GB','1 TB','3 TB','10 TB'];
+    const RIGHT=[5,6];let pick=[2,2],checked=false,at=0;
+    api.slider('Peak messages / s',0,8,1,pick[0],v=>QPS[v],v=>{pick[0]=v;});
+    api.slider('Storage per day',0,8,1,pick[1],v=>STO[v],v=>{pick[1]=v;});
+    api.button('Check my estimate',()=>{if(checked)return;checked=true;at=api.now();api.lock(true);const off=pick.map((p,k)=>Math.abs(p-RIGHT[k]));
+      const st=off.every(o=>o===0)?3:off.every(o=>o<=1)?2:off.some(o=>o<=1)?1:0;
+      setTimeout(()=>api.win(st,['Off by a lot','One of the two is close','Within 3× on both','Spot on'][st],`Peak: 1 B messages a day ÷ 100,000 s ≈ 10,000/s, × 3 ≈ 30,000/s. Storage: 1 B × 1 KB ≈ 1 TB a day.${st<3?' One step on each slider is a factor of about 3.':''}`),1400);},{primary:true});
+    api.status('Set both sliders, then press <b>Check my estimate</b>. Each step is about 3×.');
+    const L=[['50 M users × 20 messages','= 1 B messages a day'],['÷ ~100,000 s','≈ 10,000 / s on average'],['× 3 for the evening','≈ 30,000 / s at peak'],['1 B × 1 KB','≈ 1 TB a day']];
+    return{draw(now){panel(40,70,440,250,{});tx('the brief',58,92,{z:12,c:C.dim,al:'left'});
+        [['50 M','daily users'],['20','messages each a day'],['1 KB','per message'],['3×','evening peak over average']].forEach(([a,b],k)=>{tx(a,60,130+k*44,{z:22,wt:800,f:MONO,c:C.blue,al:'left'});tx(b,160,130+k*44,{z:14,al:'left'});});
+        panel(520,70,440,250,{c:C.accent});tx('your envelope',538,92,{z:12,c:C.dim,al:'left'});
+        [['peak',QPS[pick[0]]+' / s'],['storage',STO[pick[1]]+' / day']].forEach(([a,b],k)=>{tx(a,560,150+k*80,{z:14,c:C.dim,al:'left'});tx(b,940,150+k*80,{z:28,wt:800,f:MONO,al:'right',c:checked?(pick[k]===RIGHT[k]?C.green:Math.abs(pick[k]-RIGHT[k])<=1?C.amber:C.red):C.text});});
+        if(checked)L.forEach(([a,b],k)=>{const v=clamp((now-at-k*.25)/.4);tx(a,60,370+k*42,{z:14,f:MONO,al:'left',a:v});tx(b,940,370+k*42,{z:15,f:MONO,wt:750,al:'right',c:k===3?C.amber:C.green,a:v});});
+        else tx('Steps of ×3: 1k, 3k, 10k, 30k…',W/2,420,{z:14,c:C.dim});}};}});
+
 /* ---------------- 3. LOAD BALANCERS: be the load balancer ---------------- */
 chal('load-balancers',{title:'Be the load balancer',goal:'For 30 seconds, send each request to a server. Never let a server overflow. Server C is older and slower.',
   hint:'Big requests (4) to the emptiest server. C drains slowly, so only give it small jobs. This is least connections, done by hand.',
@@ -2649,6 +3278,19 @@ chal('proxy-gateway',{title:'Run the gateway',goal:'Route each request to the ri
       {t:'DELETE /users/7 · no token',b:'x',why:'A private path without a token is rejected at the gateway, before any service sees it.'},{t:'GET /orders/981 · valid token',b:'o',why:'/orders/… goes to Orders.'},
       {t:'GET /static/app.js',b:'s',why:'Everything under /static is served as a file.'},{t:'PUT /users/42/avatar · valid token',b:'u',why:'Still a /users path.'},
       {t:'GET /orders/981 · expired token',b:'x',why:'An expired token is not valid. Reject it.'},{t:'GET /users/me · no token',b:'x',why:'No token, no entry.'},{t:'PATCH /orders/12 · valid token',b:'o',why:'/orders goes to Orders.'}]})});
+
+/* ---------------- 4b. AUTH: pick the credential ---------------- */
+chal('auth',{title:'Pick the credential',goal:'Sort each situation into the best fit: a session cookie, a short-lived JWT, or OAuth.',
+  hint:'Need instant logout in one app? Sessions. Many services checking identity without a shared lookup? JWTs. Another company\'s login or API? OAuth.',
+  make:sortGame({bins:[{id:'s',label:'Session cookie',sub:'server keeps the session',c:C.amber},{id:'j',label:'Short-lived JWT',sub:'signed, checked anywhere',c:C.accent},{id:'o',label:'OAuth',sub:'delegated access',c:C.green}],
+    cards:[{t:'One server-rendered web app with a login form',b:'s',why:'A single app with a session store is the simplest, safest choice.'},
+      {t:'Logging out must take effect at once, everywhere',b:'s',why:'Deleting the session revokes it immediately. A JWT stays valid until it expires.'},
+      {t:'20 microservices check who the user is on every call',b:'j',why:'Each service verifies the signature itself, with no shared session lookup.'},
+      {t:'Stateless API servers in three regions',b:'j',why:'No region needs to reach a session store elsewhere; the token carries what they need.'},
+      {t:'"Log in with your work account" on a new app',b:'o',why:'The identity provider checks the password and hands the app a token.'},
+      {t:'A print shop wants read access to your photos on another site',b:'o',why:'OAuth grants limited, revocable access without sharing your password.'},
+      {t:'Your app must never see the user\'s password',b:'o',why:'With OAuth the password only ever goes to the identity provider.'},
+      {t:'The admin panel of a small internal tool',b:'s',why:'One app, few users, instant logout: plain sessions fit.'}]})});
 
 /* ---------------- 5. CDN: place two edges ---------------- */
 chal('cdn',{title:'Place the edge caches',goal:'You can afford two edge caches. Place them so the average user waits 40 ms or less. The origin is in US-East.',
@@ -2758,6 +3400,33 @@ chal('replication',{title:'Keep it serving',goal:'Handle 150 requests/s (70% rea
           if(s>=.6)return{stars:1,title:`${(s*100).toFixed(1)}% served`,msg:'One node cannot take everything. Add followers and move reads onto them.'};
           return{stars:0,title:'Mostly down',msg:'A single database had to do all the work, and it died. Add followers.'};}};}})});
 
+/* ---------------- 9b. QUORUMS: tune N, W and R ---------------- */
+// replicas answer in this order (ms); the fastest one dies halfway through the run
+const QLAT=[5,8,12,20,35];
+function quorumNums(p){const live=QLAT.slice(0,p.n),after=live.slice(1);
+  const lat=(q,l)=>q<=l.length?l[q-1]:null,ok=p.w<=after.length&&p.r<=after.length;
+  const ms=[lat(p.w,live),lat(p.r,live),lat(p.w,after),lat(p.r,after)].filter(v=>v!=null);
+  return{stale:p.r+p.w<=p.n,fails:!ok,avg:ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:999};}
+chal('quorums',{title:'Tune the quorum',goal:'Half reads, half writes. Halfway through, one replica dies. Get zero stale reads, zero failed requests and an average wait of 15 ms or less.',
+  hint:'R + W must be more than N for fresh reads. Both W and R must still fit in the replicas left after one dies. Every extra replica you wait for is slower.',
+  make:simGame({dur:10,defaults:{n:3,w:1,r:1},intro:'Pick N, W and R, then press <b>Run it</b>.',
+    controls(api,p,re){api.slider('Replicas (N)',3,5,1,p.n,v=>`${v}`,v=>{p.n=v;re();});api.slider('Write quorum (W)',1,5,1,p.w,v=>`${v}`,v=>{p.w=v;re();});api.slider('Read quorum (R)',1,5,1,p.r,v=>`${v}`,v=>{p.r=v;re();});},
+    build(p,api){const N=quorumNums(p),CL=[150,300],RY=k=>300+(k-(p.n-1)/2)*92;let acc=0,i=0,dead=false;const fl=[];
+      return{step(dt,t){if(!dead&&t>=5){dead=true;FX.burst(640,RY(0),C.red,24);FX.text(640,RY(0)-50,'replica down',C.red,14);}
+          acc+=dt*7;const now=api.now();while(acc>=1){acc--;const write=i++%2===0,q=write?p.w:p.r,alive=dead?p.n-1:p.n;const bad=q>alive||q>p.n,stale=!write&&N.stale&&i%4===1;
+            for(let k=0;k<Math.min(q,p.n);k++){const kk=dead?k+1:k;if(kk>=p.n)break;fl.push({t0:now,d:.5,pts:[[CL[0]+22,CL[1]],[588,RY(kk)]],c:write?C.amber:C.blue,r:3.5,drop:bad?.7:0});}
+            fl.push({t0:now+.6,d:.5,pts:[[588,300],[CL[0]+22,CL[1]]],c:bad?C.red:stale?C.red:C.green,r:4,label:bad?'failed':stale?'stale':null});}},
+        draw(now){flyers(now,fl);user(CL[0],CL[1],{label:'client',r:20});
+          for(let k=0;k<p.n;k++)db(640,RY(k),{label:`Replica ${k+1}`,sub:`${QLAT[k]} ms`,w:104,h:76,st:dead&&k===0?'fail':'ok'});
+          tx(`R + W = ${p.r+p.w} ${p.r+p.w>p.n?'>':'≤'} N = ${p.n}`,860,250,{z:16,wt:800,f:MONO,c:p.r+p.w>p.n?C.green:C.red});
+          tx(p.r+p.w>p.n?'reads overlap the latest write':'reads can miss the latest write',860,278,{z:12,c:C.dim});
+          if(p.w>p.n||p.r>p.n)tx('a quorum bigger than N can never be met',860,320,{z:12,c:C.red});},
+        hud(){return[['stale reads',N.stale?'yes':'none',N.stale?C.red:C.green],['failures',N.fails?'yes':'none',N.fails?C.red:C.green],['avg wait',`${N.avg.toFixed(0)} ms`,N.avg<=15?C.green:C.red]];},
+        score(){const a=!N.stale,b=!N.fails,c=N.avg<=15,n=[a,b,c].filter(Boolean).length;
+          if(n===3)return{stars:3,title:'Fresh, available and fast',msg:`N=${p.n}, W=${p.w}, R=${p.r}: every read overlaps the latest write, one dead replica changes nothing, and the average wait is ${N.avg.toFixed(0)} ms.`};
+          const why=[!a&&'R + W is not more than N, so some reads miss the latest write',!b&&'after one replica died there were not enough left to meet W or R',!c&&'waiting for that many replicas is too slow'].filter(Boolean).join('; ');
+          return{stars:n===2?2:1,title:`${n} of 3 goals`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
+
 /* ---------------- 10. SHARDING: pick the shard key ---------------- */
 chal('sharding',{title:'Pick the shard key',goal:'Split the users table so no shard gets more than 30% of the traffic, using at most 4 shards.',
   hint:'Real-world values (countries, dates) are lumpy. A hash spreads keys evenly, whatever they look like.',
@@ -2837,6 +3506,27 @@ chal('hot-keys',{title:'Survive the celebrity post',goal:'5,000 requests/s for o
           if(a||b)return{stars:2,title:a?'Errors fine, database stampeded':'Database safe, cache overloaded',msg:a?`Every expiry sent ~${Math.round(qPeak).toLocaleString()} identical queries to the database. Coalesce them, or refresh before expiry.`:`${p.nodes} node${p.nodes>1?'s':''} can serve ${2000*p.nodes}/s, but the key gets 5,000/s. Put copies on more nodes.`};
           return{stars:1,title:p.nodes<3?'Melted twice over':'Stampede on every expiry',msg:p.nodes<3?'The cache nodes could not keep up, and every expiry stampeded the database. Spread the key across more nodes and coalesce the misses.':'The cache nodes held the crowd, but each expiry sent thousands of identical queries to the database, which timed out. Coalesce the misses, or refresh before expiry.'};}};}})});
 
+/* ---------------- 11d. BLOOM FILTERS: size the filter ---------------- */
+// false positive rate for b bits per key and k hash functions
+const bloomFP=(b,k)=>Math.pow(1-Math.exp(-k/b),k);
+chal('bloom-filters',{title:'Size the Bloom filter',goal:'A filter in front of the disk holds 1 million keys. Keep false positives at or under 1% using at most 1.5 MB of memory.',
+  hint:'More bits per key lowers false positives but costs memory. The best number of hash functions is about 0.7 × bits per key; too many fills the array with 1s.',
+  make:simGame({dur:8,defaults:{b:4,k:1},intro:'Choose bits per key and the number of hash functions, then press <b>Run it</b>.',
+    controls(api,p,re){api.slider('Bits per key',1,16,1,p.b,v=>`${v} bits`,v=>{p.b=v;re();});api.slider('Hash functions',1,12,1,p.k,v=>`${v}`,v=>{p.k=v;re();});},
+    build(p,api){const fp=bloomFP(p.b,p.k),mb=p.b/8,fill=1-Math.exp(-p.k/p.b);let acc=0,n=0,wasted=0;const fl=[];const AP=[150,300],BF=[480,300],DK=[840,300];
+      return{step(dt){acc+=dt*14;const now=api.now();while(acc>=1){acc--;n++;const maybe=rnd(n*7.13+p.b*31+p.k)<fp;if(maybe)wasted++;
+          fl.push({t0:now,d:.45,pts:[[AP[0]+56,AP[1]],[BF[0]-120,BF[1]]],c:C.blue,r:3.5});
+          if(maybe)fl.push({t0:now+.45,d:.5,pts:[[BF[0]+120,BF[1]],[DK[0]-55,DK[1]]],c:C.red,r:4,label:n%5===0?'wasted read':null});else fl.push({t0:now+.45,d:.4,pts:[[BF[0],BF[1]+40],[BF[0],BF[1]+110]],c:C.green,r:3.5});}},
+        draw(now){flyers(now,fl);server(AP[0],AP[1],{label:'App',sub:'lookups for absent keys',w:150});db(DK[0],DK[1],{label:'Disk',sub:'slow',w:110,h:86});
+          draw(BF[0],BF[1],{},()=>{rr(-120,-40,240,80,12);g.fillStyle=C.panel;g.fill();g.strokeStyle=mb<=1.5?C.accent:C.red;g.lineWidth=2;g.stroke();});
+          for(let i=0;i<32;i++){const on=rnd(i+p.b*3+p.k*101)<fill;g.save();rr(BF[0]-108+(i%16)*13.5,BF[1]-22+Math.floor(i/16)*20,11,15,3);g.fillStyle=on?hexA(C.amber,.6):C.panel2;g.fill();g.restore();}
+          tx(`Bloom filter · ${(fill*100).toFixed(0)}% of bits are 1`,BF[0],BF[1]-58,{z:12.5,c:C.dim});tx('"no" → skip the disk',BF[0],BF[1]+128,{z:12,c:C.green});},
+        hud(){return[['false positives',`${(fp*100).toFixed(fp<.01?2:1)}%`,fp<=.01?C.green:C.red],['memory',`${mb.toFixed(2)} MB`,mb<=1.5?C.green:C.red],['best k for these bits',`${Math.max(1,Math.round(p.b*.693))}`,C.dim]];},
+        score(){const a=fp<=.01,b=mb<=1.5;
+          if(a&&b)return{stars:3,title:`${(fp*100).toFixed(2)}% in ${mb.toFixed(2)} MB`,msg:`${p.b} bits per key with ${p.k} hash functions. About 10 bits and 7 hashes per key is the classic 1% filter.`};
+          if(a||b)return{stars:2,title:a?'Accurate, but too big':'Small, but too many false positives',msg:a?'Fewer bits per key would still reach 1% if the hash count is right (about 0.7 × bits).':p.k>Math.round(p.b*.7)+1?'Too many hash functions fill the array with 1s. Use about 0.7 × bits per key.':'Add bits per key, and use about 0.7 × that many hash functions.'};
+          return{stars:1,title:'Leaky and expensive',msg:'Aim for about 10 bits per key and 7 hash functions.'};}};}})});
+
 /* ---------------- 12. CAP: choose a side ---------------- */
 chal('cap',{title:'Partition! Pick a side',goal:'The network just split. For each feature, choose: refuse to answer until it heals (CP), or answer with maybe-stale data (AP).',
   hint:'If a wrong answer costs money or double-sells something, choose consistency. If a slightly old number is harmless, stay available.',
@@ -2845,6 +3535,76 @@ chal('cap',{title:'Partition! Pick a side',goal:'The network just split. For eac
       {t:'Adding items to a shopping cart',b:'ap',why:'Amazon famously keeps carts available and merges them later.'},{t:'Selling the last concert ticket',b:'cp',why:'Two nodes could each sell the same last ticket.'},
       {t:'DNS records',b:'ap',why:'DNS happily serves cached, slightly old answers.'},{t:'A distributed lock (who is leader?)',b:'cp',why:'Two leaders at once is exactly the bug a lock prevents.'},
       {t:'Comments under a video',b:'ap',why:'A comment showing up a second late is fine.'},{t:'Booking seat 14C on a flight',b:'cp',why:'Double-booking a seat is not acceptable.'}]})});
+
+/* ---------------- S1. STORAGE ENGINES: pick the engine ---------------- */
+chal('storage-engines',{title:'Pick the storage engine',goal:'Sort each workload onto the engine that suits it: a B-tree or an LSM tree.',
+  hint:'Many writes, mostly appends: LSM. Many reads, updates in place and steady latency: B-tree.',
+  make:sortGame({bins:[{id:'b',label:'B-tree',sub:'update in place',c:C.accent},{id:'l',label:'LSM tree',sub:'write in batches, merge later',c:C.green}],
+    cards:[{t:'Bank ledger: many reads, updates in place, strict transactions',b:'b',why:'B-trees give steady reads and in-place updates, ideal for transactional data.'},
+      {t:'Ingesting 500,000 sensor readings per second',b:'l',why:'An LSM tree turns a flood of writes into a few sequential flushes.'},
+      {t:'Product catalog read 1,000× more often than it changes',b:'b',why:'Read-heavy data favours one sorted tree over checking several files.'},
+      {t:'Append-only activity log, rarely read',b:'l',why:'Appends are exactly what LSM trees are built for.'},
+      {t:'Time-series metrics: heavy writes, reads of recent data',b:'l',why:'Writes stream in; recent data sits in the memtable and newest files.'},
+      {t:'Must avoid latency spikes from background compaction',b:'b',why:'B-trees have no compaction bursts, so latency stays predictable.'},
+      {t:'Chat history across many machines, written constantly',b:'l',why:'Cassandra-style write-heavy stores use LSM trees.'},
+      {t:'Range scans over a well-indexed table with modest writes',b:'b',why:'Sorted B-tree pages make range scans cheap.'}]})});
+
+/* ---------------- S2. SEARCH: answer with the index ---------------- */
+chal('search',{title:'Be the search engine',goal:'Answer three queries using only the inverted index: pick exactly the documents that match each one.',
+  hint:'AND keeps documents in both lists, OR keeps documents in either, AND NOT removes the second list from the first.',
+  make:api=>{const DOCS=['Caching with Redis','Redis streams for events','CDN caches images','Sharding Postgres by user','Redis cache for sessions','Edge CDN for video'];
+    const IDX=[['cache',[1,3,5]],['redis',[1,2,5]],['cdn',[3,6]],['shard',[4]],['stream',[2]],['session',[5]]];
+    const Q=[['cache AND redis',[1,5],['cache','redis']],['cdn OR shard',[3,4,6],['cdn','shard']],['redis AND NOT cache',[2],['redis','cache']]];
+    let r=0,sel=new Set(),right=0,shown=0,done=false;const DY=k=>150+k*58;
+    const say=()=>api.status(`Query ${r+1} of 3: <b>${Q[r][0]}</b>. Press <kbd>1</kbd>–<kbd>6</kbd> (or click) to pick documents, then <kbd>Enter</kbd>. Picked: ${sel.size?[...sel].sort().map(d=>'D'+d).join(', '):'none'}.`);
+    function toggle(d){if(done||shown||d<1||d>6)return;sel.has(d)?sel.delete(d):sel.add(d);say();}
+    function submit(){if(done||shown)return;const want=Q[r][1],ok=want.length===sel.size&&want.every(d=>sel.has(d));if(ok)right++;
+      shown=api.now();FX.text(W/2,108,ok?'Right!':'Not quite',ok?C.green:C.red,18);api.status(`${ok?'<b>Right.</b>':'<span class="bad">✕</span>'} ${Q[r][0]} → ${want.map(d=>'D'+d).join(', ')}.`);}
+    api.button('Check my answer',submit,{primary:true});say();
+    return{draw(now){if(shown&&now-shown>2){shown=0;sel=new Set();r++;if(r>=3){done=true;r=2;api.win(right,`${right} of 3 queries right`,right===3?'Postings lists in, set operations out: that is every search engine\'s inner loop.':'Look up each term\'s list, then intersect (AND), unite (OR) or subtract (AND NOT).');}else say();}
+        const q=Q[r];pill(`query: ${q[0]}`,W/2,70,{c:C.accent,z:16,f:MONO});
+        DOCS.forEach((t,k)=>{const d=k+1,on=sel.has(d),want=shown&&q[1].includes(d),y=DY(k);plate(250,y,360,48,{c:shown?(want?C.green:on?C.red:C.edge):on?C.accent:C.edge,fill:on?hexA(C.accent,.12):C.panel2,r:10});
+          keycap(String(d),88,y);tx(`D${d}`,112,y,{z:13,wt:800,f:MONO,c:C.dim,al:'left'});tx(t,150,y,{z:14,al:'left'});});
+        tx('inverted index',650,128,{z:12,c:C.dim,al:'left'});
+        IDX.forEach(([term,ds],k)=>{const y=DY(k),hot=q[2].includes(term);tx(term,650,y,{z:15,wt:750,f:MONO,c:hot?C.accent:C.text,al:'left'});ds.forEach((d,j)=>pill(`D${d}`,760+j*58,y,{c:hot?C.accent:C.blue,z:12,f:MONO,a:hot?1:.5}));});
+        tx(`${r+1} / 3`,80,40,{z:13,wt:700,c:C.dim,f:MONO});},
+      click(x,y){const k=DOCS.findIndex((_,k)=>Math.abs(x-250)<180&&Math.abs(y-DY(k))<24);if(k>=0)toggle(k+1);},
+      key(k){if(k==='Enter'){submit();return;}toggle(+k);}};}});
+
+/* ---------------- S3. GEO: find the nearest driver ---------------- */
+chal('geo',{title:'Find the nearest driver',goal:'Walk down the quadtree to the rider\'s cell, then pick which of the nine cells around the rider holds the nearest driver.',
+  hint:'At each level pick the quarter the rider is in. At the end, the nearest driver may be just across an edge: look at all nine cells.',
+  make:api=>{const MX=240,MY=70,MW=520,MH=440,X=u=>MX+u*MW,Y=v=>MY+v*MH,R=()=>.18+Math.random()*.64;
+    let rider,drivers,ans,box=[0,0,1],lvl=0,mistakes=0,stage='down',done=false,flash=null;
+    const cellOf=([u,v])=>[Math.floor(u*8),Math.floor(v*8)];
+    (function gen(){for(;;){rider=[R(),R()];const[cx,cy]=cellOf(rider);
+        drivers=[];for(let i=0;i<6;i++)drivers.push([(cx-1+Math.random()*3)/8,(cy-1+Math.random()*3)/8]);
+        for(let i=0;i<34;i++){const p=[Math.random(),Math.random()],[px,py]=cellOf(p);if(Math.abs(px-cx)>2||Math.abs(py-cy)>2)drivers.push(p);}
+        const near=drivers.reduce((b,p)=>Math.hypot(p[0]-rider[0],p[1]-rider[1])<Math.hypot(b[0]-rider[0],b[1]-rider[1])?p:b);const[nx,ny]=cellOf(near);
+        if(Math.abs(nx-cx)<=1&&Math.abs(ny-cy)<=1&&Math.hypot(near[0]-rider[0],near[1]-rider[1])>.02){ans=(ny-cy+1)*3+(nx-cx+1);return;}}})();
+    const quad=k=>{const h=box[2]/2;return[box[0]+(k%2)*h,box[1]+Math.floor(k/2)*h,h];};
+    const say=()=>api.status(stage==='down'?`Level ${lvl+1} of 3: which quarter is the rider in? <kbd>1</kbd> top left · <kbd>2</kbd> top right · <kbd>3</kbd> bottom left · <kbd>4</kbd> bottom right.`
+      :'Rider\'s cell found. Which of the nine cells holds the nearest driver? Press <kbd>1</kbd>–<kbd>9</kbd> (reading order) or click a cell.');
+    function pickQuad(k,now){if(done||stage!=='down'||k<0||k>3)return;const q=quad(k);const inside=rider[0]>=q[0]&&rider[0]<q[0]+q[2]&&rider[1]>=q[1]&&rider[1]<q[1]+q[2];
+      if(!inside){mistakes++;flash={q,t:now};FX.text(X(q[0]+q[2]/2),Y(q[1]+q[2]/2),'not here',C.red,14);return;}
+      box=q;lvl++;FX.burst(X(q[0]+q[2]/2),Y(q[1]+q[2]/2),C.green,12,120);if(lvl>=3)stage='near';say();}
+    function pickCell(k,now){if(done||stage!=='near'||k<0||k>8)return;const[cx,cy]=cellOf(rider),x=cx-1+k%3,y=cy-1+Math.floor(k/3);
+      if(k!==ans){mistakes++;flash={q:[x/8,y/8,1/8],t:now};FX.text(X((x+.5)/8),Y((y+.5)/8)-30,'someone is closer',C.red,13);return;}
+      done=true;FX.burst(X((x+.5)/8),Y((y+.5)/8),C.green,30,200);const st=mistakes===0?3:mistakes===1?2:1;
+      api.win(st,mistakes?`Found with ${mistakes} wrong pick${mistakes>1?'s':''}`:'Straight to the nearest driver',`Three quarter-steps found the rider\'s cell among 64, and checking the ${ans===4?'cell itself':'neighbours'} found the nearest driver${ans===4?'':' just across an edge'}. That is how geohash and quadtree lookups work.`);}
+    say();
+    return{draw(now){g.save();rr(MX,MY,MW,MH,12);g.fillStyle='#0d1424';g.fill();g.strokeStyle=C.line;g.lineWidth=1.5;g.stroke();g.restore();
+        drivers.forEach(p=>dot(X(p[0]),Y(p[1]),C.amber,stage==='near'?4:3,stage==='near'?1:.6));
+        if(stage==='down'){for(let k=0;k<4;k++){const q=quad(k),bad=flash&&flash.q[0]===q[0]&&flash.q[1]===q[1]&&now-flash.t<.6;g.save();g.strokeStyle=bad?C.red:C.blue;g.lineWidth=2;g.strokeRect(X(q[0]),Y(q[1]),q[2]*MW,q[2]*MH);g.restore();keycap(String(k+1),X(q[0])+16,Y(q[1])+16);}}
+        else{const[cx,cy]=cellOf(rider);for(let k=0;k<9;k++){const x=cx-1+k%3,y=cy-1+Math.floor(k/3),bad=flash&&Math.abs(flash.q[0]-x/8)<1e-9&&Math.abs(flash.q[1]-y/8)<1e-9&&now-flash.t<.6;
+            g.save();g.strokeStyle=bad?C.red:k===4?C.accent:hexA(C.green,.8);g.lineWidth=k===4?2.5:1.5;g.strokeRect(X(x/8),Y(y/8),MW/8,MH/8);g.restore();keycap(String(k+1),X(x/8)+13,Y(y/8)+13,{c:k===4?C.accent:C.dim});}
+          if(done){const near=drivers.reduce((b,p)=>Math.hypot(p[0]-rider[0],p[1]-rider[1])<Math.hypot(b[0]-rider[0],b[1]-rider[1])?p:b);ln([[X(rider[0]),Y(rider[1])],[X(near[0]),Y(near[1])]],{c:C.green,w:2.5});}}
+        user(X(rider[0]),Y(rider[1]),{r:10,c:C.blue});
+        tx(stage==='down'?`level ${lvl+1} / 3`:'nine cells around the rider',W/2,40,{z:14,wt:700,c:C.dim});tx(`wrong picks: ${mistakes}`,MX+MW,540,{z:12.5,c:mistakes?C.red:C.dim,al:'right'});},
+      click(x,y,now){const u=(x-MX)/MW,v=(y-MY)/MH;if(u<0||u>1||v<0||v>1)return;
+        if(stage==='down'){const h=box[2]/2,k=(u>=box[0]+h?1:0)+(v>=box[1]+h?2:0);if(u>=box[0]&&u<box[0]+box[2]&&v>=box[1]&&v<box[1]+box[2])pickQuad(k,now);}
+        else{const[cx,cy]=cellOf(rider),dx=Math.floor(u*8)-cx+1,dy=Math.floor(v*8)-cy+1;if(dx>=0&&dx<3&&dy>=0&&dy<3)pickCell(dy*3+dx,now);}},
+      key(k,now){const d=+k;if(!(d>=1))return;if(stage==='down')pickQuad(d-1,now);else pickCell(d-1,now);}};}});
 
 /* ---------------- 13. REST / gRPC / WebSockets ---------------- */
 chal('rest-grpc-ws',{title:'Pick the protocol',goal:'Match each feature to REST, gRPC or WebSockets.',
@@ -2884,6 +3644,33 @@ chal('sync-async',{title:'Make checkout fast',goal:'For each task in "Place orde
       {t:'Update recommendations · 1200 ms',b:'later',why:'Nobody waits for recommendations.',ms:1200},{t:'Generate PDF invoice · 900 ms',b:'later',why:'The invoice can arrive by email later.',ms:900},{t:'Notify the warehouse · 300 ms',b:'later',why:'The warehouse can pick it up from a queue.',ms:300}],
     done(miss,n){return miss===0?{stars:3,title:'480 ms instead of 3.7 s',msg:'Only three tasks (validate, charge, save) make the customer wait. Everything else happens in the background, so the reply is about 8× faster.'}:
       {stars:miss<=1?2:1,title:`${miss} task${miss>1?'s':''} in the wrong lane`,msg:'Doing slow work before replying makes everyone wait. Doing the payment later lies to the customer. Find the balance.'};}})});
+
+/* ---------------- 15b. STREAMS: partitions and consumers ---------------- */
+// 1,200 events/s spread over the partitions; a consumer handles 400/s; consumer 1 dies at 6 s
+function streamPlan(P,Cn,dead){const owners=Array.from({length:Cn},()=>[]),alive=[...Array(Cn).keys()].filter(c=>!(dead&&c===0));
+  for(let p=0;p<P;p++)if(alive.length)owners[alive[p%alive.length]].push(p);return owners;}
+chal('streams',{title:'Keep up with the stream',goal:'1,200 events per second; each consumer handles 400. One consumer will crash halfway. Finish with under 200 events of lag, no idle consumers, and at most 4 consumers.',
+  hint:'Partitions are the unit of sharing: a consumer with no partition sits idle. After the crash, the survivors split its partitions, so leave headroom.',
+  make:simGame({dur:12,defaults:{p:2,c:2},intro:'Pick partitions and consumers, then press <b>Run it</b>.',
+    controls(api,p,re){api.slider('Partitions',1,8,1,p.p,v=>`${v}`,v=>{p.p=v;re();});api.slider('Consumers',1,6,1,p.c,v=>`${v}`,v=>{p.c=v;re();});},
+    build(p,api){const RATE=1200/p.p,CAP=400;let dead=false,lag=Array(p.c).fill(0),idleSeen=false,acc=0,n=0;const fl=[];
+      const PY=k=>300+(k-(p.p-1)/2)*Math.min(56,420/p.p),CY=k=>300+(k-(p.c-1)/2)*Math.min(80,440/p.c);
+      return{step(dt,t){if(!dead&&t>=6){dead=true;FX.burst(820,CY(0),C.red,24);FX.text(820,CY(0)-44,'crashed',C.red,14);}
+          const own=streamPlan(p.p,p.c,dead);own.forEach((ps,c)=>{if(dead&&c===0)return;if(!ps.length)idleSeen=true;lag[c]=Math.max(0,lag[c]+(ps.length*RATE-CAP)*dt);});
+          acc+=dt*18;const now=api.now();while(acc>=1){acc--;const k=n++%p.p,c=own.findIndex(ps=>ps.includes(k));
+            fl.push({t0:now,d:.5,pts:[[110,300],[340,PY(k)]],c:C.blue,r:3});if(c>=0)fl.push({t0:now+.5,d:.5,pts:[[640,PY(k)],[760,CY(c)]],c:lag[c]>1?C.amber:C.green,r:3});}},
+        draw(now,running){flyers(now,fl);box(110,300,{label:'Events',sub:'1,200 / s',w:120,h:56,c:C.blue});
+          const own=streamPlan(p.p,p.c,dead);
+          for(let k=0;k<p.p;k++){const y=PY(k);g.save();rr(340,y-14,300,28,8);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.line;g.stroke();g.restore();tx(`partition ${k} · ${Math.round(RATE)}/s`,490,y,{z:11.5,f:MONO,c:C.dim});
+            const c=own.findIndex(ps=>ps.includes(k));if(c>=0)ln([[640,y],[760,CY(c)]],{c:hexA(C.green,.4)});}
+          for(let c=0;c<p.c;c++){const d=dead&&c===0,load=own[c].length*RATE;server(820,CY(c),{label:`Consumer ${c+1}`,sub:d?'':own[c].length?`${Math.round(load)}/s`:'idle',w:120,h:Math.min(56,400/p.c),st:d?'fail':!own[c].length?'off':load>CAP?'hot':'ok'});
+            if(!d&&lag[c]>1)tx(`lag ${Math.round(lag[c])}`,890,CY(c)+4,{z:11.5,c:C.amber,al:'left',f:MONO});}
+          if(!running)tx(`each consumer handles 400/s`,W/2,536,{z:13,c:C.dim});},
+        hud(){const L=lag.reduce((a,b)=>a+b,0),idle=idleSeen||streamPlan(p.p,p.c,false).some(ps=>!ps.length);return[['lag',`${Math.round(L)} events`,L<200?C.green:C.red],['idle consumers',idle?'yes':'none',idle?C.red:C.green],['consumers',`${p.c}`,p.c<=4?C.green:C.amber]];},
+        score(){const L=lag.reduce((a,b)=>a+b,0),idle=idleSeen||streamPlan(p.p,p.c,false).some(ps=>!ps.length);const a=L<200,b=!idle,c=p.c<=4,n=[a,b,c].filter(Boolean).length;
+          if(n===3)return{stars:3,title:'Kept up through the crash',msg:`${p.p} partitions over ${p.c} consumers: no one idle, and after the crash the survivors still had room for the extra partitions.`};
+          const why=[!a&&(p.c*CAP<1200?'there was never enough consumer capacity':'after the crash some consumers got more partitions than they could handle'),!b&&'more consumers than partitions leaves some idle',!c&&'more than 4 consumers is over budget'].filter(Boolean).join('; ');
+          return{stars:n===2?2:1,title:`${n} of 3 goals`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
 
 /* ---------------- 16. SPOF: survive the chaos monkey ---------------- */
 chal('spof',{title:'Survive the chaos monkey',goal:'The chaos monkey will kill three components. Click components to add a standby ($1 each, budget $4) and stay up the whole time.',
@@ -2931,7 +3718,7 @@ chal('timeouts',{title:'Set the timeout budget',goal:'Every user must get an ans
           return{stars:1,title:a?'Healthy calls are failing':`Users waited ${R.maxWait.toFixed(1)} s`,msg:a?'A timeout is shorter than a healthy call needs. Leave room for 0.2 s plus 0.1 s per hop.':'The outer timeout lets users wait past 2 s. Every hop must fit inside the budget.'};}};}})});
 
 /* ---------------- QUIZ: FOUNDATIONS ---------------- */
-quiz('Foundations',{title:'Foundations recap',goal:'Six questions on page loads, latency, scaling and autoscaling. Answer with a click or keys 1–4.',
+quiz('Foundations',{title:'Foundations recap',goal:'Seven questions on page loads, latency, scaling and autoscaling. Answer with a click or keys 1–4.',
   hint:'Latency is one request\'s time; throughput is requests per second. Scaling out survives a crash; autoscaling reacts, it does not predict.',
   make:quizGame({title:'Foundations',questions:[
     {q:'You type example.com and press Enter. What does the browser need before anything else?',a:['The server\'s IP address, from DNS','A TCP connection to example.com','The page\'s HTML','A TLS certificate'],why:'Networks route by number. DNS turns the name into an IP address before any connection can open.',ch:'client-server'},
@@ -2939,10 +3726,11 @@ quiz('Foundations',{title:'Foundations recap',goal:'Six questions on page loads,
     {q:'Your only database server sits at 95% CPU. What is the quickest fix that needs no code changes?',a:['Move it to a bigger machine (scale up)','Add a second identical database (scale out)','Shard the data','Put a CDN in front of it'],why:'Vertical scaling is a hardware change. Scaling a database out needs replication or sharding, which is real design work.',ch:'scaling'},
     {q:'Why do several medium servers usually beat one huge one?',a:['A crash removes only part of the capacity, and they cost less','Each request is always faster','They need no load balancer','They can never run out of memory'],why:'Scaling out spreads the risk: losing one of four servers is a dent, losing your only server is an outage.',ch:'scaling'},
     {q:'An autoscaler adds a server above 70% CPU and removes one below 65%, with no cooldown. What happens?',a:['It flaps, adding and removing servers over and over','It scales perfectly','It never adds a server','It removes every server'],why:'Each change pushes the load across the other threshold. Leave a wide gap between the two and add a cooldown.',ch:'autoscaling'},
-    {q:'Traffic doubles in 10 seconds, but a new server takes 2 minutes to boot. What does autoscaling alone give you?',a:['Dropped or slow requests until new servers are ready','Instant extra capacity','Lower latency straight away','Exactly the same as before'],why:'Autoscaling reacts after load rises. Keep headroom, or scale ahead of spikes you can predict.',ch:'autoscaling'}]})});
+    {q:'Traffic doubles in 10 seconds, but a new server takes 2 minutes to boot. What does autoscaling alone give you?',a:['Dropped or slow requests until new servers are ready','Instant extra capacity','Lower latency straight away','Exactly the same as before'],why:'Autoscaling reacts after load rises. Keep headroom, or scale ahead of spikes you can predict.',ch:'autoscaling'},
+    {q:'A service has 20 M daily users making 5 requests each. Roughly how many requests per second is that on average?',a:['About 1,000','About 100','About 20,000','About 100,000'],why:'100 M requests a day ÷ ~100,000 seconds ≈ 1,000 per second. Plan for 2–3× that at peak.',ch:'estimation'}]})});
 
 /* ---------------- QUIZ: TRAFFIC ---------------- */
-quiz('Traffic',{title:'Traffic recap',goal:'Six questions on load balancing, sessions, gateways, CDNs and rate limits. Answer with a click or keys 1–4.',
+quiz('Traffic',{title:'Traffic recap',goal:'Seven questions on load balancing, sessions, gateways, CDNs and rate limits. Answer with a click or keys 1–4.',
   hint:'Think about where each decision is best made: at the balancer, at the gateway, at the edge, or in a shared store.',
   make:quizGame({title:'Traffic',questions:[
     {q:'One server is older and slower, and requests vary a lot in size. Which balancing strategy fits best?',a:['Least connections','Round robin','Random','Always the first server'],why:'Least connections looks at how busy each server really is, so the slow one naturally gets less work.',ch:'load-balancers'},
@@ -2950,10 +3738,11 @@ quiz('Traffic',{title:'Traffic recap',goal:'Six questions on load balancing, ses
     {q:'Twenty internal services all need token checks and rate limits. Where should that happen?',a:['Once, at the API gateway','Separately inside every service','In the database','In the user\'s browser'],why:'The gateway is the single front door, so cross-cutting checks happen once, before any service sees the request.',ch:'proxy-gateway'},
     {q:'A video is requested by users on four continents. What cuts their wait the most?',a:['Serving it from CDN edge caches near them','A bigger origin server','A faster database','Switching from REST to gRPC'],why:'Distance is latency. Edge caches serve the bytes from close by, so most requests never cross an ocean.',ch:'cdn'},
     {q:'You want to allow short bursts but cap the average at 10 requests per second. Which limiter fits?',a:['Token bucket','Leaky bucket','No limiter, just add servers','A longer timeout'],why:'A token bucket saves unused tokens for bursts, while its refill rate caps the average. A leaky bucket smooths everything to one fixed rate.',ch:'rate-limiting'},
-    {q:'A client goes over its rate limit. What should the server send back?',a:['429 Too Many Requests','500 Internal Server Error','200 OK with an empty body','301 Moved Permanently'],why:'429 tells the client it is being limited, ideally with a Retry-After header, so it can back off.',ch:'rate-limiting'}]})});
+    {q:'A client goes over its rate limit. What should the server send back?',a:['429 Too Many Requests','500 Internal Server Error','200 OK with an empty body','301 Moved Permanently'],why:'429 tells the client it is being limited, ideally with a Retry-After header, so it can back off.',ch:'rate-limiting'},
+    {q:'Logging out must take effect immediately in your one web app. Which credential fits best?',a:['A session cookie backed by a session store','A JWT that lasts 30 days','An API key in the URL','No credential at all'],why:'Deleting the session revokes it at once. A JWT stays valid until it expires.',ch:'auth'}]})});
 
 /* ---------------- QUIZ: DATA ---------------- */
-quiz('Data',{title:'Data recap',goal:'Six questions on indexes, replicas, shards, caches and CAP. Answer with a click or keys 1–4.',
+quiz('Data',{title:'Data recap',goal:'Eight questions on quorums, indexes, replicas, shards, caches and CAP. Answer with a click or keys 1–4.',
   hint:'Ask what is actually overloaded: reads, writes, one key, or the network between replicas.',
   make:quizGame({title:'Data',questions:[
     {q:'A query looks up one email among 10 million rows and takes seconds. What should you try first?',a:['Add an index on the email column','Put a cache in front','Shard the table','Switch to a NoSQL database'],why:'Without an index the database reads every row. An index finds the row in a handful of page reads.',ch:'indexing'},
@@ -2961,10 +3750,23 @@ quiz('Data',{title:'Data recap',goal:'Six questions on indexes, replicas, shards
     {q:'You shard users by the first letter of their name. What goes wrong?',a:['Shards fill unevenly, because some letters are far more common','Nothing, it spreads evenly','Joins get faster','You can never add another shard'],why:'A good shard key spreads load evenly, such as a hash of the user id.',ch:'sharding'},
     {q:'A price changes in the database, but users see the old price for up to an hour. What is the likely cause?',a:['A long TTL and no invalidation when the price is written','A missing index','Synchronous replication','A cache that is too small'],why:'The cached copy lives until its TTL runs out. Delete or update it when the price changes.',ch:'cache-invalidation'},
     {q:'A celebrity post gets 50,000 reads a second and its cache key expires. What stops the database being stampeded?',a:['Request coalescing: one fetch, everyone else waits for it','A shorter TTL','More database indexes','Sticky sessions'],why:'Coalescing turns thousands of identical misses into a single database query. Refreshing before expiry helps too.',ch:'hot-keys'},
-    {q:'During a network partition, a balance service refuses writes rather than risk two different balances. Which side of CAP did it pick?',a:['Consistency (CP)','Availability (AP)','Both at once','Neither: CAP does not apply'],why:'Refusing to answer rather than risk a wrong answer is the consistent choice. An AP system would answer and reconcile later.',ch:'cap'}]})});
+    {q:'During a network partition, a balance service refuses writes rather than risk two different balances. Which side of CAP did it pick?',a:['Consistency (CP)','Availability (AP)','Both at once','Neither: CAP does not apply'],why:'Refusing to answer rather than risk a wrong answer is the consistent choice. An AP system would answer and reconcile later.',ch:'cap'},
+    {q:'With N = 3 replicas, which setting guarantees reads see the latest write?',a:['W = 2, R = 2','W = 1, R = 1','W = 1, R = 2','W = 2, R = 1'],why:'R + W must be greater than N, so read and write sets always overlap. 2 + 2 > 3.',ch:'quorums'},
+    {q:'A Bloom filter says a key is "maybe" present. What do you know?',a:['It might be there; check the real store','It is definitely there','It is definitely not there','The filter is broken'],why:'Bloom filters can give false positives but never false negatives. A "no" is certain; a "maybe" needs a lookup.',ch:'bloom-filters'}]})});
+
+/* ---------------- QUIZ: STORAGE & SEARCH ---------------- */
+quiz('Storage & Search',{title:'Storage & Search recap',goal:'Six questions on storage engines, search indexes and location queries. Answer with a click or keys 1–4.',
+  hint:'Ask how the data is laid out: sorted pages, sorted files merged later, term → documents, or cells on a map.',
+  make:quizGame({title:'Storage & Search',questions:[
+    {q:'Why do LSM trees handle heavy write loads well?',a:['Writes go to memory and are flushed to disk as large sequential files','They never write to disk','Every write updates a single page in place','They skip the write-ahead log'],why:'Turning many small random writes into a few big sequential ones is what makes LSM writes cheap.',ch:'storage-engines'},
+    {q:'What is the price an LSM tree pays for its fast writes?',a:['Reads may check several files, and compaction uses disk in the background','It cannot store sorted data','It loses data on a crash','It only supports one writer per day'],why:'Bloom filters and compaction keep reads fast, but both cost memory, disk and CPU.',ch:'storage-engines'},
+    {q:'What does an inverted index map?',a:['Each term to the list of documents that contain it','Each document to its file size','Each user to their last search','Each row to its primary key'],why:'Term → postings list is what lets search skip documents that cannot match.',ch:'search'},
+    {q:'How does a search engine answer "redis AND cache"?',a:['Intersect the postings lists for the two terms','Read every document and look for both words','Add the two lists together','Sort the documents by date'],why:'AND keeps only documents in both lists. OR would take the union.',ch:'search'},
+    {q:'Why does a geohash lookup check the eight neighbouring cells as well?',a:['The nearest point may sit just across a cell edge','Neighbours always have more drivers','It makes the codes shorter','Cells overlap each other'],why:'Cells are squares, not circles around the rider, so the true nearest point can be next door.',ch:'geo'},
+    {q:'Downtown has thousands of drivers, the suburbs very few. What does a quadtree do?',a:['Splits busy areas into smaller cells and leaves quiet ones large','Gives every area the same cell size','Stores drivers in one big list','Deletes drivers in quiet areas'],why:'Splitting only where points are dense keeps every cell small enough to search quickly.',ch:'geo'}]})});
 
 /* ---------------- QUIZ: COMMUNICATION ---------------- */
-quiz('Communication',{title:'Communication recap',goal:'Six questions on protocols, queues, pub/sub and async work. Answer with a click or keys 1–4.',
+quiz('Communication',{title:'Communication recap',goal:'Seven questions on protocols, streams, queues, pub/sub and async work. Answer with a click or keys 1–4.',
   hint:'Who has to wait for whom? Push or pull? One receiver or many?',
   make:quizGame({title:'Communication',questions:[
     {q:'A chat app must push new messages to users the moment they arrive. What fits best?',a:['WebSockets','REST, polling every minute','gRPC unary calls','A nightly batch job'],why:'A WebSocket stays open, so the server can push a message the instant it exists.',ch:'rest-grpc-ws'},
@@ -2972,10 +3774,11 @@ quiz('Communication',{title:'Communication recap',goal:'Six questions on protoco
     {q:'A new order must update stock, email the customer and notify analytics. With pub/sub, what does the order service publish?',a:['One OrderPlaced event; every subscriber gets a copy','Three messages, one per service','Nothing; the others poll the database','One message per subscriber, sent in turn'],why:'Publishers do not need to know their subscribers. One event fans out to everyone who listens.',ch:'queues-pubsub'},
     {q:'Checkout takes 4 seconds because it also renders a PDF invoice. What do you move off the request path?',a:['The PDF, onto a queue for a background worker','Charging the card','The stock check','Nothing; buy a bigger server'],why:'Do only what the customer must wait for. Everything else can happen just after you reply.',ch:'sync-async'},
     {q:'Consumers fall behind during a sale. What happens to the messages?',a:['They wait in the queue until consumers catch up','They are lost','The producer crashes','They go straight to the database'],why:'Queues absorb bursts. Watch the queue length, though: if it never drains, add consumers.',ch:'queues-pubsub'},
-    {q:'Why must a queue consumer cope with getting the same message twice?',a:['Most queues deliver at least once, so handlers must be idempotent','Queues never redeliver, so it cannot happen','It only happens when the queue is broken','The queue drops duplicates itself'],why:'After a crash or timeout a message is redelivered. Processing it twice must be harmless.',ch:'idempotency'}]})});
+    {q:'Why must a queue consumer cope with getting the same message twice?',a:['Most queues deliver at least once, so handlers must be idempotent','Queues never redeliver, so it cannot happen','It only happens when the queue is broken','The queue drops duplicates itself'],why:'After a crash or timeout a message is redelivered. Processing it twice must be harmless.',ch:'idempotency'},
+    {q:'A fraud check must block a payment within seconds of it happening. Which approach fits?',a:['Stream processing','A nightly batch job','A monthly report','Manual review the next day'],why:'Streams process each event as it arrives; a batch job only sees it hours later.',ch:'streams'}]})});
 
 /* ---------------- QUIZ: RELIABILITY ---------------- */
-quiz('Reliability',{title:'Reliability recap',goal:'Six questions on single points of failure, timeouts, retries and idempotency. Answer with a click or keys 1–4.',
+quiz('Reliability',{title:'Reliability recap',goal:'Seven questions on single points of failure, timeouts, retries, idempotency and releases. Answer with a click or keys 1–4.',
   hint:'Failures will happen. The question is whether they spread, and whether retrying is safe.',
   make:quizGame({title:'Reliability',questions:[
     {q:'Which of these is a single point of failure?',a:['One database with no replica, behind two app servers','Two app servers behind a load balancer','A managed, multi-region DNS service','A three-node Raft cluster'],why:'If that one database dies, everything stops, however many app servers sit in front of it.',ch:'spof'},
@@ -2983,7 +3786,8 @@ quiz('Reliability',{title:'Reliability recap',goal:'Six questions on single poin
     {q:'A thousand clients all retry a failed call after exactly one second. What should you add?',a:['Exponential backoff with jitter','More retries','A shorter timeout','Sticky sessions'],why:'Backoff spaces the retries out, and jitter stops every client retrying at the same instant.',ch:'resilience'},
     {q:'A dependency is down. What does a circuit breaker do?',a:['Fails calls fast for a while, then probes to see if it has recovered','Retries forever','Restarts the dependency','Caches the error responses'],why:'Failing fast frees your threads and gives the dependency room to recover.',ch:'resilience'},
     {q:'A payment request times out and the client retries. How do you avoid charging twice?',a:['Send an idempotency key; a repeat gets the saved result','Never retry payments','Use a longer timeout','Retry with a different card'],why:'The server remembers each key\'s result, so a retry returns the first answer instead of charging again.',ch:'idempotency'},
-    {q:'Which operation is naturally idempotent?',a:['Set the email address to sam@example.com','Add $10 to the balance','Append a comment','Send a welcome email'],why:'Setting a value twice leaves the same result. Adding, appending and sending all repeat their effect.',ch:'idempotency'}]})});
+    {q:'Which operation is naturally idempotent?',a:['Set the email address to sam@example.com','Add $10 to the balance','Append a comment','Send a welcome email'],why:'Setting a value twice leaves the same result. Adding, appending and sending all repeat their effect.',ch:'idempotency'},
+    {q:'You want to try a risky release on real traffic while limiting the damage. What do you do?',a:['Canary it to 5% of traffic with automatic rollback','Deploy it to every server at once','Deploy it on a Friday evening','Turn off monitoring during the deploy'],why:'A small slice of traffic shows problems early, and automatic rollback ends them in seconds.',ch:'deployments'}]})});
 
 /* ---------------- QUIZ: ARCHITECTURE ---------------- */
 quiz('Architecture',{title:'Architecture recap',goal:'Six questions on service boundaries, events and observability. Answer with a click or keys 1–4.',
@@ -2997,7 +3801,7 @@ quiz('Architecture',{title:'Architecture recap',goal:'Six questions on service b
     {q:'What is the main cost of splitting a monolith into microservices?',a:['In-process calls become network calls that can be slow or fail','The code becomes impossible to test','You can no longer use a database','You must rewrite it in a new language'],why:'You trade simple function calls for timeouts, retries, partial failures and distributed tracing.',ch:'microservices'}]})});
 
 /* ---------------- QUIZ: ADVANCED ---------------- */
-quiz('Advanced',{title:'Advanced recap',goal:'Six questions on consensus, distributed transactions, ids and overload. Answer with a click or keys 1–4.',
+quiz('Advanced',{title:'Advanced recap',goal:'Eight questions on consensus, locks, conflicts, distributed transactions, ids and overload. Answer with a click or keys 1–4.',
   hint:'Count majorities. Prefer undoing steps to locking everything. Shed load before it sheds you.',
   make:quizGame({title:'Advanced',questions:[
     {q:'A five-node Raft cluster loses two nodes. Can it still accept writes?',a:['Yes: three of five is still a majority','No: any lost node stops writes','Only reads, no writes','Only if the leader survived'],why:'Raft needs a majority. With three of five alive, it elects a leader if needed and carries on.',ch:'consensus'},
@@ -3005,7 +3809,9 @@ quiz('Advanced',{title:'Advanced recap',goal:'Six questions on consensus, distri
     {q:'An order spans Payments, Stock and Shipping, each with its own database, and shipping fails. How does a saga recover?',a:['It runs compensating steps: release the stock, refund the payment','It rolls all three databases back at once','It retries forever','It ignores the failure'],why:'Each saga step has an undo. On failure, the steps already done are compensated in reverse order.',ch:'transactions'},
     {q:'What is the main weakness of two-phase commit?',a:['If the coordinator dies mid-commit, participants can be stuck holding locks','It is never consistent','It needs no coordinator','It only works with NoSQL'],why:'Participants that voted yes must wait for the coordinator\'s decision, holding their locks until it returns.',ch:'transactions'},
     {q:'You need ids that are unique across 100 machines, roughly time-ordered and 64 bits long. Which scheme?',a:['Snowflake IDs','Auto-increment from one database','Random UUIDs','Usernames'],why:'Timestamp + machine number + sequence: no coordination, sortable by time, and it fits in 64 bits.',ch:'unique-ids'},
-    {q:'A service is overloaded. What is load shedding?',a:['Rejecting some requests early so the rest still succeed','Adding servers automatically','Retrying faster','Caching the errors'],why:'Serving 80% well beats serving 100% so slowly that everything times out.',ch:'backpressure'}]})});
+    {q:'A service is overloaded. What is load shedding?',a:['Rejecting some requests early so the rest still succeed','Adding servers automatically','Retrying faster','Caching the errors'],why:'Serving 80% well beats serving 100% so slowly that everything times out.',ch:'backpressure'},
+    {q:'A worker pauses, its lock lease expires and another worker takes over. What stops the paused worker\'s stale write?',a:['Storage rejects writes with an older fencing token','A longer timeout on the paused worker','Retrying the write','A bigger server'],why:'The paused worker cannot know it lost the lease. The storage can, by comparing tokens.',ch:'locks'},
+    {q:'Version X has clock [A:2, B:0] and version Y has [A:1, B:1]. What are they?',a:['Concurrent: a real conflict','X happened first','Y happened first','The same version'],why:'X is ahead on A and Y is ahead on B, so neither saw the other.',ch:'conflicts'}]})});
 
 /* ---------------- 17. RESILIENCE: tune the client ---------------- */
 function resilSim(p){ // discrete-event model, also used by the challenge
@@ -3043,6 +3849,36 @@ chal('idempotency',{title:'Never charge twice',goal:'You are the payment server.
     cards:[['50','7f3a','new'],['20','b21c','new'],['50','7f3a','dup'],['35','9d04','new'],['20','b21c','dup'],['50','e811','new'],['35','9d04','dup'],['12','40aa','new'],['50','e811','dup'],['12','5c2e','new']].map(([a,k,b])=>({t:`Pay $${a} · key ${k}`,b,k,why:b==='dup'?`Key ${k} was already processed. Return the saved receipt and do not charge again.`:`Key ${k} is new. It is a real payment, even if the amount looks familiar.`})),
     side(st){const seen=st.cards.slice(0,st.i).map(c=>c.k);tx('keys seen',860,110,{z:12,c:C.dim});[...new Set(seen)].forEach((k,j)=>{pill(k,860,140+j*28,{c:C.accent,z:12,f:MONO});});},
     done(miss){return miss===0?{stars:3,title:'Not one double charge',msg:'Same key, same result, no new charge. With that one rule, retrying is completely safe.'}:{stars:miss<=1?2:1,title:`${miss} mistake${miss>1?'s':''}`,msg:'Look only at the key. A repeated key means "I already did this".'};}})});
+
+/* ---------------- 18b. DEPLOYMENTS: ship v2 safely ---------------- */
+// v2 fails 40% of the requests it gets. Detection needs enough v2 traffic: 1 s at full traffic, 2 s for a 5% canary.
+function deployPlan(p){const mode=p.mode,auto=p.auto;
+  // [from, to, share of traffic on v2]
+  if(mode==='all'){const end=auto?2+1+3:8+3;return{segs:[[2,end,1]],undo:end,how:auto?'redeploy v1 (3 s)':'noticed at 8 s, redeploy v1 (3 s)'};}
+  if(mode==='bg'){const end=auto?3:8;return{segs:[[2,end,1]],undo:end,how:auto?'switch back at once':'noticed at 8 s, switch back'};}
+  if(auto)return{segs:[[2,4,.05]],undo:4,how:'canary error rate tripped the rollback'};
+  return{segs:[[2,5,.05],[5,8,.25]],undo:8,how:'canary widened to 25% before anyone noticed'};}
+const deployErrors=p=>Math.round(deployPlan(p).segs.reduce((a,[s,e,sh])=>a+(e-s)*100*sh*.4,0));
+const v2share=(p,t)=>{const s=deployPlan(p).segs.find(([a,b])=>t>=a&&t<b);return s?s[2]:0;};
+chal('deployments',{title:'Ship v2 without hurting users',goal:'v2 has a bug that fails 40% of its requests. Traffic is 100 requests a second. Pick a release strategy so that fewer than 20 requests fail.',
+  hint:'Expose as few users as possible, and let the system roll back on its own: people notice slowly.',
+  make:simGame({dur:12,defaults:{mode:'all',auto:false},intro:'Pick how v2 goes out, then press <b>Ship it</b>.',runLabel:'Ship it',
+    controls(api,p,re){api.seg('Strategy',[['all','all at once'],['bg','blue-green'],['canary','canary 5%']],p.mode,v=>{p.mode=v;re();});api.toggle('Automatic rollback on errors',p.auto,v=>{p.auto=v;re();});},
+    build(p,api){const plan=deployPlan(p),total=deployErrors(p);let shown=0,acc=0,T=0,rolled=false;const fl=[];const LB=[330,300];
+      return{step(dt,t){T=t;if(!rolled&&t>=plan.undo){rolled=true;FX.text(LB[0],LB[1]-60,'rolled back',C.green,15);}
+          shown=Math.round(total*clamp(plan.segs.reduce((a,[s,e])=>a+clamp((t-s)/(e-s))*(e-s),0)/Math.max(.001,plan.segs.reduce((a,[s,e])=>a+e-s,0))));
+          acc+=dt*16;const now=api.now();while(acc>=1){acc--;const sh=v2share(p,t),toV2=Math.random()<sh,bad=toV2&&Math.random()<.4,y=toV2?420:180;
+            fl.push({t0:now,d:.45,pts:[[110,300],[LB[0]-62,LB[1]]],c:C.blue,r:3.5});fl.push({t0:now+.45,d:.45,pts:[[LB[0]+62,LB[1]],[700,y+(Math.random()-.5)*60]],c:bad?C.red:toV2?C.amber:C.blue,r:3.5,drop:bad?.85:0});}},
+        draw(now,running){flyers(now,fl);for(let k=0;k<4;k++)user(110,210+k*60,{r:12});box(LB[0],LB[1],{label:'Load balancer',w:124,h:54});
+          const sh=running?v2share(p,T):0;
+          server(760,180,{label:'v1 fleet',sub:`${Math.round((1-sh)*100)}% of traffic`,w:150,h:60,col:C.blue,st:'blue'});
+          server(760,420,{label:'v2 fleet',sub:`${Math.round(sh*100)}% of traffic`,w:150,h:60,col:C.amber,st:sh>0?'hot':'off'});
+          if(!running&&!T)tx(`plan: ${p.mode==='all'?'all traffic to v2 at once':p.mode==='bg'?'switch everything to green (v2)':'5% canary, then widen'}${p.auto?', auto-rollback on':''}`,W/2,530,{z:13.5,c:C.dim});
+          if(T)tx(plan.how,W/2,530,{z:13.5,c:C.dim});},
+        hud(){return[['failed requests',`${shown}`,shown<20?C.green:C.red],['on v2 now',`${Math.round(v2share(p,T)*100)}%`]];},
+        score(){const e=total;if(e<20)return{stars:3,title:`${e} failed requests`,msg:'A small canary with automatic rollback: the bug touched a handful of requests and was gone in seconds.'};
+          if(e<=60)return{stars:2,title:`${e} failed requests`,msg:p.mode==='canary'?'The canary limited the damage, but nobody rolled it back before it widened. Make rollback automatic.':'Switching back fast helped, but all traffic hit v2 first. Expose a small slice before everyone.'};
+          return{stars:1,title:`${e} failed requests`,msg:'Everyone got v2 at once, and undoing it was slow. Try a canary with automatic rollback.'};}};}})});
 
 /* ---------------- 19. MICROSERVICES: draw the boundaries ---------------- */
 chal('microservices',{title:'Draw the service boundaries',goal:'Split six features into three services so the fewest calls cross the network. Thick lines are chatty pairs.',
@@ -3106,6 +3942,47 @@ chal('consensus',{title:'Majority or not?',goal:'For each cluster, decide: can t
     cards:[{t:'5 nodes, 2 have crashed',b:'ok',why:'3 of 5 is a majority.'},{t:'5 nodes, 3 have crashed',b:'no',why:'2 of 5 is not more than half.'},{t:'3 nodes, the leader crashed',b:'ok',why:'2 of 3 can elect a new leader.'},
       {t:'4 nodes, 2 have crashed',b:'no',why:'2 of 4 is exactly half, not a majority. That is why clusters use odd sizes.'},{t:'6 nodes split 3 | 3 by a network cut',b:'no',why:'Neither side has more than half, so both sides stop.'},
       {t:'7 nodes split 4 | 3: the side with 4',b:'ok',why:'4 of 7 is a majority, so that side carries on.'},{t:'5 nodes split 3 | 2: the side with 2',b:'no',why:'The small side must stop, or there could be two leaders.'},{t:'1 node on its own (no replicas)',b:'ok',why:'1 of 1 is a majority, but one crash stops everything.'}]})});
+
+/* ---------------- A1b. LOCKS: tune the lease ---------------- */
+// A renews every 2 s; one renewal is delayed to 3.5 s by a network blip; at 4.2 s A freezes for 12 s.
+function lockRun(p){const L=p.lease,needless=L<3.5,lostAt=needless?L:4+L,bWait=Math.max(0,lostAt-(needless?0:4.2)),aWakes=16.2;
+  const overlap=!needless&&aWakes>4+L||needless;   // A writes again while B holds the lock
+  return{needless,bWait,overlap,lost:overlap&&!p.fence,grantB:lostAt};}
+chal('locks',{title:'Tune the lease',goal:'Worker A holds the lock and renews it every 2 s. One renewal arrives 1.5 s late, and later A freezes for 12 s. Lose no writes, keep B waiting at most 10 s, and never take the lock from a healthy A.',
+  hint:'The lease must outlast a late renewal (over 3.5 s) but be short enough that B is not stuck for long. A paused A will still write when it wakes: only fencing tokens stop that.',
+  make:simGame({dur:18,defaults:{lease:20,fence:false},intro:'Set the lease length and whether storage checks fencing tokens, then press <b>Run it</b>.',
+    controls(api,p,re){api.slider('Lease length',1,20,1,p.lease,v=>`${v} s`,v=>{p.lease=v;re();});api.toggle('Storage checks fencing tokens',p.fence,v=>{p.fence=v;re();});},
+    build(p,api){const R=lockRun(p);let T=0,ev=new Set();const fl=[];const LS=[500,110],A_=[190,300],B_=[190,450],ST=[810,380];
+      const once=(k,fn)=>{if(!ev.has(k)){ev.add(k);fn();}};const toS=w=>[[w[0]+60,w[1]],[ST[0]-60,ST[1]]],toL=w=>[[w[0]+60,w[1]-14],[LS[0]-100,LS[1]+16]];
+      return{step(dt,t){T=t;const now=api.now();
+          [0,2,4].forEach(r=>{const at=r===2?3.5:r;if(t>=at-.5&&!(R.needless&&r>=2))once('r'+r,()=>fl.push({t0:now,d:.5,pts:toL(A_),c:r===2?C.amber:C.green,r:4,label:r===2?'late renew':'renew'}));});
+          if(t>=R.grantB)once('gb',()=>{fl.push({t0:now,d:.6,pts:rev(toL(B_)),c:C.green,r:5,label:'lock · token 34'});FX.text(B_[0],B_[1]-50,R.needless?'took the lock from a healthy A':'B gets the lock',R.needless?C.red:C.green,13);});
+          if(t>=R.grantB+1)once('wb',()=>fl.push({t0:now,d:.7,pts:toS(B_),c:C.blue,r:5,label:'write · 34'}));
+          if(R.overlap&&t>=(R.needless?R.grantB+2:16.4))once('wa',()=>{fl.push({t0:now,d:.7,pts:toS(A_),c:C.red,r:5,label:'write · 33',drop:p.fence?.95:0});
+            setTimeout(()=>FX.text(ST[0],ST[1]-60,p.fence?'33 < 34: rejected':'B\'s write lost',p.fence?C.green:C.red,14),700);});},
+        draw(now,running){flyers(now,fl);box(LS[0],LS[1],{label:'Lock service',sub:`lease ${p.lease} s`,w:200,h:56,c:C.accent});
+          const paused=running&&T>=4.2&&T<16.2,bHas=running&&T>=R.grantB;
+          server(A_[0],A_[1],{label:'Worker A',sub:paused?'paused (GC)':bHas?'thinks it holds the lock':'holds lock · 33',w:150,st:paused?'hot':bHas?'ok':'acc',col:!bHas&&!paused?C.accent:undefined});
+          server(B_[0],B_[1],{label:'Worker B',sub:bHas?'holds lock · 34':'waiting',w:150,st:bHas?'acc':'ok',col:bHas?C.accent:undefined});
+          db(ST[0],ST[1],{label:'Storage',sub:p.fence?'checks tokens':'accepts any write',w:140,h:90});
+          if(paused)spin(T,A_[0],A_[1]-48,{c:C.amber});},
+        hud(){return[['lost writes',T>16.6&&R.lost?'1':'0',R.lost&&T>16.6?C.red:C.green],['B waited',`${Math.min(T,R.bWait).toFixed(1)} s`,R.bWait<=10?C.green:C.red],['needless handoff',R.needless&&T>=R.grantB?'yes':'no',R.needless&&T>=R.grantB?C.red:C.green]];},
+        score(){const a=!R.lost,b=R.bWait<=10,c=!R.needless,n=[a,b,c].filter(Boolean).length;
+          if(n===3)return{stars:3,title:'Safe and responsive',msg:`A ${p.lease} s lease rides out the late renewal, hands over within ${R.bWait.toFixed(0)} s when A freezes, and fencing tokens reject A's stale write when it wakes.`};
+          const why=[!a&&'A woke up and overwrote B: storage must check fencing tokens',!b&&`B waited ${R.bWait.toFixed(0)} s for a frozen A: shorten the lease`,!c&&'the lease expired during a late renewal and the lock was taken from a healthy A: lengthen it past 3.5 s'].filter(Boolean).join('; ');
+          return{stars:n===2?2:1,title:`${n} of 3 goals`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
+
+/* ---------------- A1c. CONFLICTS: read the vector clocks ---------------- */
+chal('conflicts',{title:'Read the vector clocks',goal:'For each pair of versions, decide: did X happen before Y, Y before X, or are they concurrent?',
+  hint:'X came first if every count in X is less than or equal to Y\'s. If each one is ahead somewhere, they are concurrent.',
+  make:sortGame({bins:[{id:'xy',label:'X came first',sub:'keep Y',c:C.blue},{id:'yx',label:'Y came first',sub:'keep X',c:C.accent},{id:'c',label:'Concurrent',sub:'a real conflict',c:C.amber}],
+    cards:[{t:'X [A:1, B:0]   ·   Y [A:1, B:1]',b:'xy',why:'Y has every count of X and one more on B, so X came first.'},
+      {t:'X [A:2, B:1]   ·   Y [A:1, B:1]',b:'yx',why:'X is ahead on A and equal on B, so Y came first.'},
+      {t:'X [A:2, B:0]   ·   Y [A:1, B:1]',b:'c',why:'X is ahead on A, Y is ahead on B: neither saw the other.'},
+      {t:'X [A:1, B:2, C:0]   ·   Y [A:1, B:2, C:1]',b:'xy',why:'Y matches X and is one ahead on C.'},
+      {t:'X [A:0, B:3]   ·   Y [A:1, B:2]',b:'c',why:'X is ahead on B, Y is ahead on A: concurrent.'},
+      {t:'X [A:4, B:4]   ·   Y [A:2, B:3]',b:'yx',why:'X is ahead on both, so Y came first.'},
+      {t:'X [A:1, B:1, C:1]   ·   Y [A:2, B:1, C:0]',b:'c',why:'X is ahead on C, Y is ahead on A: concurrent.'}]})});
 
 /* ---------------- A2. TRANSACTIONS: unwind the saga ---------------- */
 chal('transactions',{title:'Unwind the saga',goal:'Booking the car fails. Put the saga\'s steps in order, including the compensations that undo the earlier steps.',
@@ -3282,7 +4159,7 @@ const GLOSSARY=[
 ['span','One timed step inside a trace.',['spans']],
 ['consensus','Getting several machines to agree on one value, even when some fail.',[]],
 ['Raft','A consensus algorithm: nodes elect a leader, which copies a log to a majority.',[]],
-['majority','More than half of the nodes: enough agreement to make progress safely.',['quorum']],
+['majority','More than half of the nodes: enough agreement to make progress safely.',[]],
 ['heartbeat','A regular "I\'m alive" message; when they stop, others react.',['heartbeats']],
 ['leader election','Choosing a new leader when the old one stops sending heartbeats.',['election']],
 ['two-phase commit','A coordinator asks every participant to prepare, then tells all of them to commit or all to abort.',['2PC']],
@@ -3293,6 +4170,42 @@ const GLOSSARY=[
 ['back-pressure','A slow component signalling upstream to slow down instead of being overwhelmed.',['backpressure']],
 ['load shedding','Deliberately rejecting some requests under overload so the rest still succeed.',[]],
 ['base62','Writing numbers with 0–9, a–z and A–Z, which makes short codes.',[]],
+['back-of-the-envelope','A quick estimate with round numbers, good enough to choose a design.',['estimation','estimate']],
+['QPS','Queries (requests) per second.',[]],
+['cookie','A small value the browser stores and sends back with every request to that site.',['cookies']],
+['JWT','JSON Web Token: a signed token carrying claims such as the user id and an expiry, checked without a database lookup.',['JWTs']],
+['OAuth','A standard that lets an app act for you on another service with an access token, without ever seeing your password.',[]],
+['access token','A short-lived credential that proves a request is allowed.',['access tokens']],
+['refresh token','A longer-lived credential used only to get new access tokens.',['refresh tokens']],
+['identity provider','The service that checks who you are and issues tokens in a "log in with…" flow.',['identity providers']],
+['quorum','How many replicas must answer for a read (R) or write (W) to count.',['quorums','read quorum','write quorum']],
+['Bloom filter','A compact bit array that says a key is definitely absent or maybe present.',['Bloom filters']],
+['false positive','A "yes" or "maybe" that turns out to be wrong.',['false positives']],
+['hash function','A function that turns a key into a number that looks random but is always the same for that key.',['hash functions']],
+['LSM tree','Log-structured merge tree: writes go to memory and are flushed as sorted files that are merged in the background.',['LSM trees','LSM']],
+['memtable','The sorted, in-memory table an LSM tree writes to first.',[]],
+['SSTable','A sorted, immutable file of keys and values written by an LSM tree.',['SSTables']],
+['compaction','Merging sorted files and dropping old versions, in the background.',[]],
+['write-ahead log','An append-only file every write goes to first, so it survives a crash.',['WAL']],
+['inverted index','A map from each word to the list of documents that contain it.',['inverted indexes']],
+['postings list','The list of documents that contain one term.',['postings lists']],
+['tokenize','Split text into terms: words, usually lower-cased and trimmed to a root form.',['tokenized','tokenizing']],
+['geohash','A short code for a map cell; codes that share a prefix are near each other.',['geohashes']],
+['quadtree','A tree that splits an area into four smaller areas wherever there are many points.',['quadtrees']],
+['batch processing','Processing a large set of collected data in one run, on a schedule.',['batch job','batch jobs','batches']],
+['stream processing','Handling each event shortly after it arrives, continuously.',['streams']],
+['offset','How far a consumer has read in one partition of a log.',['offsets']],
+['blue-green deployment','Running the new version beside the old one and switching traffic over in one step, with an instant switch back.',['blue-green']],
+['canary release','Sending a small share of traffic to a new version and widening only while it stays healthy.',['canary']],
+['feature flag','A switch in config that turns code on or off for chosen users without a deploy.',['feature flags']],
+['rollback','Going back to the previous version.',['roll back','rolls back']],
+['distributed lock','A lock held through a shared lock service, so only one machine at a time does something.',['distributed locks','lock service']],
+['lease','A lock that expires after a set time unless it is renewed.',['leases']],
+['fencing token','A number that grows with every lock grant; the resource rejects writes carrying an older number.',['fencing tokens']],
+['garbage collection pause','A stretch of time where a program freezes while its runtime frees memory.',['GC pause']],
+['vector clock','Per-replica write counts attached to each version, used to tell which came first.',['vector clocks']],
+['CRDT','Conflict-free replicated data type: a structure whose copies always merge to the same result.',['CRDTs']],
+['last write wins','On a conflict, keep the version with the later timestamp and drop the other.',['last-write-wins']],
 ['301','A permanent HTTP redirect; browsers remember it.',[]],
 ['302','A temporary HTTP redirect; browsers ask again every time.',[]]];
 </script>

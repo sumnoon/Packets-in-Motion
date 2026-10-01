@@ -2,7 +2,7 @@
 (function(){
   const N1=[320,280],N2=[680,280],CA_=[130,440],CB=[870,440];
   const pA=[[146,430],[288,322]],pB=[[854,430],[712,322]],link=[[372,280],[628,280]];
-ch({id:'cap',group:'Data',title:'CAP Theorem & Consistency Models',dur:38,needs:['replication'],related:['consensus','transactions','cache-invalidation'],
+ch({id:'cap',group:'Data',title:'CAP Theorem & Consistency Models',dur:38,needs:['replication'],related:['quorums','conflicts','consensus','transactions'],
 beats:[
 [0,'Same data on two nodes','Two replicas hold the same value, x = 1. Client A talks to Node 1, client B talks to Node 2.'],
 [3,'Normally: write, then sync','A writes x = 2 to Node 1. Node 1 copies it to Node 2, so B reads 2 as well. Everyone agrees.'],

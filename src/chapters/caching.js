@@ -5,7 +5,7 @@
   const LRU=[[0,['D','C','B','A']],[30.9,['B','D','C','A']],[33.9,['E','B','D','C']],[35.9,['C','E','B','D']],[38.9,['F','C','E','B']]];
   const OPS=[[29.3,'get B',C.green],[31.9,'put E  (cache full)',C.amber],[34.4,'get C',C.green],[36.9,'put F  (cache full)',C.amber]];
   const SX=k=>320+k*120;
-ch({id:'caching',group:'Data',title:'Caching Strategies & LRU Eviction',dur:42,needs:['sql-nosql'],related:['cache-invalidation','hot-keys','cdn'],
+ch({id:'caching',group:'Data',title:'Caching Strategies & LRU Eviction',dur:42,needs:['sql-nosql'],related:['cache-invalidation','hot-keys','bloom-filters','cdn'],
 beats:[
 [0,'Cache-aside: check the cache first','The app asks the fast in-memory cache first. On a miss, it reads the slow database, then saves the answer in the cache for next time.'],
 [7,'Cache hit: skip the database','Later reads for the same key come straight from memory in about 1 ms instead of 50 ms. Watch the hit rate climb.'],

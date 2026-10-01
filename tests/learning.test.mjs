@@ -80,7 +80,7 @@ test('search filters chapters, hides empty sections, Enter opens the first match
   const shown = toc.filter(e => e.className.startsWith('ch') && !e.hidden).map(e => p.get('chapters')[+e.dataset.i].id);
   assert.ok(shown.includes('caching') && shown.includes('cdn') && shown.includes('hot-keys'), shown.join());
   assert.ok(!shown.includes('consensus'));
-  assert.equal(toc.find(e => e.className === 'grp' && e.dataset.g === 'Advanced').hidden, true);
+  assert.equal(toc.find(e => e.className === 'grp' && e.dataset.g === 'Start Here').hidden, true);
   assert.match(p.document.getElementById('findMsg').textContent, /^\d+ chapters match$/);
   find.value = 'zzzz'; find.dispatch('input', { target: find });
   assert.equal(p.document.getElementById('noFind').hidden, false);

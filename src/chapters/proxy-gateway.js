@@ -1,7 +1,7 @@
 /* ---------------- 4. REVERSE PROXIES & API GATEWAYS ---------------- */
 (function(){
   const CL=[[95,170],[95,300],[95,430]],PX=[420,300],SV=[[790,170],[790,300],[790,430]];
-ch({id:'proxy-gateway',group:'Traffic',title:'Reverse Proxies & API Gateways',dur:34,needs:['load-balancers'],related:['rate-limiting','microservices','cdn'],
+ch({id:'proxy-gateway',group:'Traffic',title:'Reverse Proxies & API Gateways',dur:34,needs:['load-balancers'],related:['auth','rate-limiting','microservices'],
 beats:[
 [0,'Without a proxy: every server is exposed','Clients connect straight to each server. Every server needs a public address, its own security and its own certificates.'],
 [5,'Reverse proxy: one front door','A reverse proxy stands in front of the servers. Clients only ever see the proxy; the servers hide on a private network.'],

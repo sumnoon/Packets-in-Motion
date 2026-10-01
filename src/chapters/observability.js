@@ -8,7 +8,7 @@
   const series=(f)=>Array.from({length:48},(_,i)=>f(i/47,i));
   const RPS=series((u,i)=>120+18*Math.sin(u*9)+8*(rnd(i)-.5)),ERR=series((u,i)=>u>.55&&u<.72?3.5+rnd(i+50):.4+.3*rnd(i+90)),P99=series((u,i)=>u>.55&&u<.72?820+80*rnd(i):190+30*Math.sin(u*7)+20*rnd(i+7));
   const SP=[['gateway',0,480],['orders',15,462],['payments',40,440],['db query',48,70],['bank API call',80,428]];
-ch({id:'observability',group:'Architecture',title:'Observability: Logs, Metrics & Traces',dur:36,needs:['microservices'],related:['timeouts','autoscaling','resilience'],
+ch({id:'observability',group:'Architecture',title:'Observability: Logs, Metrics & Traces',dur:36,needs:['microservices'],related:['deployments','timeouts','autoscaling'],
 beats:[
 [0,'One click, many services','A single request hops through the gateway, the Orders service, the Payments service and the database. When it\'s slow, where do you even look?'],
 [4,'Logs: what happened, in detail','Each service writes timestamped lines describing events. Great for the details of a single error, but there are millions of lines to search.'],
