@@ -45,10 +45,15 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
       const sending=rate*cf;S.lost.noConn+=rate*(1-cf)*dt;
       const chatIn={};G.of('gateway').forEach(g=>{const share=sending*held[g.id]/Math.max(connected,1),cs=G.out(g,['chat']);if(!share)return;
         if(!cs.length){S.lost.noChat+=share*dt;return;}cs.forEach(c=>{chatIn[c.id]=(chatIn[c.id]||0)+share/cs.length;F(g,c,share/cs.length,false,C.blue);});});
+      // A shard's capacity belongs to the physical node, shared by every producer.
+      const storeIn={},chatReady={};
+      G.of('chat').forEach(c=>{const inC=chatIn[c.id]||0,ok=Math.min(inC,CHAT);chatReady[c.id]=ok;load[c.id]=inC/CHAT;S.lost.noChat+=(inC-ok)*dt;
+        const st=G.out(c,['store']);st.forEach(s=>storeIn[s.id]=(storeIn[s.id]||0)+ok/st.length);});
+      G.of('store').forEach(s=>load[s.id]=(storeIn[s.id]||0)/SHARD);
       let reached=0;
-      G.of('chat').forEach(c=>{const inC=chatIn[c.id]||0;load[c.id]=inC/CHAT;const ok=Math.min(inC,CHAT);S.lost.noChat+=(inC-ok)*dt;
+      G.of('chat').forEach(c=>{const ok=chatReady[c.id];
         const st=G.out(c,['store']);if(!st.length){S.lost.store+=ok*dt;return;}
-        let stored=0;const per=ok/st.length;st.forEach(s=>{const w=Math.min(per,SHARD);stored+=w;S.lost.store+=(per-w)*dt;F(c,s,per,per>SHARD,C.amber);load[s.id]=(load[s.id]||0)+per/SHARD;});
+        let stored=0;const per=ok/st.length;st.forEach(s=>{const demand=storeIn[s.id]||0,w=per*Math.min(1,SHARD/Math.max(demand,1));stored+=w;S.lost.store+=(per-w)*dt;F(c,s,per,demand>SHARD,C.amber);});
         if(!stored)return;
         // delivery: online recipients via pub/sub, or direct calls to every wired gateway; offline ones by push
         const ps=G.out(c,['pubsub'])[0],direct=G.out(c,['gateway']),push=G.out(c,['push'])[0];

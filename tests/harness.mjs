@@ -124,7 +124,7 @@ function makeDocument(ctx) {
     querySelector(sel) { return this.querySelectorAll(sel)[0] || null; }
     querySelectorAll(sel) { return match(sel, descendants(this)); }
     getBoundingClientRect() { return { left: 0, top: 0, width: 1000, height: 560 }; }
-    focus() {} blur() {} scrollIntoView() {} setPointerCapture() {} releasePointerCapture() {}
+    focus() { document.activeElement=this; } blur() { if(document.activeElement===this)document.activeElement=document.body; } scrollIntoView() {} setPointerCapture() {} releasePointerCapture() {}
     getContext() { return ctx; }
     get offsetWidth() { return 1000; }
   }
@@ -158,19 +158,20 @@ export function loadPage(opts = {}) {
   const timers = [];
   const frames = [];
   const winListeners = {};
-  const storage = new Map();
+  const storage = new Map(Object.entries(opts.storage || {}));
+  let timerId=0;
   const context = {
     document,
     console: { log() {}, info() {}, warn() {}, error: (...a) => errors.push(a.map(x => (x && x.stack) || String(x)).join(' ')) },
     matchMedia: () => ({ matches: false, addEventListener() {}, addListener() {} }),
-    localStorage: { getItem: k => (storage.has(k) ? storage.get(k) : null), setItem: (k, v) => storage.set(k, String(v)), removeItem: k => storage.delete(k) },
-    location: { hash: opts.hash || '', search: opts.search || '', pathname: '/index.html', href: 'https://example.test/index.html' + (opts.search || '') + (opts.hash || '') },
+    localStorage: { getItem(k) { if(opts.storageError?.get)throw new Error('storage denied');return storage.has(k)?storage.get(k):null; }, setItem(k,v) { if(opts.storageError?.set)throw new Error('storage full');storage.set(k,String(v)); }, removeItem: k => storage.delete(k) },
+    location: { hash: opts.hash || '', search: opts.search || '', pathname: '/index.html', href: opts.href || 'https://example.test/index.html' + (opts.search || '') + (opts.hash || '') },
     history: { replaceState(_, __, url) { context.location.hash = url; } },
     screen: { orientation: { lock: () => Promise.resolve(), unlock() {} } },
     devicePixelRatio: 1, innerWidth: 1280, innerHeight: 800,
     requestAnimationFrame: fn => frames.push(fn),
-    setTimeout: (fn, ms = 0) => { timers.push({ fn, at: (context.__now || 0) + ms / 1000 }); return timers.length; },
-    clearTimeout() {},
+    setTimeout: (fn, ms = 0) => { const id=++timerId;timers.push({ id,fn, at: (context.__now || 0) + ms / 1000 }); return id; },
+    clearTimeout(id) { const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1); },
     addEventListener: (type, fn) => (winListeners[type] ||= []).push(fn),
     removeEventListener() {},
     URLSearchParams, Math, JSON, Object, Array, Number, String, Set, Map, Promise, Date, Error, Symbol, Proxy, Reflect, Infinity, NaN, parseInt, parseFloat, isFinite,
@@ -184,7 +185,7 @@ export function loadPage(opts = {}) {
   // let-declared globals (chapters, CHAL, ...) live in the script scope, not on the context object
   const get = name => vm.runInContext(name, context);
   return {
-    context, get, log, reset, errors, frames, timers, winListeners, document,
+    context, get, log, reset, errors, frames, timers, winListeners, document, storage,
     runTimers(now) { context.__now = now; for (let i = 0; i < timers.length; i++) if (timers[i].at <= now) { const t = timers.splice(i--, 1)[0]; t.fn(); } },
     key(key, target = { tagName: 'BODY' }) { (winListeners.keydown || []).forEach(fn => fn({ key, target, preventDefault() {} })); },
     frame(ts) { const fs = frames.splice(0); fs.forEach(fn => fn(ts)); },

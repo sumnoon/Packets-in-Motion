@@ -8,6 +8,7 @@ const reduceMQ=matchMedia('(prefers-reduced-motion: reduce)');
    ============================================================ */
 const CHAL={};
 function chal(id,def){CHAL[id]=def;}
+const chalLater=(api,fn,ms)=>api.later?api.later(fn,ms):setTimeout(fn,ms);
 
 // ---------- small helpers ----------
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
@@ -60,7 +61,7 @@ function sortGame(o){return api=>{
     const tgt=bins.find(q=>q.id===c.b);flying.push({c,from:[cx,cy],to:[tgt.x+tgt.w/2,tgt.y+40+Math.min(tgt.got.length,4)*14],t0:now,ok:right});
     if(right){streak++;best=Math.max(best,streak);FX.burst(b.x+b.w/2,b.y+30,b.c);FX.text(b.x+b.w/2,b.y-10,streak>2?`${streak} in a row!`:'Right!',C.green);}
     else{miss++;streak=0;shake=now;FX.text(b.x+b.w/2,b.y-10,'Not quite',C.red);api.status(`<span class="bad">✕</span> ${c.why||''}`);}
-    tgt.got.push(c);i++;if(i>=cards.length){over=true;setTimeout(()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
+    tgt.got.push(c);i++;if(i>=cards.length){over=true;chalLater(api,()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
       api.win(st,r&&r.title||(miss===0?'Flawless sorting':`${cards.length-miss} of ${cards.length} right`),r&&r.msg||(miss?`You missed ${miss}. Replay the lesson if a box felt fuzzy, then try again for three stars.`:'Every card in the right box.'));},900);}
     else{if(right)deal(now);else{dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer)deadline=now+o.timer+2;}}}
   let started=false;

@@ -10,7 +10,7 @@ chal('caching',{title:'Beat LRU',goal:'The cache holds 4 items. When it is full 
       if(j>=0){hits++;slots[j].used=now;FX.burst(SX(j),SY,C.green,14,120);FX.text(SX(j),SY-58,'HIT',C.green,15);next(now);}
       else if(slots.length<SL){slots.push({k:cur,used:now});FX.text(SX(slots.length-1),SY-58,'miss',C.amber,14);next(now);}
       else{waiting=true;api.status(`<b>${cur}</b> is not cached and the cache is full. Click an item to evict, or press its slot number: ${slots.map((s,k)=>`<kbd>${k+1}</kbd> ${s.k} (used ${(now-s.used).toFixed(1)} s ago)`).join(' · ')}.`);}}
-    function next(now){i++;last=now;cur=null;if(i>=N){done=true;setTimeout(()=>api.win(hits>=lru?3:hits>=lru-2?2:1,`${hits} hits · LRU got ${lru}`,hits>=lru?'You matched the machine. Evicting what was least recently used is hard to beat when popularity shifts over time.':'Evict the item that has waited longest since its last request. That is exactly what LRU does.'),500);}}
+    function next(now){i++;last=now;cur=null;if(i>=N){done=true;chalLater(api,()=>api.win(hits>=lru?3:hits>=lru-2?2:1,`${hits} hits · LRU got ${lru}`,hits>=lru?'You matched the machine. Evicting what was least recently used is hard to beat when popularity shifts over time.':'Evict the item that has waited longest since its last request. That is exactly what LRU does.'),500);}}
     return{draw(now){if(t0===null){t0=now;last=now-.4;}if(!waiting&&!done&&!cur&&now-last>.75)arrive(now);
         tx('incoming',120,150,{z:12,c:C.dim});stream.slice(i,i+6).forEach((k,j)=>{const x=120-j*0+0,y=190+j*44;plate(120+(j?0:0),200+j*44,j?50:66,j?34:44,{c:j?C.edge:C.blue,a:j?.5:1,fill:C.panel2});tx(k,120,201+j*44,{z:j?15:22,wt:800,a:j?.5:1});});
         tx('cache (4 slots)',SX(0)+180,180,{z:13,c:C.dim});

@@ -32,7 +32,7 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
       const reach=new Set(),walk=n=>{if(reach.has(n.id))return;reach.add(n.id);G.out(n,['limiter','lb','app']).forEach(walk);};walk(u);
       const off=G.of('app').filter(a=>!reach.has(a.id));if(off.length)return[`${off.length} app server${off.length>1?'s get':' gets'} no traffic: wire ${off.length>1?'them':'it'} to the load balancer.`];
       return[];},
-    init(){return{tot:0,bad:0,lat:[],dead:new Set(),killed:null,qb:{},lost:{deadEnd:0,deadApp:0,overload:0,overBot:0,db:0,dbSync:0,noDb:0},appIn:{}};},
+    init(){return{tot:0,bad:0,lat:[],dead:new Set(),killed:null,qb:{},clicks:{accepted:0,persisted:0},lost:{deadEnd:0,deadApp:0,overload:0,overBot:0,db:0,dbSync:0,noDb:0},appIn:{}};},
     step(S,G,dt,t){const legit=t<6?1000:t<12?3000:2000,bot=t>=12?2000:0;
       const tc=labAt(S,'crash',9,7,13),phase=t<6?'Launch':t<12?(t<tc?'A link goes viral':'Viral, and an app server dies'):(t>=tc&&t<tc+2?'Bot attack, and an app server dies':'Bot attack');
       if(t>=tc&&!S.killed){const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a)));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
@@ -55,30 +55,39 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
         const r={a,sL,util:tot/APP,cache,db,q,miss:0,writes,sync:0};rec.push(r);
         if(!db){lost+=sL;S.lost.noDb+=sL*dt;r.sL=0;return;}
         const hits=cache?reads*.9:0;r.miss=reads-hits;if(cache){D(cache,'c',reads);F(a,cache,reads,false,C.green);}
-        D(db,'r',r.miss);D(db,'w',writes);if(q){D(q,'q',reads);F(a,q,reads,false,C.amber);}else{r.sync=reads;D(db,'w',reads);}
+        D(db,'r',r.miss);D(db,'w',writes);if(!q){r.sync=reads;D(db,'w',reads);}
         F(a,db,r.miss+writes+r.sync,false);});
-      // queues drain through workers that write to the database in batches
-      G.of('queue').forEach(q=>{S.qb[q.id]=(S.qb[q.id]||0)+((dem[q.id]||{}).q||0)*dt;const ws=G.out(q,['worker']);let left=S.qb[q.id];
-        ws.forEach(w=>{const wdb=G.out(w,['db'])[0];if(!wdb)return;const take=Math.min(left,WORKER*dt);left-=take;D(wdb,'w',take/dt/100);F(q,w,take/dt,false,C.amber);F(w,wdb,take/dt/100,false,C.amber);load[w.id]=take/dt/WORKER;});
-        S.qb[q.id]=left;load[q.id]=Math.min(1.5,left/20000);});
       // the database: writes first, then reads on the primary's leftover capacity plus every replica
-      const fail={};G.of('db').forEach(d=>{const x=dem[d.id]||{r:0,w:0},reps=G.out(d,['replica']),wOk=Math.min(x.w,DBOPS),rCap=DBOPS-wOk+DBOPS*reps.length;
+      const fail={},batchRoom={};G.of('db').forEach(d=>{const x=dem[d.id]||{r:0,w:0},reps=G.out(d,['replica']),wOk=Math.min(x.w,DBOPS),rCap=DBOPS-wOk+DBOPS*reps.length;
         fail[d.id]={w:x.w?1-wOk/x.w:0,r:x.r?Math.max(0,1-rCap/x.r):0};load[d.id]=(x.r+x.w)/(DBOPS*(1+reps.length));
+        batchRoom[d.id]=Math.max(0,DBOPS-wOk-Math.min(x.r,DBOPS-wOk))*dt;
         reps.forEach(rp=>{const share=Math.max(0,x.r-(DBOPS-wOk))/reps.length;F(d,rp,share,false,C.blue);load[rp.id]=share/DBOPS;});
         if(fail[d.id].w>0||fail[d.id].r>0)G.inn(d,['app']).forEach(a=>bad.add(a.id+'>'+d.id));});
       rec.forEach(r=>{if(!r.db||!r.sL)return;const f=fail[r.db.id],x=Math.min(r.sL,r.miss*f.r+(r.writes+r.sync)*f.w);lost+=x;S.lost.db+=(r.miss*f.r+r.writes*f.w)*dt;S.lost.dbSync+=r.sync*f.w*dt;
-        const dbU=load[r.db.id]||0,ms=15+(r.cache?3:25)+(r.util>.95?45:r.util>.8?15:0)+(dbU>.95?70:dbU>.8?20:0);S.lat.push([ms,r.sL*dt]);});
+        // Count successful redirects only. Queued events stay pending until the DB accepts their batch.
+        const clicks=Math.max(0,r.sL*.99-r.miss*f.r-r.sync*f.w)*dt;S.clicks.accepted+=clicks;
+        if(r.q){S.qb[r.q.id]=(S.qb[r.q.id]||0)+clicks;F(r.a,r.q,clicks/dt,false,C.amber);}else S.clicks.persisted+=clicks;
+      });
+      // Workers share both their own capacity and the primary's remaining operations.
+      const workerRoom={};G.of('worker').forEach(w=>workerRoom[w.id]=WORKER*dt);
+      G.of('queue').forEach(q=>{let left=S.qb[q.id]||0;
+        G.out(q,['worker']).forEach(w=>{const db=G.out(w,['db'])[0];if(!db)return;const take=Math.min(left,workerRoom[w.id],batchRoom[db.id]*100);
+          left-=take;workerRoom[w.id]-=take;batchRoom[db.id]-=take/100;S.clicks.persisted+=take;
+          F(q,w,take/dt,false,C.amber);F(w,db,take/dt/100,false,C.amber);load[w.id]=(load[w.id]||0)+take/dt/WORKER;
+          load[db.id]=(load[db.id]||0)+take/dt/100/(DBOPS*(1+G.out(db,['replica']).length));});
+        S.qb[q.id]=Math.max(0,left);load[q.id]=Math.min(1.5,left/20000);});
+      rec.forEach(r=>{if(!r.db||!r.sL)return;const dbU=load[r.db.id]||0,ms=15+(r.cache?3:25)+(r.util>.95?45:r.util>.8?15:0)+(dbU>.95?70:dbU>.8?20:0);S.lat.push([ms,r.sL*dt]);});
       S.tot+=legit*dt;S.bad+=Math.min(legit,lost)*dt;
       return{flows,load,dead:S.dead,phase,badEdges:bad};},
-    hud(S){const s=S.tot?1-S.bad/S.tot:1,l=p95(S),b=backlog(S);return[['served',`${(s*100).toFixed(1)}%`,s>=.99?C.green:C.red],['p95',`${l} ms`,l<=80?C.green:C.red],['clicks waiting',`${Math.round(b)}`,b<500?C.green:C.amber]];},
-    score(S,G,cost){const s=1-S.bad/S.tot,lat=p95(S),counted=backlog(S)<500;
+    hud(S){const s=S.tot?1-S.bad/S.tot:1,l=p95(S),b=backlog(S);return[['served',`${(s*100).toFixed(1)}%`,s>=.99?C.green:C.red],['p95',`${l} ms`,l<=80?C.green:C.red],['clicks waiting',`${Math.ceil(b)}`,b<1e-6?C.green:C.amber]];},
+    score(S,G,cost){const s=1-S.bad/S.tot,lat=p95(S),counted=!!S.clicks&&backlog(S)<1e-6&&Math.abs(S.clicks.accepted-S.clicks.persisted)<1e-6;
       if(s>=.99&&lat<=80&&cost<=20&&counted)return{stars:3,title:'Launched without a scratch',msg:`${(s*100).toFixed(1)}% served, p95 ${lat} ms, $${cost}/h, every click counted. A limiter for the bots, a load balancer that skips the dead server, a spare app server, a cache for the viral link and a queue for the clicks: you built it.`};
       const L=S.lost,top=Object.entries(L).sort((a,b)=>b[1]-a[1])[0];
       const why=top&&top[1]>S.tot*.003?({deadEnd:'Some traffic hit a dead end: every path from Users has to reach an app server.',deadApp:'Requests kept going to the crashed server. Put a load balancer in front: its health checks skip dead servers.',
         overload:'Your app servers ran out of capacity during the viral spike. Add servers, with one to spare for when one dies.',overBot:'The bot attack used up your app servers. Put a rate limiter in front of everything.',
         db:G.of('cache').length?'The database could not keep up. Add a read replica, or make sure every app server uses the cache.':'The database drowned in reads. Put a cache between the app servers and the database.',
         dbSync:'Counting clicks synchronously writes to the database on every redirect. Send click events to a queue and let a worker write them.',noDb:'App servers need the database to look up short codes.'})[top[0]]:'';
-      const extra=[lat>80?`p95 latency was ${lat} ms: something ran hot.`:'',cost>20?`Over budget at $${cost}/h.`:'',!counted?'Clicks piled up in the queue: wire a worker from the queue to the database.':''].filter(Boolean).join(' ');
+      const extra=[lat>80?`p95 latency was ${lat} ms: something ran hot.`:'',cost>20?`Over budget at $${cost}/h.`:'',!counted?`${Math.ceil(backlog(S))} clicks still waiting or not accounted for: wire enough workers to the database and leave capacity for their batches.`:''].filter(Boolean).join(' ');
       const msg=[why,extra].filter(Boolean).join(' ')||'Close. Check which phase hurt most.';
       if(s>=.95)return{stars:2,title:`${(s*100).toFixed(1)}% served`,msg};
       if(s>=.7)return{stars:1,title:`${(s*100).toFixed(1)}% served`,msg};

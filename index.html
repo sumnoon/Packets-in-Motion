@@ -244,10 +244,14 @@ body.play .transcript{display:none}
 .side-foot{display:flex;flex-direction:column;gap:10px;margin:22px 10px 0;padding-top:16px;border-top:1px solid var(--line)}
 .btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
 .side-foot>.btn{align-self:flex-start}
+.share-link{width:100%;min-width:0}
+.share-link label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--dim)}
+.share-link input{width:100%;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
 .btn.tg[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 .prog-io{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)}
 .prog-io span{margin-right:auto}
 .io-msg{margin:0;font-size:12px;color:var(--dim);min-height:1em}
+#storageMsg:empty{display:none}
 .links{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
 .links:empty{display:none}
 .links span{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}
@@ -292,6 +296,7 @@ dialog.gloss::backdrop{background:rgba(4,6,13,.7)}
       <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
       <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
       <p class="io-msg" id="ioMsg" role="status"></p>
+      <p class="io-msg" id="storageMsg" role="status"></p>
     </div>
   </aside>
   <div class="scrim" id="scrim"></div>
@@ -498,6 +503,19 @@ function panel(x,y,w,h,o={}){draw(0,0,o,()=>{rr(x,y,w,h,o.r||12);g.fillStyle=o.f
    ============================================================ */
 const chapters=[];
 function ch(o){o.index=chapters.length;chapters.push(o);}
+// Storage is optional: keep the course usable, but never imply a failed save succeeded.
+const PIM_STORE={
+  failed:false,
+  warn(){this.failed=true;const el=document.getElementById('storageMsg');if(el)el.textContent='Browser storage is unavailable. Changes stay in this tab; export your progress before closing it.';},
+  get(k){try{return localStorage.getItem(k);}catch(e){this.warn();return null;}},
+  set(k,v){try{localStorage.setItem(k,v);return true;}catch(e){this.warn();return false;}},
+  json(k,def){try{const raw=this.get(k);return raw==null?def:JSON.parse(raw);}catch(e){return def;}},
+  put(k,v){return this.set(k,JSON.stringify(v));}
+};
+const pimRecord=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
+function pimFilter(v,valid){const out={};if(pimRecord(v))Object.entries(v).forEach(([k,x])=>{if(valid(k,x))out[k]=x;});return out;}
+const pimSeen=v=>pimFilter(v,(k,x)=>chapters.some(c=>c.id===k)&&(x===1||x===true));
+const pimStars=v=>pimFilter(v,(k,x)=>(Object.hasOwn(CHAL,k)||Object.values(QUIZ).some(q=>q.id===k))&&Number.isInteger(x)&&x>=0&&x<=3);
 </script>
 <script>
 /* ---------------- 0. START HERE: PACKETS, IP ADDRESSES & PORTS ---------------- */
@@ -3119,6 +3137,7 @@ const reduceMQ=matchMedia('(prefers-reduced-motion: reduce)');
    ============================================================ */
 const CHAL={};
 function chal(id,def){CHAL[id]=def;}
+const chalLater=(api,fn,ms)=>api.later?api.later(fn,ms):setTimeout(fn,ms);
 
 // ---------- small helpers ----------
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
@@ -3171,7 +3190,7 @@ function sortGame(o){return api=>{
     const tgt=bins.find(q=>q.id===c.b);flying.push({c,from:[cx,cy],to:[tgt.x+tgt.w/2,tgt.y+40+Math.min(tgt.got.length,4)*14],t0:now,ok:right});
     if(right){streak++;best=Math.max(best,streak);FX.burst(b.x+b.w/2,b.y+30,b.c);FX.text(b.x+b.w/2,b.y-10,streak>2?`${streak} in a row!`:'Right!',C.green);}
     else{miss++;streak=0;shake=now;FX.text(b.x+b.w/2,b.y-10,'Not quite',C.red);api.status(`<span class="bad">✕</span> ${c.why||''}`);}
-    tgt.got.push(c);i++;if(i>=cards.length){over=true;setTimeout(()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
+    tgt.got.push(c);i++;if(i>=cards.length){over=true;chalLater(api,()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
       api.win(st,r&&r.title||(miss===0?'Flawless sorting':`${cards.length-miss} of ${cards.length} right`),r&&r.msg||(miss?`You missed ${miss}. Replay the lesson if a box felt fuzzy, then try again for three stars.`:'Every card in the right box.'));},900);}
     else{if(right)deal(now);else{dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer)deadline=now+o.timer+2;}}}
   let started=false;
@@ -3321,13 +3340,12 @@ const LAB_SAVE={};
 const LAB_POST={},LAB_HINT={},LAB_UNDO={},LAB_FAILS={};
 const LAB_DEFS={};   // every lab's scenario, by id (the tests build each solution from it)
 // the cheapest 3-star cost per lab, kept in the browser
-function labStore(k,def){try{return JSON.parse(localStorage.getItem(k))||def;}catch(e){return def;}}
-function labPut(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-const LAB_BEST=labStore('pim-lab-best',{});
+const labStore=(k,def)=>PIM_STORE.json(k,def),labPut=(k,v)=>PIM_STORE.put(k,v);
+const LAB_BEST={},LAB_BEST_DESIGNS={};
 function labSaveBest(){labPut('pim-lab-best',LAB_BEST);}
 // chaos mode: each run's incidents strike at random times and hit a random component.
 // Three 3-star runs in a row earn the lab's chaos-proof badge.
-const LAB_CHAOS=labStore('pim-lab-chaos',{}),LAB_CHAOS_ON={},LAB_STREAK={};
+const LAB_CHAOS={},LAB_CHAOS_ON={},LAB_STREAK={};
 function labRng(seed){return()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 // an incident's time: the scripted one, or in chaos mode a random time between lo and hi (fixed for the run)
 function labAt(S,key,def,lo,hi){if(!S.chaos)return def;const m=S._at||(S._at={});if(!(key in m))m[key]=lo+(hi-lo)*S.rng();return m[key];}
@@ -3345,31 +3363,47 @@ function labEncode(id,G){const o=LAB_DEFS[id],kinds=labKinds(o);
   return['1',G.nodes.map(n=>[kinds.indexOf(n.kind),Math.round(n.x/10),Math.round(n.y/10)].join('.')).join('_'),
     G.edges.map(e=>G.nodes.findIndex(n=>n.id===e.a)+'-'+G.nodes.findIndex(n=>n.id===e.b)).join('_'),
     (o.toggles||[]).map(t=>G.opts[t.key]?1:0).join('')].join('~');}
-function labDecode(id,code){const o=LAB_DEFS[id];if(!o||typeof code!=='string'||code.length>4000)return null;
+function labDecode(id,code){if(!Object.hasOwn(LAB_DEFS,id))return null;const o=LAB_DEFS[id];if(typeof code!=='string'||code.length>4000)return null;
   const p=code.split('~');if(p[0]!=='1'||p.length!==4)return null;
+  if(!/^[01]*$/.test(p[3])||p[3].length!==(o.toggles||[]).length)return null;
   const kinds=labKinds(o),F=o.fixed.length,nodes=[],rows=p[1]?p[1].split('_'):[];if(rows.length<F||rows.length>26)return null;
-  for(let i=0;i<rows.length;i++){const[k,x,y]=rows[i].split('.').map(Number),kind=kinds[k];if(!kind||!isFinite(x)||!isFinite(y))return null;
+  for(let i=0;i<rows.length;i++){if(!/^\d+\.-?\d+\.-?\d+$/.test(rows[i]))return null;const[k,x,y]=rows[i].split('.').map(Number),kind=kinds[k];if(!kind||!Number.isSafeInteger(x)||!Number.isSafeInteger(y)||Math.abs(x)>100000||Math.abs(y)>100000)return null;
     if(i<F){if(kind!==o.fixed[i].kind)return null;nodes.push({id:'f'+i,kind,x:x*10,y:y*10,label:o.fixed[i].label,fixed:true});continue;}
     if(!o.kinds[kind]||nodes.filter(n=>n.kind===kind).length>=(o.kinds[kind].max||8))return null;nodes.push({id:'n'+i,kind,x:x*10,y:y*10});}
   nodes.forEach(n=>{n.x=clamp(n.x,LAB_BOARD.x+30,LAB_BOARD.x+LAB_BOARD.w-30);n.y=clamp(n.y,LAB_BOARD.y+30,LAB_BOARD.y+LAB_BOARD.h-30);});
-  const edges=[];for(const s of p[2]?p[2].split('_'):[]){const[a,b]=s.split('-').map(Number),A=nodes[a],B=nodes[b];
+  const edges=[];for(const s of p[2]?p[2].split('_'):[]){if(!/^\d+-\d+$/.test(s))return null;const[a,b]=s.split('-').map(Number),A=nodes[a],B=nodes[b];
     if(!A||!B||A===B||!(o.links[A.kind]||[]).includes(B.kind))return null;if(!edges.some(e=>e.a===A.id&&e.b===B.id))edges.push({a:A.id,b:B.id});}
   const opts={};(o.toggles||[]).forEach((t,i)=>opts[t.key]=p[3][i]==='1');
   return{nodes,edges,seq:nodes.length,opts};}
 // opens a shared design in its lab; false when the link is not a valid design
-function labImport(id,code){const G=labDecode(id,code);if(!G)return false;LAB_SAVE[id]=G;LAB_POST[id]=null;LAB_SHARED[id]=true;return true;}
+function labImport(id,code){labRestore();const G=labDecode(id,code);if(!G)return false;LAB_SAVE[id]=G;labSaveDesigns();LAB_POST[id]=null;LAB_SHARED[id]=true;return true;}
+let LAB_RESTORED=false;
+function labRestore(){if(LAB_RESTORED)return;LAB_RESTORED=true;
+  Object.assign(LAB_BEST,pimFilter(labStore('pim-lab-best',{}),(k,v)=>Object.hasOwn(LAB_DEFS,k)&&Number.isSafeInteger(v)&&v>0&&v<=10000));
+  Object.assign(LAB_CHAOS,pimFilter(labStore('pim-lab-chaos',{}),(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true));
+  labMergeDesigns(labStore('pim-lab-designs',null));}
+function labDesignCost(id,G){return G.nodes.reduce((sum,n)=>sum+(n.fixed?0:LAB_DEFS[id].kinds[n.kind].cost),0);}
+function labMergeDesigns(data){if(!pimRecord(data)||data.version!==1)return 0;let added=0;
+  if(pimRecord(data.drafts))Object.entries(data.drafts).forEach(([id,code])=>{const G=labDecode(id,code);if(G&&!LAB_SAVE[id]){LAB_SAVE[id]=G;added++;}});
+  if(pimRecord(data.best))Object.entries(data.best).forEach(([id,b])=>{if(!pimRecord(b))return;const G=labDecode(id,b.design);
+    if(G&&Number.isSafeInteger(b.cost)&&b.cost>0&&b.cost===labDesignCost(id,G)&&(!LAB_BEST_DESIGNS[id]||b.cost<LAB_BEST_DESIGNS[id].cost)){
+      LAB_BEST_DESIGNS[id]={cost:b.cost,design:labEncode(id,G)};LAB_BEST[id]=Math.min(LAB_BEST[id]??Infinity,b.cost);added++;}});return added;}
+function labDesigns(){const drafts={};Object.entries(LAB_SAVE).forEach(([id,G])=>{if(Object.hasOwn(LAB_DEFS,id))drafts[id]=labEncode(id,G);});return{version:1,drafts,best:LAB_BEST_DESIGNS};}
+function labSaveDesigns(){labPut('pim-lab-designs',labDesigns());}
 const LAB_BOARD={x:14,y:62,w:972,h:380};
 const LAB_PAL_Y=LAB_BOARD.y+LAB_BOARD.h+16;   // the palette is a row of tiles under the board
 function labGame(o){LAB_DEFS[o.id]=o;return api=>{
+  labRestore();
   const id=o.id,K=o.kinds,PAL=Object.keys(K);
   // ---------- the graph ----------
   let G=LAB_SAVE[id]?JSON.parse(JSON.stringify(LAB_SAVE[id])):{nodes:o.fixed.map((f,i)=>({id:'f'+i,kind:f.kind,x:f.x,y:f.y,label:f.label,fixed:true})),edges:[],seq:0};
   if(!G.opts)G.opts={};(o.toggles||[]).forEach(tg=>{if(!(tg.key in G.opts))G.opts[tg.key]=tg.val;});
-  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));if(!running){S=null;post=null;LAB_POST[id]=null;}};   // an edit clears the last run's readings and weak spots
+  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));labSaveDesigns();if(api.clearShareLink)api.clearShareLink();if(!running){S=null;post=null;LAB_POST[id]=null;}};   // an edit clears the last run's readings and weak spots
   // undo history: a snapshot of the graph before each change
-  const undoStack=LAB_UNDO[id]||(LAB_UNDO[id]=[]),snapshot=()=>JSON.stringify({nodes:G.nodes,edges:G.edges,seq:G.seq});
+  const undoStack=LAB_UNDO[id]||(LAB_UNDO[id]=[]),snapshot=()=>JSON.stringify({nodes:G.nodes,edges:G.edges,seq:G.seq,opts:G.opts});
   const remember=s=>{undoStack.push(s||snapshot());if(undoStack.length>60)undoStack.shift();};
-  function undo(){if(running)return;const s=undoStack.pop();if(!s){say('Nothing to undo.');return;}const u=JSON.parse(s);G.nodes=u.nodes;G.edges=u.edges;G.seq=u.seq;sel=null;save();say('Undone.');}
+  function applyDesign(u){G.nodes=u.nodes;G.edges=u.edges;G.seq=u.seq;G.opts=u.opts||{};syncOptions();sel=null;save();}
+  function undo(){if(running)return;const s=undoStack.pop();if(!s){say('Nothing to undo.');return;}applyDesign(JSON.parse(s));say('Undone.');}
   const LET='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const node=nid=>G.nodes.find(n=>n.id===nid);
   const sizeOf=n=>{const k=K[n.kind]||o.fixedKinds[n.kind];return[k.w||110,k.h||52];};
@@ -3381,7 +3415,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   const canAdd=kind=>count(kind)<(K[kind].max||8)&&G.nodes.length<LET.length;
   const allowed=(a,b)=>a!==b&&(o.links[a.kind]||[]).includes(b.kind);
   // locks (on unless turned off): a component taught in an earlier chapter waits until you have watched it
-  const seenCh=labStore('sdve-seen',{}),myIdx=chapters.findIndex(c=>c.id===id);
+  const seenCh=pimSeen(labStore('sdve-seen',{})),myIdx=chapters.findIndex(c=>c.id===id);
   let locksOn=(()=>{try{return localStorage.getItem('pim-lab-locks')!=='false';}catch(e){return true;}})();
   const taughtEarlier=kind=>{const cid=K[kind].teach||LAB_TEACH[kind],j=cid?chapters.findIndex(c=>c.id===cid):-1;return j>=0&&j<myIdx?{cid,n:j+1,title:chapters[j].title}:null;};
   const lockOf=kind=>{if(!locksOn)return null;const T=taughtEarlier(kind);return T&&!seenCh[T.cid]?T:null;};
@@ -3427,14 +3461,19 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   let running=false,S=null,t0=0,last=0,done=false,res=null;const fl=[];
   // simT: the run's clock (slowed for a moment when something crashes); vnow: the clock packets move on
   let simT=0,vnow=0,lastNow=null,slowUntil=-1,shakeUntil=-1,badSfx=-9,celebrate=null;
-  (o.toggles||[]).forEach(tg=>api.toggle(tg.label,G.opts[tg.key],v=>{G.opts[tg.key]=v;save();say();}));   // design choices that are not boxes
+  const optionControls=(o.toggles||[]).map(tg=>({key:tg.key,el:api.toggle(tg.label,G.opts[tg.key],v=>{if(running)return;remember();G.opts[tg.key]=v;save();say();})}));
+  function syncOptions(){optionControls.forEach(({key,el})=>{if(el&&el.setAttribute)el.setAttribute('aria-pressed',String(!!G.opts[key]));});}
   const run=api.button(o.runLabel||'Run load test',()=>start(),{primary:true});
   const clear=api.button('Clear board',()=>{if(running)return;remember();G.nodes=G.nodes.filter(n=>n.fixed);G.edges=[];sel=null;save();say('Board cleared.');});
   api.button('Undo',()=>undo());
+  const bestBtn=api.button('Restore best design',()=>{if(running||!LAB_BEST_DESIGNS[id])return;const best=labDecode(id,LAB_BEST_DESIGNS[id].design);if(best){remember();applyDesign(best);say('Best saved design restored.');}});
+  bestBtn.hidden=!LAB_BEST_DESIGNS[id];
   const shareBtn=api.button('Copy share link',()=>share());
-  function share(){if(running)return;const base=String((typeof location!=='undefined'&&location.href)||'').split(/[?#]/)[0],url=`${base}?lab=${id}&d=${labEncode(id,G)}#${id}`;
-    let copied=false;try{if(typeof navigator!=='undefined'&&navigator.clipboard){navigator.clipboard.writeText(url).catch(()=>{});copied=true;}}catch(e){}
-    say(`${copied?'Link copied. Send it to anyone':'Copy this link and send it to anyone'} to share your $${cost()}/h design: ${url}`);}
+  async function share(){if(running)return;const code=labEncode(id,G),here=String((typeof location!=='undefined'&&location.href)||''),base=/^https?:\/\//.test(here)?here.split(/[?#]/)[0]:'https://sumnoon.github.io/Packets-in-Motion/',url=`${base}?lab=${id}&d=${code}#${id}`;
+    if(api.shareLink)api.shareLink(url);
+    let copied=false;try{if(typeof navigator!=='undefined'&&navigator.clipboard){await navigator.clipboard.writeText(url);copied=true;}}catch(e){}
+    if(code!==labEncode(id,G))return;
+    say(`${copied?'Link copied. Send it to anyone':'Copy the link below and send it to anyone'} to share your $${cost()}/h design.${api.shareLink?'':' '+url}`);}
   // the locks are one setting for every lab, offered where a lab uses components from earlier chapters
   if(PAL.some(taughtEarlier))api.toggle('Lock components until I have watched their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
     say(v?'Component locks on, in every lab: a component from a chapter you have not watched waits until you watch it.':'Component locks off: every component is available.');});
@@ -3454,6 +3493,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     Object.entries(T.bad).filter(([k,b])=>b.d>.3&&G.edges.some(e=>e.a+'>'+e.b===k)).sort((a,b)=>b[1].d-a[1].d).slice(0,2).forEach(([k,b])=>gen.push({edge:k,note:`failing from ${b.t.toFixed(1)} s`}));
     return(o.blame?o.blame(S,G,gen):gen).filter(m=>m&&(m.edge?G.edges.some(e=>e.a+'>'+e.b===m.edge):node(m.id))).slice(0,4);}
   function medal(c){const prev=LAB_BEST[id];let m='';
+    if(!LAB_BEST_DESIGNS[id]||c<=LAB_BEST_DESIGNS[id].cost){LAB_BEST_DESIGNS[id]={cost:c,design:labEncode(id,G)};bestBtn.hidden=false;labSaveDesigns();}
     if(prev==null||c<prev){LAB_BEST[id]=c;labSaveBest();if(prev!=null)m+=` New best: $${c}/h, down from $${prev}/h.`;}
     if(o.lean!=null)m+=c<=o.lean?` Lean medal: no 3-star design we know of costs less than $${o.lean}/h.`:` A 3-star design exists for $${o.lean}/h. Can you find it?`;
     return m;}
@@ -3470,7 +3510,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     msg+=chaosNote(res.stars);
     // three stars: the wires glow for a moment before the result
     if(res.stars===3){celebrate={at:now,msg};SFX.play('good');G.nodes.slice(0,12).forEach(n=>FX.burst(n.x,n.y,C.amber,10,120));return;}
-    api.win(res.stars,res.title,msg);setTimeout(()=>say(),50);}
+    api.win(res.stars,res.title,msg);chalLater(api,()=>say(),50);}
   // hints: a nudge, then which components, then a faint outline of a 3-star design
   let post=LAB_POST[id]||null,hintLvl=LAB_HINT[id]||0,ghostOn=true;
   const ghost=o.solution?layoutGhost():null;
@@ -3505,7 +3545,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
       const fdt=lastNow==null?0:clamp(now-lastNow,0,.1),slowF=running&&now<slowUntil?.45:1;lastNow=now;vnow+=fdt*slowF;
       if(running){simT+=fdt*slowF;const el=simT,step=el-last;if(step>0){const out=o.step(S,G,step,el);S.view=out;last=el;spawn(out,vnow,step);track(out,el,step);react(out,now);}
         if(el>=o.dur&&!done){done=true;running=false;api.lock(false);finish(now);}}
-      if(celebrate&&now-celebrate.at>=.8){const m=celebrate.msg;celebrate=null;api.win(res.stars,res.title,m);setTimeout(()=>say(),50);}
+      if(celebrate&&now-celebrate.at>=.8){const m=celebrate.msg;celebrate=null;api.win(res.stars,res.title,m);chalLater(api,()=>say(),50);}
       const shake=now<shakeUntil?(shakeUntil-now)/.35*5:0;g.save();if(shake)g.translate((Math.random()-.5)*2*shake,(Math.random()-.5)*2*shake);
       const V_=S&&S.view;
       // board
@@ -3709,7 +3749,7 @@ chal('estimation',{title:'Size the chat app',goal:'50 M daily users each send 20
     api.slider('Storage per day',0,8,1,pick[1],v=>STO[v],v=>{pick[1]=v;});
     api.button('Check my estimate',()=>{if(checked)return;checked=true;at=api.now();api.lock(true);const off=pick.map((p,k)=>Math.abs(p-RIGHT[k]));
       const st=off.every(o=>o===0)?3:off.every(o=>o<=1)?2:off.some(o=>o<=1)?1:0;
-      setTimeout(()=>api.win(st,['Off by a lot','One of the two is close','Within 3× on both','Spot on'][st],`Peak: 1 B messages a day ÷ 100,000 s ≈ 10,000/s, × 3 ≈ 30,000/s. Storage: 1 B × 1 KB ≈ 1 TB a day.${st<3?' One step on each slider is a factor of about 3.':''}`),1400);},{primary:true});
+      chalLater(api,()=>api.win(st,['Off by a lot','One of the two is close','Within 3× on both','Spot on'][st],`Peak: 1 B messages a day ÷ 100,000 s ≈ 10,000/s, × 3 ≈ 30,000/s. Storage: 1 B × 1 KB ≈ 1 TB a day.${st<3?' One step on each slider is a factor of about 3.':''}`),1400);},{primary:true});
     api.status('Set both sliders, then press <b>Check my estimate</b>. Each step is about 3×.');
     const L=[['50 M users × 20 messages','= 1 B messages a day'],['÷ ~100,000 s','≈ 10,000 / s on average'],['× 3 for the evening','≈ 30,000 / s at peak'],['1 B × 1 KB','≈ 1 TB a day']];
     return{draw(now){panel(40,70,440,250,{});tx('the brief',58,92,{z:12,c:C.dim,al:'left'});
@@ -4054,7 +4094,7 @@ chal('caching',{title:'Beat LRU',goal:'The cache holds 4 items. When it is full 
       if(j>=0){hits++;slots[j].used=now;FX.burst(SX(j),SY,C.green,14,120);FX.text(SX(j),SY-58,'HIT',C.green,15);next(now);}
       else if(slots.length<SL){slots.push({k:cur,used:now});FX.text(SX(slots.length-1),SY-58,'miss',C.amber,14);next(now);}
       else{waiting=true;api.status(`<b>${cur}</b> is not cached and the cache is full. Click an item to evict, or press its slot number: ${slots.map((s,k)=>`<kbd>${k+1}</kbd> ${s.k} (used ${(now-s.used).toFixed(1)} s ago)`).join(' · ')}.`);}}
-    function next(now){i++;last=now;cur=null;if(i>=N){done=true;setTimeout(()=>api.win(hits>=lru?3:hits>=lru-2?2:1,`${hits} hits · LRU got ${lru}`,hits>=lru?'You matched the machine. Evicting what was least recently used is hard to beat when popularity shifts over time.':'Evict the item that has waited longest since its last request. That is exactly what LRU does.'),500);}}
+    function next(now){i++;last=now;cur=null;if(i>=N){done=true;chalLater(api,()=>api.win(hits>=lru?3:hits>=lru-2?2:1,`${hits} hits · LRU got ${lru}`,hits>=lru?'You matched the machine. Evicting what was least recently used is hard to beat when popularity shifts over time.':'Evict the item that has waited longest since its last request. That is exactly what LRU does.'),500);}}
     return{draw(now){if(t0===null){t0=now;last=now-.4;}if(!waiting&&!done&&!cur&&now-last>.75)arrive(now);
         tx('incoming',120,150,{z:12,c:C.dim});stream.slice(i,i+6).forEach((k,j)=>{const x=120-j*0+0,y=190+j*44;plate(120+(j?0:0),200+j*44,j?50:66,j?34:44,{c:j?C.edge:C.blue,a:j?.5:1,fill:C.panel2});tx(k,120,201+j*44,{z:j?15:22,wt:800,a:j?.5:1});});
         tx('cache (4 slots)',SX(0)+180,180,{z:13,c:C.dim});
@@ -4769,7 +4809,7 @@ chal('locks',{title:'Tune the lease',goal:'Worker A holds the lock and renews it
           if(t>=R.grantB)once('gb',()=>{fl.push({t0:now,d:.6,pts:rev(toL(B_)),c:C.green,r:5,label:'lock · token 34'});FX.text(B_[0],B_[1]-50,R.needless?'took the lock from a healthy A':'B gets the lock',R.needless?C.red:C.green,13);});
           if(t>=R.grantB+1)once('wb',()=>fl.push({t0:now,d:.7,pts:toS(B_),c:C.blue,r:5,label:'write · 34'}));
           if(R.overlap&&t>=(R.needless?R.grantB+2:16.4))once('wa',()=>{fl.push({t0:now,d:.7,pts:toS(A_),c:C.red,r:5,label:'write · 33',drop:p.fence?.95:0});
-            setTimeout(()=>FX.text(ST[0],ST[1]-60,p.fence?'33 < 34: rejected':'B\'s write lost',p.fence?C.green:C.red,14),700);});},
+            chalLater(api,()=>FX.text(ST[0],ST[1]-60,p.fence?'33 < 34: rejected':'B\'s write lost',p.fence?C.green:C.red,14),700);});},
         draw(now,running){flyers(now,fl);box(LS[0],LS[1],{label:'Lock service',sub:`lease ${p.lease} s`,w:200,h:56,c:C.accent});
           const paused=running&&T>=4.2&&T<16.2,bHas=running&&T>=R.grantB;
           server(A_[0],A_[1],{label:'Worker A',sub:paused?'paused (GC)':bHas?'thinks it holds the lock':'holds lock · 33',w:150,st:paused?'hot':bHas?'ok':'acc',col:!bHas&&!paused?C.accent:undefined});
@@ -4872,7 +4912,7 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
       const reach=new Set(),walk=n=>{if(reach.has(n.id))return;reach.add(n.id);G.out(n,['limiter','lb','app']).forEach(walk);};walk(u);
       const off=G.of('app').filter(a=>!reach.has(a.id));if(off.length)return[`${off.length} app server${off.length>1?'s get':' gets'} no traffic: wire ${off.length>1?'them':'it'} to the load balancer.`];
       return[];},
-    init(){return{tot:0,bad:0,lat:[],dead:new Set(),killed:null,qb:{},lost:{deadEnd:0,deadApp:0,overload:0,overBot:0,db:0,dbSync:0,noDb:0},appIn:{}};},
+    init(){return{tot:0,bad:0,lat:[],dead:new Set(),killed:null,qb:{},clicks:{accepted:0,persisted:0},lost:{deadEnd:0,deadApp:0,overload:0,overBot:0,db:0,dbSync:0,noDb:0},appIn:{}};},
     step(S,G,dt,t){const legit=t<6?1000:t<12?3000:2000,bot=t>=12?2000:0;
       const tc=labAt(S,'crash',9,7,13),phase=t<6?'Launch':t<12?(t<tc?'A link goes viral':'Viral, and an app server dies'):(t>=tc&&t<tc+2?'Bot attack, and an app server dies':'Bot attack');
       if(t>=tc&&!S.killed){const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a)));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
@@ -4895,30 +4935,39 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
         const r={a,sL,util:tot/APP,cache,db,q,miss:0,writes,sync:0};rec.push(r);
         if(!db){lost+=sL;S.lost.noDb+=sL*dt;r.sL=0;return;}
         const hits=cache?reads*.9:0;r.miss=reads-hits;if(cache){D(cache,'c',reads);F(a,cache,reads,false,C.green);}
-        D(db,'r',r.miss);D(db,'w',writes);if(q){D(q,'q',reads);F(a,q,reads,false,C.amber);}else{r.sync=reads;D(db,'w',reads);}
+        D(db,'r',r.miss);D(db,'w',writes);if(!q){r.sync=reads;D(db,'w',reads);}
         F(a,db,r.miss+writes+r.sync,false);});
-      // queues drain through workers that write to the database in batches
-      G.of('queue').forEach(q=>{S.qb[q.id]=(S.qb[q.id]||0)+((dem[q.id]||{}).q||0)*dt;const ws=G.out(q,['worker']);let left=S.qb[q.id];
-        ws.forEach(w=>{const wdb=G.out(w,['db'])[0];if(!wdb)return;const take=Math.min(left,WORKER*dt);left-=take;D(wdb,'w',take/dt/100);F(q,w,take/dt,false,C.amber);F(w,wdb,take/dt/100,false,C.amber);load[w.id]=take/dt/WORKER;});
-        S.qb[q.id]=left;load[q.id]=Math.min(1.5,left/20000);});
       // the database: writes first, then reads on the primary's leftover capacity plus every replica
-      const fail={};G.of('db').forEach(d=>{const x=dem[d.id]||{r:0,w:0},reps=G.out(d,['replica']),wOk=Math.min(x.w,DBOPS),rCap=DBOPS-wOk+DBOPS*reps.length;
+      const fail={},batchRoom={};G.of('db').forEach(d=>{const x=dem[d.id]||{r:0,w:0},reps=G.out(d,['replica']),wOk=Math.min(x.w,DBOPS),rCap=DBOPS-wOk+DBOPS*reps.length;
         fail[d.id]={w:x.w?1-wOk/x.w:0,r:x.r?Math.max(0,1-rCap/x.r):0};load[d.id]=(x.r+x.w)/(DBOPS*(1+reps.length));
+        batchRoom[d.id]=Math.max(0,DBOPS-wOk-Math.min(x.r,DBOPS-wOk))*dt;
         reps.forEach(rp=>{const share=Math.max(0,x.r-(DBOPS-wOk))/reps.length;F(d,rp,share,false,C.blue);load[rp.id]=share/DBOPS;});
         if(fail[d.id].w>0||fail[d.id].r>0)G.inn(d,['app']).forEach(a=>bad.add(a.id+'>'+d.id));});
       rec.forEach(r=>{if(!r.db||!r.sL)return;const f=fail[r.db.id],x=Math.min(r.sL,r.miss*f.r+(r.writes+r.sync)*f.w);lost+=x;S.lost.db+=(r.miss*f.r+r.writes*f.w)*dt;S.lost.dbSync+=r.sync*f.w*dt;
-        const dbU=load[r.db.id]||0,ms=15+(r.cache?3:25)+(r.util>.95?45:r.util>.8?15:0)+(dbU>.95?70:dbU>.8?20:0);S.lat.push([ms,r.sL*dt]);});
+        // Count successful redirects only. Queued events stay pending until the DB accepts their batch.
+        const clicks=Math.max(0,r.sL*.99-r.miss*f.r-r.sync*f.w)*dt;S.clicks.accepted+=clicks;
+        if(r.q){S.qb[r.q.id]=(S.qb[r.q.id]||0)+clicks;F(r.a,r.q,clicks/dt,false,C.amber);}else S.clicks.persisted+=clicks;
+      });
+      // Workers share both their own capacity and the primary's remaining operations.
+      const workerRoom={};G.of('worker').forEach(w=>workerRoom[w.id]=WORKER*dt);
+      G.of('queue').forEach(q=>{let left=S.qb[q.id]||0;
+        G.out(q,['worker']).forEach(w=>{const db=G.out(w,['db'])[0];if(!db)return;const take=Math.min(left,workerRoom[w.id],batchRoom[db.id]*100);
+          left-=take;workerRoom[w.id]-=take;batchRoom[db.id]-=take/100;S.clicks.persisted+=take;
+          F(q,w,take/dt,false,C.amber);F(w,db,take/dt/100,false,C.amber);load[w.id]=(load[w.id]||0)+take/dt/WORKER;
+          load[db.id]=(load[db.id]||0)+take/dt/100/(DBOPS*(1+G.out(db,['replica']).length));});
+        S.qb[q.id]=Math.max(0,left);load[q.id]=Math.min(1.5,left/20000);});
+      rec.forEach(r=>{if(!r.db||!r.sL)return;const dbU=load[r.db.id]||0,ms=15+(r.cache?3:25)+(r.util>.95?45:r.util>.8?15:0)+(dbU>.95?70:dbU>.8?20:0);S.lat.push([ms,r.sL*dt]);});
       S.tot+=legit*dt;S.bad+=Math.min(legit,lost)*dt;
       return{flows,load,dead:S.dead,phase,badEdges:bad};},
-    hud(S){const s=S.tot?1-S.bad/S.tot:1,l=p95(S),b=backlog(S);return[['served',`${(s*100).toFixed(1)}%`,s>=.99?C.green:C.red],['p95',`${l} ms`,l<=80?C.green:C.red],['clicks waiting',`${Math.round(b)}`,b<500?C.green:C.amber]];},
-    score(S,G,cost){const s=1-S.bad/S.tot,lat=p95(S),counted=backlog(S)<500;
+    hud(S){const s=S.tot?1-S.bad/S.tot:1,l=p95(S),b=backlog(S);return[['served',`${(s*100).toFixed(1)}%`,s>=.99?C.green:C.red],['p95',`${l} ms`,l<=80?C.green:C.red],['clicks waiting',`${Math.ceil(b)}`,b<1e-6?C.green:C.amber]];},
+    score(S,G,cost){const s=1-S.bad/S.tot,lat=p95(S),counted=!!S.clicks&&backlog(S)<1e-6&&Math.abs(S.clicks.accepted-S.clicks.persisted)<1e-6;
       if(s>=.99&&lat<=80&&cost<=20&&counted)return{stars:3,title:'Launched without a scratch',msg:`${(s*100).toFixed(1)}% served, p95 ${lat} ms, $${cost}/h, every click counted. A limiter for the bots, a load balancer that skips the dead server, a spare app server, a cache for the viral link and a queue for the clicks: you built it.`};
       const L=S.lost,top=Object.entries(L).sort((a,b)=>b[1]-a[1])[0];
       const why=top&&top[1]>S.tot*.003?({deadEnd:'Some traffic hit a dead end: every path from Users has to reach an app server.',deadApp:'Requests kept going to the crashed server. Put a load balancer in front: its health checks skip dead servers.',
         overload:'Your app servers ran out of capacity during the viral spike. Add servers, with one to spare for when one dies.',overBot:'The bot attack used up your app servers. Put a rate limiter in front of everything.',
         db:G.of('cache').length?'The database could not keep up. Add a read replica, or make sure every app server uses the cache.':'The database drowned in reads. Put a cache between the app servers and the database.',
         dbSync:'Counting clicks synchronously writes to the database on every redirect. Send click events to a queue and let a worker write them.',noDb:'App servers need the database to look up short codes.'})[top[0]]:'';
-      const extra=[lat>80?`p95 latency was ${lat} ms: something ran hot.`:'',cost>20?`Over budget at $${cost}/h.`:'',!counted?'Clicks piled up in the queue: wire a worker from the queue to the database.':''].filter(Boolean).join(' ');
+      const extra=[lat>80?`p95 latency was ${lat} ms: something ran hot.`:'',cost>20?`Over budget at $${cost}/h.`:'',!counted?`${Math.ceil(backlog(S))} clicks still waiting or not accounted for: wire enough workers to the database and leave capacity for their batches.`:''].filter(Boolean).join(' ');
       const msg=[why,extra].filter(Boolean).join(' ')||'Close. Check which phase hurt most.';
       if(s>=.95)return{stars:2,title:`${(s*100).toFixed(1)}% served`,msg};
       if(s>=.7)return{stars:1,title:`${(s*100).toFixed(1)}% served`,msg};
@@ -4974,10 +5023,15 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
       const sending=rate*cf;S.lost.noConn+=rate*(1-cf)*dt;
       const chatIn={};G.of('gateway').forEach(g=>{const share=sending*held[g.id]/Math.max(connected,1),cs=G.out(g,['chat']);if(!share)return;
         if(!cs.length){S.lost.noChat+=share*dt;return;}cs.forEach(c=>{chatIn[c.id]=(chatIn[c.id]||0)+share/cs.length;F(g,c,share/cs.length,false,C.blue);});});
+      // A shard's capacity belongs to the physical node, shared by every producer.
+      const storeIn={},chatReady={};
+      G.of('chat').forEach(c=>{const inC=chatIn[c.id]||0,ok=Math.min(inC,CHAT);chatReady[c.id]=ok;load[c.id]=inC/CHAT;S.lost.noChat+=(inC-ok)*dt;
+        const st=G.out(c,['store']);st.forEach(s=>storeIn[s.id]=(storeIn[s.id]||0)+ok/st.length);});
+      G.of('store').forEach(s=>load[s.id]=(storeIn[s.id]||0)/SHARD);
       let reached=0;
-      G.of('chat').forEach(c=>{const inC=chatIn[c.id]||0;load[c.id]=inC/CHAT;const ok=Math.min(inC,CHAT);S.lost.noChat+=(inC-ok)*dt;
+      G.of('chat').forEach(c=>{const ok=chatReady[c.id];
         const st=G.out(c,['store']);if(!st.length){S.lost.store+=ok*dt;return;}
-        let stored=0;const per=ok/st.length;st.forEach(s=>{const w=Math.min(per,SHARD);stored+=w;S.lost.store+=(per-w)*dt;F(c,s,per,per>SHARD,C.amber);load[s.id]=(load[s.id]||0)+per/SHARD;});
+        let stored=0;const per=ok/st.length;st.forEach(s=>{const demand=storeIn[s.id]||0,w=per*Math.min(1,SHARD/Math.max(demand,1));stored+=w;S.lost.store+=(per-w)*dt;F(c,s,per,demand>SHARD,C.amber);});
         if(!stored)return;
         // delivery: online recipients via pub/sub, or direct calls to every wired gateway; offline ones by push
         const ps=G.out(c,['pubsub'])[0],direct=G.out(c,['gateway']),push=G.out(c,['push'])[0];
@@ -5224,10 +5278,12 @@ const GLOSSARY=[
    ============================================================ */
 (function(){
 const $=id=>document.getElementById(id);
-const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
-let seen={};try{seen=JSON.parse(store.get('sdve-seen')||'{}')||{};}catch(e){seen={};}
-let stars={};try{stars=JSON.parse(store.get('pim-stars')||'{}')||{};}catch(e){stars={};}
+const store=PIM_STORE;
+labRestore();
+let seen=pimSeen(store.json('sdve-seen',{}));
+let stars=pimStars(store.json('pim-stars',{}));
 let mode='watch',inst=null,api=null,ct=0,pdown=null,quizG=null;   // quizG: the section whose quiz is running
+let challengeToken=0;
 let cur=0,t=0,playing=false,speed=1,last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
@@ -5337,30 +5393,37 @@ sc.addEventListener('pointerup',endDrag);sc.addEventListener('change',endDrag);w
 cv.addEventListener('click',()=>{if(mode!=='play')$('playBtn').click();});
 /* ---------------- challenge mode ---------------- */
 function renderChal(dt){g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawVoid(ct);try{if(inst)inst.draw(ct,dt);}catch(e){console.error(e);}g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;FX.step(dt);}
-function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[];ctl.innerHTML='';run.innerHTML='';
+function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),token=challengeToken,id=quizG?QUIZ[quizG].id:chapters[cur].id;let shareBox=null;
+  const active=()=>token===challengeToken&&mode==='play';ctl.innerHTML='';run.innerHTML='';
   const field=(label,node)=>{const d=document.createElement('div');d.className='ctl';const s=document.createElement('span');s.textContent=label;d.append(s,node);ctl.appendChild(d);return d;};
   return{now:()=>ct,
-    status(h){$('cStatus').innerHTML=h;},
+    status(h){if(active())$('cStatus').innerHTML=h;},
+    later(fn,ms){const timer=setTimeout(()=>{timers.delete(timer);if(active())fn();},ms);timers.add(timer);return timer;},
+    dispose(){timers.forEach(clearTimeout);timers.clear();if(shareBox)shareBox.remove();},
+    clearShareLink(){if(shareBox)shareBox.hidden=true;},
+    shareLink(url){if(!active())return;let box=shareBox;if(!box){box=shareBox=document.createElement('div');box.id='shareLink';box.className='share-link';$('cpanel').appendChild(box);}
+      box.hidden=false;box.textContent='';const label=document.createElement('label'),input=document.createElement('input');label.textContent='Share this design';input.type='url';input.readOnly=true;input.value=url;input.setAttribute('aria-label','Share this design link');label.appendChild(input);box.appendChild(label);},
     button(label,fn,o={}){const b=document.createElement('button');b.type='button';b.className='btn'+(o.primary?' pri':'');b.textContent=label;b.onclick=()=>fn();run.appendChild(b);els.push(b);return b;},
     slider(label,min,max,step,val,fmt,fn){const i=document.createElement('input');i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;i.setAttribute('aria-label',label);const o=document.createElement('output');o.textContent=fmt(val);
       i.oninput=()=>{o.textContent=fmt(+i.value);fn(+i.value);};field(label,i).appendChild(o);els.push(i);return i;},
     seg(label,opts,val,fn){const box=document.createElement('div');box.className='seg';box.setAttribute('role','group');box.setAttribute('aria-label',label);
       opts.forEach(([v,txt])=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.setAttribute('aria-pressed',String(v===val));b.onclick=()=>{box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));fn(v);};box.appendChild(b);els.push(b);});field(label,box);return box;},
     toggle(label,val,fn){const b=document.createElement('button');b.type='button';b.className='tog';b.textContent=label;b.setAttribute('aria-pressed',String(val));b.onclick=()=>{const v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(v));fn(v);};ctl.appendChild(b);els.push(b);return b;},
-    lock(v){els.forEach(e=>e.disabled=v);},
-    win(st,title,msg){showResult(st,title,msg);}};}
+    lock(v){if(active())els.forEach(e=>e.disabled=v);},
+    win(st,title,msg){if(active())showResult(st,title,msg,id,token);}};}
+function disposeChallenge(){challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
-function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;quizG=gname||null;setPlaying(false);showCard(false);hideResult();mode='play';document.body.classList.add('play');
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();mode='play';document.body.classList.add('play');
   $('cTitle').textContent=d.title;$('cGoal').textContent=d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();inst=d.make(api);$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
   $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
-function exitChal(quiet){const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;inst=null;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
-function showResult(st,title,msg){const c=chapters[cur],id=quizG?QUIZ[quizG].id:c.id;if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
+function exitChal(quiet){disposeChallenge();const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
+function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
   $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
   $('resMsg').textContent=msg+(all&&st===3?' That was the last star: you have mastered every challenge in the course!':'');
   $('resNext').textContent=quizG?'Next section →':cur===chapters.length-1?'Back to lesson 1 →':'Next lesson →';$('resWatch').textContent=quizG?'Back to the lessons':'Watch the lesson';$('result').classList.add('show');if(st===3)FX.burst(W/2,H/2,C.amber,50,300);
-  setTimeout(()=>{const b=$(st?'resNext':'resRetry');if(b)b.focus({preventScroll:true});},60);}
+  api.later(()=>{if(token===challengeToken&&$('result').classList.contains('show')){const b=$(st?'resNext':'resRetry');if(b)b.focus({preventScroll:true});}},60);}
 function hideResult(){$('result').classList.remove('show');}
 const allIds=()=>[...Object.keys(CHAL),...Object.values(QUIZ).map(q=>q.id)];
 // the first chapter of the section after a quiz's section
@@ -5473,23 +5536,23 @@ function closeGlossary(){const d=$('glossary');if(d.close)d.close();else d.remov
 $('glossBtn').onclick=openGlossary;$('glClose').onclick=closeGlossary;$('glFind').addEventListener('input',e=>filterGloss(e.target.value));
 
 /* ---------------- progress export / import ---------------- */
-const KNOWN=new Set(allIds().concat(chapters.map(c=>c.id)));
 const ioMsg=s=>{$('ioMsg').textContent=s;};
-function exportProgress(){const data={app:'packets-in-motion',version:1,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS};
+function exportProgress(){const data={app:'packets-in-motion',version:2,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS,labDesigns:labDesigns()};
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));a.download='packets-in-motion-progress.json';
   document.body.appendChild(a);a.click();a.remove();ioMsg('Progress saved to packets-in-motion-progress.json.');return data;}
 // merges: a chapter stays watched, and each challenge keeps its best score
 function importProgress(text){let d;try{d=JSON.parse(text);}catch(e){ioMsg('That file is not valid JSON.');return false;}
-  if(!d||d.app!=='packets-in-motion'||typeof d.seen!=='object'||typeof d.stars!=='object'||!d.seen||!d.stars){ioMsg('That is not a Packets in Motion progress file.');return false;}
-  let nSeen=0,nStars=0;
-  Object.keys(d.seen).forEach(k=>{if(KNOWN.has(k)&&d.seen[k]&&!seen[k]){seen[k]=1;nSeen++;}});
-  Object.entries(d.stars).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>=0&&n<=3&&n>(stars[k]||0)){nStars+=n-(stars[k]||0);stars[k]=n;}});
-  if(d.labBest&&typeof d.labBest==='object')Object.entries(d.labBest).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>0&&(LAB_BEST[k]==null||n<LAB_BEST[k]))LAB_BEST[k]=n;});labSaveBest();
-  if(d.labChaos&&typeof d.labChaos==='object')Object.keys(d.labChaos).forEach(k=>{if(KNOWN.has(k)&&d.labChaos[k]===true)LAB_CHAOS[k]=true;});labPut('pim-lab-chaos',LAB_CHAOS);
+  if(!d||d.app!=='packets-in-motion'||![1,2].includes(d.version)||!pimRecord(d.seen)||!pimRecord(d.stars)){ioMsg('That is not a Packets in Motion progress file or its version is unsupported.');return false;}
+  let nSeen=0,nStars=0,nLabs=0;
+  Object.keys(pimSeen(d.seen)).forEach(k=>{if(!seen[k]){seen[k]=1;nSeen++;}});
+  Object.entries(pimStars(d.stars)).forEach(([k,n])=>{if(n>(stars[k]||0)){nStars+=n-(stars[k]||0);stars[k]=n;}});
+  Object.entries(pimFilter(d.labBest,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&Number.isSafeInteger(v)&&v>0&&v<=10000)).forEach(([k,n])=>{if(LAB_BEST[k]==null||n<LAB_BEST[k]){LAB_BEST[k]=n;nLabs++;}});
+  Object.keys(pimFilter(d.labChaos,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true)).forEach(k=>{if(!LAB_CHAOS[k]){LAB_CHAOS[k]=true;nLabs++;}});labPut('pim-lab-chaos',LAB_CHAOS);
+  if(d.version===2)nLabs+=labMergeDesigns(d.labDesigns);labSaveBest();labSaveDesigns();
   store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();
-  ioMsg(nSeen||nStars?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.`:'Nothing new in that file: you already have all of it.');return true;}
+  ioMsg(nSeen||nStars||nLabs?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}`:'Nothing new in that file: you already have all of it.');return true;}
 $('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
-$('importFile').onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;return file.text().then(importProgress).finally(()=>{e.target.value='';});};
+$('importFile').onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;return file.text().then(importProgress).catch(()=>ioMsg('Could not read that file. Try selecting it again.')).finally(()=>{e.target.value='';});};
 
 /* ---------------- sound cues ---------------- */
 function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',String(v));$('soundBtn').textContent='Sound cues: '+(v?'on':'off');store.set('pim-sound',v?'1':'0');}
