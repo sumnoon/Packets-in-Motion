@@ -46,6 +46,7 @@
       <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
       <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
       <p class="io-msg" id="ioMsg" role="status"></p>
+      <p class="io-msg" id="storageMsg" role="status"></p>
     </div>
   </aside>
   <div class="scrim" id="scrim"></div>
@@ -121,6 +122,7 @@
 <dialog class="gloss" id="glossary" aria-labelledby="glTitle"><div class="gh"><h2 id="glTitle">Glossary</h2><input type="search" id="glFind" placeholder="Filter terms" aria-label="Filter terms" autocomplete="off"><button class="btn sm" id="glClose">Close</button></div><dl id="glList"></dl></dialog>
 <script>
 <!-- include: engine.js -->
+<!-- include: storage.js -->
 </script>
 <script>
 <!-- include: chapters/packets.js -->

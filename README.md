@@ -65,7 +65,11 @@ Ten challenges are **architecture labs**: you design the system yourself. Drag c
 
 After a run that falls short, the board marks the weak spots: the component that overloaded and when, or the wire where requests failed. Hint goes a level deeper with each press: a nudge, then the components you need, then a faint outline of a 3-star design to trace. Ctrl+Z (or Undo) reverses any change, and each lab remembers your cheapest 3-star design, with a lean medal where a cheaper one exists.
 
+Lab drafts, including wires and design options, survive reloads. **Restore best design** brings back the cheapest saved three-star board; restoring it can also be undone. Older progress files retain their best-cost records, and a new successful run saves a restorable board. The shortener only earns three stars when every successful redirect's click event has been persisted, with none left pending.
+
 Once a design holds, turn on **chaos mode**: every run, the incidents strike at a random time and hit a random component, and three 3-star runs in a row earn the lab's chaos-proof badge. **Copy share link** packs your design into a link, so anyone who opens it gets the same board and can try to beat your cost. Components grow with the course: a component from a chapter you haven't watched yet stays locked until you watch it. Already know the material? Turn off **Lock components until I have watched their chapter** in any lab.
+
+Shared boards are saved before their URL is tidied, so they survive reloads too. When using the downloaded HTML, share links open the hosted course. If clipboard access fails, the selectable link remains available to copy manually. If browser storage is unavailable or full, the sidebar asks you to export before closing the tab.
 
 Labs work with the keyboard too: digits add components, pressing two components' letters wires them, Delete removes the selection, Ctrl+Z undoes, and Enter runs the test. The status line reads the whole design aloud, including the weak spots from the last run.
 
@@ -76,7 +80,7 @@ Each section with more than one chapter ends with a **section quiz**: six multip
 - **Search** the sidebar (press `/`) by title, caption or trade-off: "stampede", "429" or "leader" all find the right chapters.
 - **Glossary:** key terms in captions, the transcript and the trade-offs are underlined; hover, focus or tap one for a one-line definition. Press G for the full glossary, with links to every chapter that uses each term.
 - **Before this / Related:** the trade-offs card links to the chapters a lesson builds on and the ones that go further.
-- **Export / import progress** from the sidebar. Progress (chapters watched, stars, your cheapest lab designs and chaos-proof badges) lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost.
+- **Export / import progress** from the sidebar. Progress (chapters watched, stars, lab drafts, your cheapest saved lab designs and chaos-proof badges) lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost, and an existing draft is kept. Both original version 1 files and the new version 2 files are supported.
 - **Sound cues** (off by default): soft tones for right and wrong moves, new steps and results. They are synthesized in the browser; nothing is downloaded.
 
 ## Visual language

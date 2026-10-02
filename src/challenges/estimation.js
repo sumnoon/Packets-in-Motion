@@ -7,7 +7,7 @@ chal('estimation',{title:'Size the chat app',goal:'50 M daily users each send 20
     api.slider('Storage per day',0,8,1,pick[1],v=>STO[v],v=>{pick[1]=v;});
     api.button('Check my estimate',()=>{if(checked)return;checked=true;at=api.now();api.lock(true);const off=pick.map((p,k)=>Math.abs(p-RIGHT[k]));
       const st=off.every(o=>o===0)?3:off.every(o=>o<=1)?2:off.some(o=>o<=1)?1:0;
-      setTimeout(()=>api.win(st,['Off by a lot','One of the two is close','Within 3× on both','Spot on'][st],`Peak: 1 B messages a day ÷ 100,000 s ≈ 10,000/s, × 3 ≈ 30,000/s. Storage: 1 B × 1 KB ≈ 1 TB a day.${st<3?' One step on each slider is a factor of about 3.':''}`),1400);},{primary:true});
+      chalLater(api,()=>api.win(st,['Off by a lot','One of the two is close','Within 3× on both','Spot on'][st],`Peak: 1 B messages a day ÷ 100,000 s ≈ 10,000/s, × 3 ≈ 30,000/s. Storage: 1 B × 1 KB ≈ 1 TB a day.${st<3?' One step on each slider is a factor of about 3.':''}`),1400);},{primary:true});
     api.status('Set both sliders, then press <b>Check my estimate</b>. Each step is about 3×.');
     const L=[['50 M users × 20 messages','= 1 B messages a day'],['÷ ~100,000 s','≈ 10,000 / s on average'],['× 3 for the evening','≈ 30,000 / s at peak'],['1 B × 1 KB','≈ 1 TB a day']];
     return{draw(now){panel(40,70,440,250,{});tx('the brief',58,92,{z:12,c:C.dim,al:'left'});

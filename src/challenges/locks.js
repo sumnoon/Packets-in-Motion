@@ -14,7 +14,7 @@ chal('locks',{title:'Tune the lease',goal:'Worker A holds the lock and renews it
           if(t>=R.grantB)once('gb',()=>{fl.push({t0:now,d:.6,pts:rev(toL(B_)),c:C.green,r:5,label:'lock · token 34'});FX.text(B_[0],B_[1]-50,R.needless?'took the lock from a healthy A':'B gets the lock',R.needless?C.red:C.green,13);});
           if(t>=R.grantB+1)once('wb',()=>fl.push({t0:now,d:.7,pts:toS(B_),c:C.blue,r:5,label:'write · 34'}));
           if(R.overlap&&t>=(R.needless?R.grantB+2:16.4))once('wa',()=>{fl.push({t0:now,d:.7,pts:toS(A_),c:C.red,r:5,label:'write · 33',drop:p.fence?.95:0});
-            setTimeout(()=>FX.text(ST[0],ST[1]-60,p.fence?'33 < 34: rejected':'B\'s write lost',p.fence?C.green:C.red,14),700);});},
+            chalLater(api,()=>FX.text(ST[0],ST[1]-60,p.fence?'33 < 34: rejected':'B\'s write lost',p.fence?C.green:C.red,14),700);});},
         draw(now,running){flyers(now,fl);box(LS[0],LS[1],{label:'Lock service',sub:`lease ${p.lease} s`,w:200,h:56,c:C.accent});
           const paused=running&&T>=4.2&&T<16.2,bHas=running&&T>=R.grantB;
           server(A_[0],A_[1],{label:'Worker A',sub:paused?'paused (GC)':bHas?'thinks it holds the lock':'holds lock · 33',w:150,st:paused?'hot':bHas?'ok':'acc',col:!bHas&&!paused?C.accent:undefined});

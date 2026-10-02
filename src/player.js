@@ -3,10 +3,12 @@
    ============================================================ */
 (function(){
 const $=id=>document.getElementById(id);
-const store={get(k){try{return localStorage.getItem(k);}catch(e){return null;}},set(k,v){try{localStorage.setItem(k,v);}catch(e){}}};
-let seen={};try{seen=JSON.parse(store.get('sdve-seen')||'{}')||{};}catch(e){seen={};}
-let stars={};try{stars=JSON.parse(store.get('pim-stars')||'{}')||{};}catch(e){stars={};}
+const store=PIM_STORE;
+labRestore();
+let seen=pimSeen(store.json('sdve-seen',{}));
+let stars=pimStars(store.json('pim-stars',{}));
 let mode='watch',inst=null,api=null,ct=0,pdown=null,quizG=null;   // quizG: the section whose quiz is running
+let challengeToken=0;
 let cur=0,t=0,playing=false,speed=1,last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
@@ -116,30 +118,37 @@ sc.addEventListener('pointerup',endDrag);sc.addEventListener('change',endDrag);w
 cv.addEventListener('click',()=>{if(mode!=='play')$('playBtn').click();});
 /* ---------------- challenge mode ---------------- */
 function renderChal(dt){g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawVoid(ct);try{if(inst)inst.draw(ct,dt);}catch(e){console.error(e);}g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;FX.step(dt);}
-function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[];ctl.innerHTML='';run.innerHTML='';
+function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),token=challengeToken,id=quizG?QUIZ[quizG].id:chapters[cur].id;let shareBox=null;
+  const active=()=>token===challengeToken&&mode==='play';ctl.innerHTML='';run.innerHTML='';
   const field=(label,node)=>{const d=document.createElement('div');d.className='ctl';const s=document.createElement('span');s.textContent=label;d.append(s,node);ctl.appendChild(d);return d;};
   return{now:()=>ct,
-    status(h){$('cStatus').innerHTML=h;},
+    status(h){if(active())$('cStatus').innerHTML=h;},
+    later(fn,ms){const timer=setTimeout(()=>{timers.delete(timer);if(active())fn();},ms);timers.add(timer);return timer;},
+    dispose(){timers.forEach(clearTimeout);timers.clear();if(shareBox)shareBox.remove();},
+    clearShareLink(){if(shareBox)shareBox.hidden=true;},
+    shareLink(url){if(!active())return;let box=shareBox;if(!box){box=shareBox=document.createElement('div');box.id='shareLink';box.className='share-link';$('cpanel').appendChild(box);}
+      box.hidden=false;box.textContent='';const label=document.createElement('label'),input=document.createElement('input');label.textContent='Share this design';input.type='url';input.readOnly=true;input.value=url;input.setAttribute('aria-label','Share this design link');label.appendChild(input);box.appendChild(label);},
     button(label,fn,o={}){const b=document.createElement('button');b.type='button';b.className='btn'+(o.primary?' pri':'');b.textContent=label;b.onclick=()=>fn();run.appendChild(b);els.push(b);return b;},
     slider(label,min,max,step,val,fmt,fn){const i=document.createElement('input');i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;i.setAttribute('aria-label',label);const o=document.createElement('output');o.textContent=fmt(val);
       i.oninput=()=>{o.textContent=fmt(+i.value);fn(+i.value);};field(label,i).appendChild(o);els.push(i);return i;},
     seg(label,opts,val,fn){const box=document.createElement('div');box.className='seg';box.setAttribute('role','group');box.setAttribute('aria-label',label);
       opts.forEach(([v,txt])=>{const b=document.createElement('button');b.type='button';b.textContent=txt;b.setAttribute('aria-pressed',String(v===val));b.onclick=()=>{box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));fn(v);};box.appendChild(b);els.push(b);});field(label,box);return box;},
     toggle(label,val,fn){const b=document.createElement('button');b.type='button';b.className='tog';b.textContent=label;b.setAttribute('aria-pressed',String(val));b.onclick=()=>{const v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(v));fn(v);};ctl.appendChild(b);els.push(b);return b;},
-    lock(v){els.forEach(e=>e.disabled=v);},
-    win(st,title,msg){showResult(st,title,msg);}};}
+    lock(v){if(active())els.forEach(e=>e.disabled=v);},
+    win(st,title,msg){if(active())showResult(st,title,msg,id,token);}};}
+function disposeChallenge(){challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
-function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;quizG=gname||null;setPlaying(false);showCard(false);hideResult();mode='play';document.body.classList.add('play');
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();mode='play';document.body.classList.add('play');
   $('cTitle').textContent=d.title;$('cGoal').textContent=d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();inst=d.make(api);$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
   $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
-function exitChal(quiet){const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;inst=null;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
-function showResult(st,title,msg){const c=chapters[cur],id=quizG?QUIZ[quizG].id:c.id;if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
+function exitChal(quiet){disposeChallenge();const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
+function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
   $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
   $('resMsg').textContent=msg+(all&&st===3?' That was the last star: you have mastered every challenge in the course!':'');
   $('resNext').textContent=quizG?'Next section →':cur===chapters.length-1?'Back to lesson 1 →':'Next lesson →';$('resWatch').textContent=quizG?'Back to the lessons':'Watch the lesson';$('result').classList.add('show');if(st===3)FX.burst(W/2,H/2,C.amber,50,300);
-  setTimeout(()=>{const b=$(st?'resNext':'resRetry');if(b)b.focus({preventScroll:true});},60);}
+  api.later(()=>{if(token===challengeToken&&$('result').classList.contains('show')){const b=$(st?'resNext':'resRetry');if(b)b.focus({preventScroll:true});}},60);}
 function hideResult(){$('result').classList.remove('show');}
 const allIds=()=>[...Object.keys(CHAL),...Object.values(QUIZ).map(q=>q.id)];
 // the first chapter of the section after a quiz's section
@@ -252,23 +261,23 @@ function closeGlossary(){const d=$('glossary');if(d.close)d.close();else d.remov
 $('glossBtn').onclick=openGlossary;$('glClose').onclick=closeGlossary;$('glFind').addEventListener('input',e=>filterGloss(e.target.value));
 
 /* ---------------- progress export / import ---------------- */
-const KNOWN=new Set(allIds().concat(chapters.map(c=>c.id)));
 const ioMsg=s=>{$('ioMsg').textContent=s;};
-function exportProgress(){const data={app:'packets-in-motion',version:1,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS};
+function exportProgress(){const data={app:'packets-in-motion',version:2,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS,labDesigns:labDesigns()};
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));a.download='packets-in-motion-progress.json';
   document.body.appendChild(a);a.click();a.remove();ioMsg('Progress saved to packets-in-motion-progress.json.');return data;}
 // merges: a chapter stays watched, and each challenge keeps its best score
 function importProgress(text){let d;try{d=JSON.parse(text);}catch(e){ioMsg('That file is not valid JSON.');return false;}
-  if(!d||d.app!=='packets-in-motion'||typeof d.seen!=='object'||typeof d.stars!=='object'||!d.seen||!d.stars){ioMsg('That is not a Packets in Motion progress file.');return false;}
-  let nSeen=0,nStars=0;
-  Object.keys(d.seen).forEach(k=>{if(KNOWN.has(k)&&d.seen[k]&&!seen[k]){seen[k]=1;nSeen++;}});
-  Object.entries(d.stars).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>=0&&n<=3&&n>(stars[k]||0)){nStars+=n-(stars[k]||0);stars[k]=n;}});
-  if(d.labBest&&typeof d.labBest==='object')Object.entries(d.labBest).forEach(([k,v])=>{const n=Math.round(+v);if(KNOWN.has(k)&&n>0&&(LAB_BEST[k]==null||n<LAB_BEST[k]))LAB_BEST[k]=n;});labSaveBest();
-  if(d.labChaos&&typeof d.labChaos==='object')Object.keys(d.labChaos).forEach(k=>{if(KNOWN.has(k)&&d.labChaos[k]===true)LAB_CHAOS[k]=true;});labPut('pim-lab-chaos',LAB_CHAOS);
+  if(!d||d.app!=='packets-in-motion'||![1,2].includes(d.version)||!pimRecord(d.seen)||!pimRecord(d.stars)){ioMsg('That is not a Packets in Motion progress file or its version is unsupported.');return false;}
+  let nSeen=0,nStars=0,nLabs=0;
+  Object.keys(pimSeen(d.seen)).forEach(k=>{if(!seen[k]){seen[k]=1;nSeen++;}});
+  Object.entries(pimStars(d.stars)).forEach(([k,n])=>{if(n>(stars[k]||0)){nStars+=n-(stars[k]||0);stars[k]=n;}});
+  Object.entries(pimFilter(d.labBest,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&Number.isSafeInteger(v)&&v>0&&v<=10000)).forEach(([k,n])=>{if(LAB_BEST[k]==null||n<LAB_BEST[k]){LAB_BEST[k]=n;nLabs++;}});
+  Object.keys(pimFilter(d.labChaos,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true)).forEach(k=>{if(!LAB_CHAOS[k]){LAB_CHAOS[k]=true;nLabs++;}});labPut('pim-lab-chaos',LAB_CHAOS);
+  if(d.version===2)nLabs+=labMergeDesigns(d.labDesigns);labSaveBest();labSaveDesigns();
   store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();
-  ioMsg(nSeen||nStars?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.`:'Nothing new in that file: you already have all of it.');return true;}
+  ioMsg(nSeen||nStars||nLabs?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}`:'Nothing new in that file: you already have all of it.');return true;}
 $('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
-$('importFile').onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;return file.text().then(importProgress).finally(()=>{e.target.value='';});};
+$('importFile').onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;return file.text().then(importProgress).catch(()=>ioMsg('Could not read that file. Try selecting it again.')).finally(()=>{e.target.value='';});};
 
 /* ---------------- sound cues ---------------- */
 function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',String(v));$('soundBtn').textContent='Sound cues: '+(v?'on':'off');store.set('pim-sound',v?'1':'0');}

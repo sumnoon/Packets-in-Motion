@@ -220,10 +220,14 @@ body.play .transcript{display:none}
 .side-foot{display:flex;flex-direction:column;gap:10px;margin:22px 10px 0;padding-top:16px;border-top:1px solid var(--line)}
 .btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
 .side-foot>.btn{align-self:flex-start}
+.share-link{width:100%;min-width:0}
+.share-link label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--dim)}
+.share-link input{width:100%;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
 .btn.tg[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
 .prog-io{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)}
 .prog-io span{margin-right:auto}
 .io-msg{margin:0;font-size:12px;color:var(--dim);min-height:1em}
+#storageMsg:empty{display:none}
 .links{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:13px;color:var(--dim)}
 .links:empty{display:none}
 .links span{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center}

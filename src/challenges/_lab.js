@@ -29,13 +29,12 @@ const LAB_SAVE={};
 const LAB_POST={},LAB_HINT={},LAB_UNDO={},LAB_FAILS={};
 const LAB_DEFS={};   // every lab's scenario, by id (the tests build each solution from it)
 // the cheapest 3-star cost per lab, kept in the browser
-function labStore(k,def){try{return JSON.parse(localStorage.getItem(k))||def;}catch(e){return def;}}
-function labPut(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
-const LAB_BEST=labStore('pim-lab-best',{});
+const labStore=(k,def)=>PIM_STORE.json(k,def),labPut=(k,v)=>PIM_STORE.put(k,v);
+const LAB_BEST={},LAB_BEST_DESIGNS={};
 function labSaveBest(){labPut('pim-lab-best',LAB_BEST);}
 // chaos mode: each run's incidents strike at random times and hit a random component.
 // Three 3-star runs in a row earn the lab's chaos-proof badge.
-const LAB_CHAOS=labStore('pim-lab-chaos',{}),LAB_CHAOS_ON={},LAB_STREAK={};
+const LAB_CHAOS={},LAB_CHAOS_ON={},LAB_STREAK={};
 function labRng(seed){return()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 // an incident's time: the scripted one, or in chaos mode a random time between lo and hi (fixed for the run)
 function labAt(S,key,def,lo,hi){if(!S.chaos)return def;const m=S._at||(S._at={});if(!(key in m))m[key]=lo+(hi-lo)*S.rng();return m[key];}
@@ -53,31 +52,47 @@ function labEncode(id,G){const o=LAB_DEFS[id],kinds=labKinds(o);
   return['1',G.nodes.map(n=>[kinds.indexOf(n.kind),Math.round(n.x/10),Math.round(n.y/10)].join('.')).join('_'),
     G.edges.map(e=>G.nodes.findIndex(n=>n.id===e.a)+'-'+G.nodes.findIndex(n=>n.id===e.b)).join('_'),
     (o.toggles||[]).map(t=>G.opts[t.key]?1:0).join('')].join('~');}
-function labDecode(id,code){const o=LAB_DEFS[id];if(!o||typeof code!=='string'||code.length>4000)return null;
+function labDecode(id,code){if(!Object.hasOwn(LAB_DEFS,id))return null;const o=LAB_DEFS[id];if(typeof code!=='string'||code.length>4000)return null;
   const p=code.split('~');if(p[0]!=='1'||p.length!==4)return null;
+  if(!/^[01]*$/.test(p[3])||p[3].length!==(o.toggles||[]).length)return null;
   const kinds=labKinds(o),F=o.fixed.length,nodes=[],rows=p[1]?p[1].split('_'):[];if(rows.length<F||rows.length>26)return null;
-  for(let i=0;i<rows.length;i++){const[k,x,y]=rows[i].split('.').map(Number),kind=kinds[k];if(!kind||!isFinite(x)||!isFinite(y))return null;
+  for(let i=0;i<rows.length;i++){if(!/^\d+\.-?\d+\.-?\d+$/.test(rows[i]))return null;const[k,x,y]=rows[i].split('.').map(Number),kind=kinds[k];if(!kind||!Number.isSafeInteger(x)||!Number.isSafeInteger(y)||Math.abs(x)>100000||Math.abs(y)>100000)return null;
     if(i<F){if(kind!==o.fixed[i].kind)return null;nodes.push({id:'f'+i,kind,x:x*10,y:y*10,label:o.fixed[i].label,fixed:true});continue;}
     if(!o.kinds[kind]||nodes.filter(n=>n.kind===kind).length>=(o.kinds[kind].max||8))return null;nodes.push({id:'n'+i,kind,x:x*10,y:y*10});}
   nodes.forEach(n=>{n.x=clamp(n.x,LAB_BOARD.x+30,LAB_BOARD.x+LAB_BOARD.w-30);n.y=clamp(n.y,LAB_BOARD.y+30,LAB_BOARD.y+LAB_BOARD.h-30);});
-  const edges=[];for(const s of p[2]?p[2].split('_'):[]){const[a,b]=s.split('-').map(Number),A=nodes[a],B=nodes[b];
+  const edges=[];for(const s of p[2]?p[2].split('_'):[]){if(!/^\d+-\d+$/.test(s))return null;const[a,b]=s.split('-').map(Number),A=nodes[a],B=nodes[b];
     if(!A||!B||A===B||!(o.links[A.kind]||[]).includes(B.kind))return null;if(!edges.some(e=>e.a===A.id&&e.b===B.id))edges.push({a:A.id,b:B.id});}
   const opts={};(o.toggles||[]).forEach((t,i)=>opts[t.key]=p[3][i]==='1');
   return{nodes,edges,seq:nodes.length,opts};}
 // opens a shared design in its lab; false when the link is not a valid design
-function labImport(id,code){const G=labDecode(id,code);if(!G)return false;LAB_SAVE[id]=G;LAB_POST[id]=null;LAB_SHARED[id]=true;return true;}
+function labImport(id,code){labRestore();const G=labDecode(id,code);if(!G)return false;LAB_SAVE[id]=G;labSaveDesigns();LAB_POST[id]=null;LAB_SHARED[id]=true;return true;}
+let LAB_RESTORED=false;
+function labRestore(){if(LAB_RESTORED)return;LAB_RESTORED=true;
+  Object.assign(LAB_BEST,pimFilter(labStore('pim-lab-best',{}),(k,v)=>Object.hasOwn(LAB_DEFS,k)&&Number.isSafeInteger(v)&&v>0&&v<=10000));
+  Object.assign(LAB_CHAOS,pimFilter(labStore('pim-lab-chaos',{}),(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true));
+  labMergeDesigns(labStore('pim-lab-designs',null));}
+function labDesignCost(id,G){return G.nodes.reduce((sum,n)=>sum+(n.fixed?0:LAB_DEFS[id].kinds[n.kind].cost),0);}
+function labMergeDesigns(data){if(!pimRecord(data)||data.version!==1)return 0;let added=0;
+  if(pimRecord(data.drafts))Object.entries(data.drafts).forEach(([id,code])=>{const G=labDecode(id,code);if(G&&!LAB_SAVE[id]){LAB_SAVE[id]=G;added++;}});
+  if(pimRecord(data.best))Object.entries(data.best).forEach(([id,b])=>{if(!pimRecord(b))return;const G=labDecode(id,b.design);
+    if(G&&Number.isSafeInteger(b.cost)&&b.cost>0&&b.cost===labDesignCost(id,G)&&(!LAB_BEST_DESIGNS[id]||b.cost<LAB_BEST_DESIGNS[id].cost)){
+      LAB_BEST_DESIGNS[id]={cost:b.cost,design:labEncode(id,G)};LAB_BEST[id]=Math.min(LAB_BEST[id]??Infinity,b.cost);added++;}});return added;}
+function labDesigns(){const drafts={};Object.entries(LAB_SAVE).forEach(([id,G])=>{if(Object.hasOwn(LAB_DEFS,id))drafts[id]=labEncode(id,G);});return{version:1,drafts,best:LAB_BEST_DESIGNS};}
+function labSaveDesigns(){labPut('pim-lab-designs',labDesigns());}
 const LAB_BOARD={x:14,y:62,w:972,h:380};
 const LAB_PAL_Y=LAB_BOARD.y+LAB_BOARD.h+16;   // the palette is a row of tiles under the board
 function labGame(o){LAB_DEFS[o.id]=o;return api=>{
+  labRestore();
   const id=o.id,K=o.kinds,PAL=Object.keys(K);
   // ---------- the graph ----------
   let G=LAB_SAVE[id]?JSON.parse(JSON.stringify(LAB_SAVE[id])):{nodes:o.fixed.map((f,i)=>({id:'f'+i,kind:f.kind,x:f.x,y:f.y,label:f.label,fixed:true})),edges:[],seq:0};
   if(!G.opts)G.opts={};(o.toggles||[]).forEach(tg=>{if(!(tg.key in G.opts))G.opts[tg.key]=tg.val;});
-  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));if(!running){S=null;post=null;LAB_POST[id]=null;}};   // an edit clears the last run's readings and weak spots
+  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));labSaveDesigns();if(api.clearShareLink)api.clearShareLink();if(!running){S=null;post=null;LAB_POST[id]=null;}};   // an edit clears the last run's readings and weak spots
   // undo history: a snapshot of the graph before each change
-  const undoStack=LAB_UNDO[id]||(LAB_UNDO[id]=[]),snapshot=()=>JSON.stringify({nodes:G.nodes,edges:G.edges,seq:G.seq});
+  const undoStack=LAB_UNDO[id]||(LAB_UNDO[id]=[]),snapshot=()=>JSON.stringify({nodes:G.nodes,edges:G.edges,seq:G.seq,opts:G.opts});
   const remember=s=>{undoStack.push(s||snapshot());if(undoStack.length>60)undoStack.shift();};
-  function undo(){if(running)return;const s=undoStack.pop();if(!s){say('Nothing to undo.');return;}const u=JSON.parse(s);G.nodes=u.nodes;G.edges=u.edges;G.seq=u.seq;sel=null;save();say('Undone.');}
+  function applyDesign(u){G.nodes=u.nodes;G.edges=u.edges;G.seq=u.seq;G.opts=u.opts||{};syncOptions();sel=null;save();}
+  function undo(){if(running)return;const s=undoStack.pop();if(!s){say('Nothing to undo.');return;}applyDesign(JSON.parse(s));say('Undone.');}
   const LET='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const node=nid=>G.nodes.find(n=>n.id===nid);
   const sizeOf=n=>{const k=K[n.kind]||o.fixedKinds[n.kind];return[k.w||110,k.h||52];};
@@ -89,7 +104,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   const canAdd=kind=>count(kind)<(K[kind].max||8)&&G.nodes.length<LET.length;
   const allowed=(a,b)=>a!==b&&(o.links[a.kind]||[]).includes(b.kind);
   // locks (on unless turned off): a component taught in an earlier chapter waits until you have watched it
-  const seenCh=labStore('sdve-seen',{}),myIdx=chapters.findIndex(c=>c.id===id);
+  const seenCh=pimSeen(labStore('sdve-seen',{})),myIdx=chapters.findIndex(c=>c.id===id);
   let locksOn=(()=>{try{return localStorage.getItem('pim-lab-locks')!=='false';}catch(e){return true;}})();
   const taughtEarlier=kind=>{const cid=K[kind].teach||LAB_TEACH[kind],j=cid?chapters.findIndex(c=>c.id===cid):-1;return j>=0&&j<myIdx?{cid,n:j+1,title:chapters[j].title}:null;};
   const lockOf=kind=>{if(!locksOn)return null;const T=taughtEarlier(kind);return T&&!seenCh[T.cid]?T:null;};
@@ -135,14 +150,19 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   let running=false,S=null,t0=0,last=0,done=false,res=null;const fl=[];
   // simT: the run's clock (slowed for a moment when something crashes); vnow: the clock packets move on
   let simT=0,vnow=0,lastNow=null,slowUntil=-1,shakeUntil=-1,badSfx=-9,celebrate=null;
-  (o.toggles||[]).forEach(tg=>api.toggle(tg.label,G.opts[tg.key],v=>{G.opts[tg.key]=v;save();say();}));   // design choices that are not boxes
+  const optionControls=(o.toggles||[]).map(tg=>({key:tg.key,el:api.toggle(tg.label,G.opts[tg.key],v=>{if(running)return;remember();G.opts[tg.key]=v;save();say();})}));
+  function syncOptions(){optionControls.forEach(({key,el})=>{if(el&&el.setAttribute)el.setAttribute('aria-pressed',String(!!G.opts[key]));});}
   const run=api.button(o.runLabel||'Run load test',()=>start(),{primary:true});
   const clear=api.button('Clear board',()=>{if(running)return;remember();G.nodes=G.nodes.filter(n=>n.fixed);G.edges=[];sel=null;save();say('Board cleared.');});
   api.button('Undo',()=>undo());
+  const bestBtn=api.button('Restore best design',()=>{if(running||!LAB_BEST_DESIGNS[id])return;const best=labDecode(id,LAB_BEST_DESIGNS[id].design);if(best){remember();applyDesign(best);say('Best saved design restored.');}});
+  bestBtn.hidden=!LAB_BEST_DESIGNS[id];
   const shareBtn=api.button('Copy share link',()=>share());
-  function share(){if(running)return;const base=String((typeof location!=='undefined'&&location.href)||'').split(/[?#]/)[0],url=`${base}?lab=${id}&d=${labEncode(id,G)}#${id}`;
-    let copied=false;try{if(typeof navigator!=='undefined'&&navigator.clipboard){navigator.clipboard.writeText(url).catch(()=>{});copied=true;}}catch(e){}
-    say(`${copied?'Link copied. Send it to anyone':'Copy this link and send it to anyone'} to share your $${cost()}/h design: ${url}`);}
+  async function share(){if(running)return;const code=labEncode(id,G),here=String((typeof location!=='undefined'&&location.href)||''),base=/^https?:\/\//.test(here)?here.split(/[?#]/)[0]:'https://sumnoon.github.io/Packets-in-Motion/',url=`${base}?lab=${id}&d=${code}#${id}`;
+    if(api.shareLink)api.shareLink(url);
+    let copied=false;try{if(typeof navigator!=='undefined'&&navigator.clipboard){await navigator.clipboard.writeText(url);copied=true;}}catch(e){}
+    if(code!==labEncode(id,G))return;
+    say(`${copied?'Link copied. Send it to anyone':'Copy the link below and send it to anyone'} to share your $${cost()}/h design.${api.shareLink?'':' '+url}`);}
   // the locks are one setting for every lab, offered where a lab uses components from earlier chapters
   if(PAL.some(taughtEarlier))api.toggle('Lock components until I have watched their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
     say(v?'Component locks on, in every lab: a component from a chapter you have not watched waits until you watch it.':'Component locks off: every component is available.');});
@@ -162,6 +182,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     Object.entries(T.bad).filter(([k,b])=>b.d>.3&&G.edges.some(e=>e.a+'>'+e.b===k)).sort((a,b)=>b[1].d-a[1].d).slice(0,2).forEach(([k,b])=>gen.push({edge:k,note:`failing from ${b.t.toFixed(1)} s`}));
     return(o.blame?o.blame(S,G,gen):gen).filter(m=>m&&(m.edge?G.edges.some(e=>e.a+'>'+e.b===m.edge):node(m.id))).slice(0,4);}
   function medal(c){const prev=LAB_BEST[id];let m='';
+    if(!LAB_BEST_DESIGNS[id]||c<=LAB_BEST_DESIGNS[id].cost){LAB_BEST_DESIGNS[id]={cost:c,design:labEncode(id,G)};bestBtn.hidden=false;labSaveDesigns();}
     if(prev==null||c<prev){LAB_BEST[id]=c;labSaveBest();if(prev!=null)m+=` New best: $${c}/h, down from $${prev}/h.`;}
     if(o.lean!=null)m+=c<=o.lean?` Lean medal: no 3-star design we know of costs less than $${o.lean}/h.`:` A 3-star design exists for $${o.lean}/h. Can you find it?`;
     return m;}
@@ -178,7 +199,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     msg+=chaosNote(res.stars);
     // three stars: the wires glow for a moment before the result
     if(res.stars===3){celebrate={at:now,msg};SFX.play('good');G.nodes.slice(0,12).forEach(n=>FX.burst(n.x,n.y,C.amber,10,120));return;}
-    api.win(res.stars,res.title,msg);setTimeout(()=>say(),50);}
+    api.win(res.stars,res.title,msg);chalLater(api,()=>say(),50);}
   // hints: a nudge, then which components, then a faint outline of a 3-star design
   let post=LAB_POST[id]||null,hintLvl=LAB_HINT[id]||0,ghostOn=true;
   const ghost=o.solution?layoutGhost():null;
@@ -213,7 +234,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
       const fdt=lastNow==null?0:clamp(now-lastNow,0,.1),slowF=running&&now<slowUntil?.45:1;lastNow=now;vnow+=fdt*slowF;
       if(running){simT+=fdt*slowF;const el=simT,step=el-last;if(step>0){const out=o.step(S,G,step,el);S.view=out;last=el;spawn(out,vnow,step);track(out,el,step);react(out,now);}
         if(el>=o.dur&&!done){done=true;running=false;api.lock(false);finish(now);}}
-      if(celebrate&&now-celebrate.at>=.8){const m=celebrate.msg;celebrate=null;api.win(res.stars,res.title,m);setTimeout(()=>say(),50);}
+      if(celebrate&&now-celebrate.at>=.8){const m=celebrate.msg;celebrate=null;api.win(res.stars,res.title,m);chalLater(api,()=>say(),50);}
       const shake=now<shakeUntil?(shakeUntil-now)/.35*5:0;g.save();if(shake)g.translate((Math.random()-.5)*2*shake,(Math.random()-.5)*2*shake);
       const V_=S&&S.view;
       // board
