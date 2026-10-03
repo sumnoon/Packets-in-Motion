@@ -1,14 +1,15 @@
 /* ---------------- 23. CAPSTONE: build and launch the chat app ---------------- */
 // You build it on the board. 100,000 people are online; 10% of each message's recipients are offline.
 // Messages: 4,000/s, a storm of 8,000/s from 5 s to 12 s, and the busiest gateway dies at 9 s.
-// Scored as recipients reached within a second: offline members count only through a push.
+// Scored as recipients reached in the capacity model: offline members count only through a push.
 (function(){
 const ONLINE=100000,SOCK=40000,CHAT=12000,SHARD=3000,DIRECT=20000;
-chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,000 people online, a message storm, the busiest gateway crashing and 10% of members offline. Reach at least 99.5% of recipients within a second (a push counts for offline members) and spend at most $22/h.',
+chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,000 people online, a message storm, the busiest gateway crashing and 10% of members offline. Reach at least 99.5% of recipients in the capacity model (a push counts for offline members) and spend at most $22/h.',
   hint:'People → load balancer → WebSocket gateways (room for everyone even after one dies) → chat service → enough store shards for the storm. Deliver through pub/sub to every gateway, push to the offline, and let clients resume from their last sequence number.',
   make:labGame({id:'capstone-chat',
     hints:['Count connections: how many people does a gateway hold, and how many are left if one dies?','A load balancer in front of gateways with room to lose one, a chat service, enough store shards for the storm, pub/sub back to every gateway, and push for offline members. Clients should resume from their last sequence number.'],
     solution:{nodes:['lb','gateway','chat','store','pubsub','push','gateway','gateway','gateway','store','store'],edges:[[0,1],[1,2],[2,3],[3,4],[3,5],[5,2],[3,6]],opts:{resume:true}},
+    assumptions:'Educational rate/capacity model: 100k connections; gateways hold 40k each, chat services take 12k messages/s, store shards take 3k writes/s. Offered traffic is 4k/s or 8k/s during the storm; 90% online delivery and 10% push delivery are modeled. Resume assumes replay succeeds. No message timestamps or end-to-end latency are measured, so this test does not certify a one-second delivery deadline. Dollar costs are model parameters, not provider quotes.',
     loadNote:(n,u)=>n.kind==='gateway'?`${Math.round(u*40)}k people on a 40k gateway`:n.kind==='store'?'more writes than a shard takes':n.kind==='chat'?'more messages than it handles':null,budget:22,dur:16,scale:400,
     intro:'Drag components onto the board and wire them from People. A message goes phone → gateway → chat service → store, then out to the recipient’s gateway or phone.',
     fixedKinds:{users:{label:'People',shape:'user',w:44,h:44}},
@@ -31,7 +32,7 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
       return[];},
     init(){return{sent:0,ok:0,dead:new Set(),killed:null,deadShare:0,deadAt:null,gwIn:{},lost:{noConn:0,noChat:0,store:0,route:0,fan:0,offline:0,crash:0}};},
     step(S,G,dt,t){const tc=labAt(S,'crash',9,6,12.5),rate=t>=5&&t<12?8000:4000,phase=t>=tc&&t<tc+2?'A gateway dies':t<5?'Normal traffic':t<12?'Message storm':'Recovering';
-      if(t>=tc&&!S.killed){const gws=G.of('gateway');if(gws.length){const b=labPick(S,'victim',gws,gws.reduce((a,c)=>((S.gwIn[c.id]||0)>(S.gwIn[a.id]||0)?c:a)));S.killed=b.id;S.dead.add(b.id);S.deadAt=t;S.deadShare=Math.min(S.gwIn[b.id]||0,SOCK)/ONLINE;FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
+      if(t>=tc&&!S.killed){const gws=G.of('gateway');if(gws.length){const b=labPick(S,'victim',gws,gws.reduce((a,c)=>((S.gwIn[c.id]||0)>(S.gwIn[a.id]||0)?c:a)));S.killed=b.id;S.dead.add(b.id);S.deadAt=t;S.deadShare=Math.min(S.gwIn[b.id]||0,SOCK)/ONLINE;labSignal(S,b,'crashed',C.red);}}
       const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       // connections: people → (LB) → gateways. The LB sends reconnects only to live gateways;
       // people wired straight to a gateway stay stuck on it when it dies.
@@ -68,15 +69,17 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
         if(push){reached+=stored*.1;F(c,push,stored*.1,false,C.green);}else S.lost.offline+=stored*.1*dt;});
       S.sent+=rate*dt;S.ok+=Math.min(rate,reached)*dt;
       return{flows,load,dead:S.dead,phase,badEdges:bad};},
-    hud(S){const r=S.sent?S.ok/S.sent:1;return[['reached in time',`${(r*100).toFixed(2)}%`,r>=.995?C.green:C.red]];},
-    score(S,G,cost){const r=S.ok/S.sent;
-      if(r>=.995&&cost<=22)return{stars:3,title:'Everyone reached in time',msg:`${(r*100).toFixed(2)}% reached within a second for $${cost}/h. Room to lose a gateway, shards for the storm, pub/sub for fan-out, push for the offline and exact resumes: you built it.`};
+    hud(S){const r=S.sent?S.ok/S.sent:1;return[['modeled delivery',`${(r*100).toFixed(2)}%`,r>=.995?C.green:C.red]];},
+    measure:chatMetrics,
+    score(S,G,cost,m=chatMetrics(S,G,cost)){const r=m.requirements[0].observed;
+      if(m.requirements.every(x=>x.passed))return{stars:3,title:'Delivery target met in the model',msg:`${(r*100).toFixed(2)}% reached in the capacity model for $${cost}/h. Room to lose a gateway, shards for the storm, pub/sub for fan-out, push for the offline and exact resumes: you built it.`};
       const top=Object.entries(S.lost).sort((a,b)=>b[1]-a[1])[0];
       const why=top&&top[1]>S.sent*.002?({noConn:'Not everyone could hold a connection: count sockets (40k per gateway) after one gateway dies, and put a load balancer in front so people reconnect to live gateways.',
         noChat:'Messages got stuck before the chat service: wire every gateway to it, and keep it under 12k messages/s.',store:'The store could not take the storm: add shards (3k writes/s each).',
         route:'Some gateways never got the messages for their users: wire pub/sub to every gateway.',fan:'Calling every gateway directly could not keep up with the storm: use pub/sub.',
         offline:'Offline members were not told until they next opened the app: add push notifications.',crash:'People on the dead gateway lost the messages sent while they reconnected: let clients resume from their last sequence number.'})[top[0]]:'';
       const msg=[why,cost>22?`Over budget at $${cost}/h.`:''].filter(Boolean).join(' ')||'Close: trim the cost.';
-      if(r>=.97)return{stars:2,title:`${(r*100).toFixed(2)}% reached in time`,msg};
-      return{stars:r>=.85?1:0,title:`${(r*100).toFixed(1)}% reached in time`,msg};}})});
+      if(r>=.97)return{stars:2,title:`${(r*100).toFixed(2)}% modeled delivery`,msg};
+      return{stars:r>=.85?1:0,title:`${(r*100).toFixed(1)}% modeled delivery`,msg};}})});
+function chatMetrics(S,G,cost){const delivered=S.sent?S.ok/S.sent:0;return{sent:S.sent,delivered:S.ok,requirements:[{name:'Modeled delivery fraction',observed:delivered,target:.995,passed:delivered>=.995},{name:'Model cost ($/h)',observed:cost,target:22,passed:cost<=22}]};}
 })();

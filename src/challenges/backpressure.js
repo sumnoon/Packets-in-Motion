@@ -13,8 +13,8 @@ chal('backpressure',{title:'Keep checkout alive',goal:'Traffic is 300 req/s and 
             if(!crashed){q+=enter;if(p.bound&&q>100){refused=q-100;q=100;}q-=Math.min(q,200*dt);if(!p.bound&&q>400){crashed=true;FX.burst(470,290,C.red,40,240);}
               const f=enter>0?Math.max(0,1-refused/enter):1;MIX.forEach(([k,r])=>{if(!drop.has(k)&&!crashed)ok[k]+=r*dt*Math.min(1,share)*f;});}
             wait=(q+up)/200;waitMax=Math.max(waitMax,wait);
-            acc+=dt*20;const now=api.now();while(acc>=1){acc--;const r=Math.random()*300;let k='checkout',c=0;for(const[m,w]of MIX){c+=w;if(r<c){k=m;break;}}
-              const dr=drop.has(k),bad=crashed||dr||(p.bound&&q>=99&&Math.random()<.33);fl.push({t0:now,d:.7,pts:[[150,290],[470,290],[800,290]],c:bad?C.red:k==='checkout'?C.green:C.blue,r:k==='checkout'?5:3.5,drop:bad?(dr?.25:.55):0});}},
+            acc+=dt*20;const now=api.now();while(acc>=1){acc--;const r=PIM_RANDOM.next()*300;let k='checkout',c=0;for(const[m,w]of MIX){c+=w;if(r<c){k=m;break;}}
+              const dr=drop.has(k),bad=crashed||dr||(p.bound&&q>=99&&PIM_RANDOM.next()<.33);fl.push({t0:now,d:.7,pts:[[150,290],[470,290],[800,290]],c:bad?C.red:k==='checkout'?C.green:C.blue,r:k==='checkout'?5:3.5,drop:bad?(dr?.25:.55):0});}},
           draw(now){flyers(now,fl);server(150,290,{label:'API',sub:'300 req/s',w:120,st:'hot'});
             if(drop.size)box(290,170,{label:'Shedder',sub:[...drop].join(' + '),c:C.amber,w:170,h:50});
             box(470,290,{label:crashed?'OUT OF MEMORY':'Queue',sub:crashed?'':`${Math.round(q)} waiting${p.bound?' / 100':''}`,c:crashed?C.red:q>90?C.amber:C.edge,w:170,h:60,st:crashed?'fail':undefined});

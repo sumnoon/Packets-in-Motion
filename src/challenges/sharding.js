@@ -6,7 +6,7 @@ chal('sharding',{title:'Pick the shard key',goal:'Split the users table so no sh
     return simGame({dur:6,defaults:{key:'country',n:3},intro:'Choose a shard key and the number of shards, then press <b>Run it</b> to send traffic.',
       controls(api,p,re){api.seg('Shard key',[['country','country'],['month','signup month'],['hash','hash(user_id)']],p.key,v=>{p.key=v;re();});api.slider('Shards',2,6,1,p.n,v=>`${v}`,v=>{p.n=v;re();});},
       build(p,api){const d=dist(p.key,p.n),sx=k=>p.n===1?500:170+k*(660/(p.n-1));let acc=0;const fl=[];const RT=[500,150];
-        return{step(dt){acc+=dt*50;const now=api.now();while(acc>=1){acc--;let x=Math.random(),k=0;for(;k<p.n-1;k++){if(x<d[k])break;x-=d[k];}fl.push({t0:now,d:.55,pts:[RT,[sx(k),350]],c:d[k]>.3?C.red:C.blue,r:3.5});}},
+        return{step(dt){acc+=dt*50;const now=api.now();while(acc>=1){acc--;let x=PIM_RANDOM.next(),k=0;for(;k<p.n-1;k++){if(x<d[k])break;x-=d[k];}fl.push({t0:now,d:.55,pts:[RT,[sx(k),350]],c:d[k]>.3?C.red:C.blue,r:3.5});}},
           draw(now){flyers(now,fl);box(RT[0],RT[1],{label:'Router',sub:`shard by ${p.key==='hash'?'hash(user_id)':p.key}`,w:200,h:54});
             d.forEach((v,k)=>{db(sx(k),380,{label:`Shard ${k+1}`,w:88,h:76,st:v>.3?'hot':'ok'});meter(sx(k)-44,432,88,8,v/.6,v>.3?C.red:v>.2?C.amber:C.green);tx(`${(v*100).toFixed(0)}%`,sx(k),456,{z:13,wt:800,c:v>.3?C.red:C.text,f:MONO});});},
           hud(){const m=Math.max(...d);return[['busiest shard',`${(m*100).toFixed(0)}%`,m<=.3?C.green:C.red],['shards',`${p.n}`,p.n<=4?C.text:C.amber]];},

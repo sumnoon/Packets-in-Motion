@@ -2,7 +2,7 @@
 chal('indexing',{title:'Find the row',goal:'Walk down the index to one user id in as few page reads as possible. A full table scan would read up to 10,000 rows.',
   hint:'At each level, pick the range that contains the id. Four reads is perfect.',
   make:api=>{let target,lvl,lo,hi,reads,path,done,flash,pageRows;
-    function reset(){target=1+Math.floor(Math.random()*9999);lvl=0;lo=1;hi=10000;reads=0;path=[];done=false;flash=null;pageRows=null;say();}
+    function reset(){target=1+Math.floor(PIM_RANDOM.next()*9999);lvl=0;lo=1;hi=10000;reads=0;path=[];done=false;flash=null;pageRows=null;say();}
     function say(){if(pageRows)api.status(`Leaf page. Click the row for <b>#${target}</b>, or press its number: ${pageRows.map((r,j)=>`<kbd>${j+1}</kbd> #${r}`).join(' · ')}`);
       else api.status(`Find user <b>#${target}</b>. Click the range that contains it, or press its number: ${kids().map((k,j)=>`<kbd>${j+1}</kbd> ${k.a.toLocaleString()}–${k.b.toLocaleString()}`).join(' · ')}`);}
     const kids=()=>{const n=4,step=Math.ceil((hi-lo+1)/n);return Array.from({length:n},(_,k)=>({a:lo+k*step,b:Math.min(hi,lo+(k+1)*step-1),x:130+k*247,y:300,w:210,h:80}));};
@@ -20,5 +20,5 @@ chal('indexing',{title:'Find the row',goal:'Walk down the index to one user id i
         const K=kids(),j=K.findIndex(k=>inBox(x,y,{x:k.x,y:k.y-k.h/2,w:k.w,h:k.h}));if(j<0)return;reads++;const k=K[j];
         if(target<k.a||target>k.b){flash={j,t:now};FX.text(k.x+k.w/2,k.y-60,'not in this range',C.red,13);return;}
         path.push(`${k.a}–${k.b}`);lo=k.a;hi=k.b;lvl++;FX.burst(k.x+k.w/2,k.y,C.green,12,120);
-        if(hi-lo<200){const s=new Set([target]);while(s.size<6)s.add(lo+Math.floor(Math.random()*(hi-lo+1)));pageRows=[...s].sort((a,b)=>a-b);}say();},
+        if(hi-lo<200){const s=new Set([target]);while(s.size<6)s.add(lo+Math.floor(PIM_RANDOM.next()*(hi-lo+1)));pageRows=[...s].sort((a,b)=>a-b);}say();},
       key(k,now){const j=+k-1;if(!(j>=0))return;if(pageRows){if(j<pageRows.length)this.click(150+j*140,300,now);}else if(j<4){const K=kids()[j];this.click(K.x+K.w/2,K.y,now);}}};}});

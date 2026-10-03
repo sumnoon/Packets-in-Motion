@@ -10,7 +10,7 @@ const c2pu=[[CH[0]+62,CH[1]+20],[PU[0]-60,PU[1]-8]],pu2cy=[[PU[0]+60,PU[1]+10],[
 const G2DEAD=43.6,BEN_ON=t=>t<G2DEAD?G2:t>=45.6?G1:null;
 ch({id:'capstone-chat',group:'Capstone',title:'Capstone: Design a Chat App',dur:58,needs:['rest-grpc-ws','queues-pubsub','sharding'],related:['capstone','capstone-feed','idempotency'],
 beats:[
-[0,'The goal: fast, ordered, never lost','Messages should arrive within a second, in order, and never get lost, whether the other person is online or not.'],
+[0,'Delivery, order and durability goals','A product may target delivery within a second, ordering per conversation and durable replay for offline recipients. Real guarantees require measured end-to-end latency and explicit failure semantics. The capacity lab does not certify that delivery deadline.'],
 [5,'Assemble the building blocks','WebSocket gateways keep a connection open to each online user. Behind them: a chat service, a sharded message store, pub/sub, a presence store and push notifications.'],
 [11,'Connect and stay connected','Ana and Ben each open a WebSocket. The load balancer spreads them across gateways, and presence records which gateway holds whom.'],
 [17,'Send: store it first','Ana sends "lunch?". The chat service gives it the next sequence number in the conversation and writes it to the message store, sharded by a hash of the conversation id.'],
@@ -26,7 +26,7 @@ draw(t){
   if(t<5.2){const a=V(t,.3,4.8);draw(500,280,{a},()=>{rr(-170,-150,340,300,22);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=2;g.stroke();});
     tx('Lunch crew · 3 people',500,155,{z:13,wt:700,c:C.dim,a});
     pill('Ana: lunch?',430,205,{c:C.blue,z:14,a:a*V(t,.8)});pill('Ben: yes! 12:30',560,255,{c:C.green,z:14,a:a*V(t,1.8)});pill('Cy is offline…',470,305,{c:C.dim,z:13,a:a*V(t,2.8)});
-    pill('within a second · in order · never lost',500,375,{c:C.accent,z:13,a:a*V(t,3.4)});return;}
+    pill('targets: fast delivery · conversation order · durable replay',500,375,{c:C.accent,z:12,a:a*V(t,3.4)});return;}
   const L=(pts,t0,o={})=>ln(pts,{a:V(t,t0)*.4,...o});
   // links
   L([[ANA[0]+16,ANA[1]],[LB[0]-46,LB[1]]],5.6);L([[BEN[0]+16,BEN[1]],[LB[0]-46,LB[1]]],5.6);L([[LB[0]+46,LB[1]],[G1[0]-58,G1[1]]],5.9);L([[LB[0]+46,LB[1]],[G2[0]-58,G2[1]]],5.9,t>=G2DEAD?{dash:[4,6]}:{});

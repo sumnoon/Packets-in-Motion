@@ -33,7 +33,7 @@ for (const id of ['client-server', 'transactions']) {
     assert.match(r.state.status, /Slot 2: /);
     // keep placing whatever is left, then check; wrong cards go back to the tray
     for (let round = 0; round < 40 && !r.result; round++) {
-      const L = 'abcdefgh'.split('').sort(() => Math.random() - 0.5);
+      const L = page.get('shuffle')('abcdefgh'.split(''));
       r.press(...L, 'Enter').step(4);
     }
     assert.ok(r.result, 'never solved');

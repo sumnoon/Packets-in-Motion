@@ -5,9 +5,9 @@ chal('cache-invalidation',{title:'Fresh and cheap',goal:'1,000 products, 500 rea
   make:simGame({dur:8,defaults:{ttl:30,del:false},intro:'Pick a TTL and whether writes delete the cached copy, then press <b>Run it</b>.',
     controls(api,p,re){api.slider('TTL',1,61,1,p.ttl,v=>v>60?'∞ (never)':`${v} s`,v=>{p.ttl=v;re();});api.toggle('Delete cache on write',p.del,v=>{p.del=v;re();});},
     build(p,api){const N=cacheNums(p);let acc=0,T=0;const fl=[];
-      return{step(dt,t){T=t;acc+=dt*30;const now=api.now();while(acc>=1){acc--;const miss=Math.random()<N.db/500,stale=!miss&&Math.random()<N.stale*6;
+      return{step(dt,t){T=t;acc+=dt*30;const now=api.now();while(acc>=1){acc--;const miss=PIM_RANDOM.next()<N.db/500,stale=!miss&&PIM_RANDOM.next()<N.stale*6;
           fl.push({t0:now,d:.5,pts:[[150,300],[480,200]],c:C.blue,r:3.5});fl.push({t0:now+.5,d:miss?1:.5,pts:miss?[[480,200],[820,330],[150,300]]:[[480,200],[150,300]],c:stale?C.red:miss?C.amber:C.green,r:3.5});}
-          if(Math.random()<dt*2&&p.del)fl.push({t0:api.now(),d:.6,pts:[[820,110],[480,200]],c:C.red,r:3.5,label:'delete'});},
+          if(PIM_RANDOM.next()<dt*2&&p.del)fl.push({t0:api.now(),d:.6,pts:[[820,110],[480,200]],c:C.red,r:3.5,label:'delete'});},
         draw(now){flyers(now,fl);server(150,300,{label:'App',w:110});box(480,200,{label:'Cache',sub:p.ttl>60?'no TTL':`TTL ${p.ttl} s`,c:C.amber,w:150,h:56});db(820,330,{label:'Database',sub:'200 reads/s max',w:130,h:90,st:N.db>200?'fail':'ok',down:'OVERLOADED'});
           box(820,110,{label:'Writers',sub:'5 changes/s',c:C.accent,w:130,h:48});},
         hud(){return[['stale reads',`${(N.stale*100).toFixed(2)}%`,N.stale<=.01?C.green:C.red],['DB reads',`${Math.round(N.db)}/s`,N.db<=200?C.green:C.red]];},

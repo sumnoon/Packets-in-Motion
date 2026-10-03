@@ -10,6 +10,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {countedReadme} from './course-metadata.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = path.join(ROOT, 'src');
@@ -41,15 +42,18 @@ export function build() {
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const html = build();
+  const readmePath=path.join(ROOT,'README.md'),readme=read(readmePath),updatedReadme=countedReadme(readme,html);
   if (process.argv.includes('--check')) {
     const current = fs.existsSync(OUT) ? read(OUT) : '';
     if (current !== html) {
       console.error('index.html is out of date. Run: node scripts/build.mjs');
       process.exit(1);
     }
-    console.log('index.html is up to date.');
+    if(readme!==updatedReadme){console.error('README course counts are out of date. Run: node scripts/build.mjs');process.exit(1);}
+    console.log('index.html and README course counts are up to date.');
   } else {
     fs.writeFileSync(OUT, html);
+    if(readme!==updatedReadme)fs.writeFileSync(readmePath,updatedReadme);
     console.log(`Wrote index.html (${(Buffer.byteLength(html) / 1024).toFixed(0)} KB)`);
   }
 }

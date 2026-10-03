@@ -9,8 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-export function scripts() {
-  const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+export function scripts(html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8')) {
   return [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
 }
 
@@ -192,7 +191,7 @@ export function loadPage(opts = {}) {
     clearTimeout(id) { const i=timers.findIndex(t=>t.id===id);if(i>=0)timers.splice(i,1); },
     addEventListener: (type, fn) => (winListeners[type] ||= []).push(fn),
     removeEventListener() {},
-    URLSearchParams, Math, JSON, Object, Array, Number, String, Set, Map, Promise, Date, Error, Symbol, Proxy, Reflect, Infinity, NaN, parseInt, parseFloat, isFinite,
+    PIM_TEST_SEED:opts.seed??1,URLSearchParams, Math, JSON, Object, Array, Number, String, Set, Map, Promise, Date, Error, Symbol, Proxy, Reflect, Infinity, NaN, parseInt, parseFloat, isFinite,
   };
   context.window = context;
   const historyEntries=[{state:null,url:context.location.href}];let historyIndex=0;
@@ -201,7 +200,7 @@ export function loadPage(opts = {}) {
   context.history={get state(){return historyEntries[historyIndex].state;},get length(){return historyEntries.length;},pushState(state,_,url){if(url!==undefined)updateLocation(url);historyEntries.splice(++historyIndex);historyEntries.push({state:JSON.parse(JSON.stringify(state)),url:context.location.href});},replaceState(state,_,url){if(url!==undefined)updateLocation(url);historyEntries[historyIndex]={state:JSON.parse(JSON.stringify(state)),url:context.location.href};},back(){travel(-1);},forward(){travel(1);}};
   context.globalThis = context;
   vm.createContext(context);
-  const src = scripts();
+  const src = scripts(opts.html);
   const n = opts.player ? src.length : src.length - 1; // the player is the last script
   src.slice(0, n).forEach((s, i) => vm.runInContext(s, context, { filename: `index.html<script #${i + 1}>` }));
   // let-declared globals (chapters, CHAL, ...) live in the script scope, not on the context object
@@ -237,7 +236,7 @@ export function challenge(page, id, def, opts={}) {
   const inst = (def || page.get('CHAL')[id]).make(api);
   const run = {
     state, inst,
-    step(seconds, dt = 1 / 30) { for (let f = 0; f < seconds / dt; f++) { state.now += dt; page.reset(); page.runTimers(state.now); inst.draw(state.now, dt); FX.step(dt); } return run; },
+    step(seconds, dt = 1 / 30) { for (let f = 0; f < seconds / dt; f++) { state.now += dt; page.reset(); page.runTimers(state.now); inst.update?.(state.now,dt);inst.draw(state.now, dt); FX.step(dt); } return run; },
     press(...keys) { keys.forEach(k => inst.key && inst.key(k, state.now)); run.step(0.1); return run; },
     click(label) { const b = state.buttons.find(b => label.test(b.label)); if (!b) throw new Error('no button ' + label); b.fn(); return run; },
     control(label) { const c = state.controls.find(c => label.test(c.label)); if (!c) throw new Error('no control ' + label); return c; },
