@@ -146,7 +146,7 @@ test('progress export and import merge, and reject bad files', async () => {
   const input = p.document.getElementById('importFile');
   const load = text => input.onchange({ target: { files: [{ text: () => Promise.resolve(text) }], value: 'x' } });
   await load(JSON.stringify(file));
-  assert.match(p.document.getElementById('ioMsg').textContent, /^Imported 1 more chapter watched and 5 more stars\. Ignored 2 records/);
+  assert.match(p.document.getElementById('ioMsg').textContent, /^Imported 1 more chapter completed and 5 more stars\. Ignored 2 records/);
   const stars = JSON.parse(p.context.localStorage.getItem('pim-stars'));
   assert.deepEqual(stars, { caching: 3, 'quiz-data': 2 });
   assert.match(p.document.getElementById('starTotal').textContent, /^★ 5 \//);

@@ -113,7 +113,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   let locksOn=(()=>{try{return localStorage.getItem('pim-lab-locks')!=='false';}catch(e){return true;}})();
   const taughtEarlier=kind=>{const cid=K[kind].teach||LAB_TEACH[kind],j=cid?chapters.findIndex(c=>c.id===cid):-1;return j>=0&&j<myIdx?{cid,n:j+1,title:chapters[j].title}:null;};
   const lockOf=kind=>{if(!locksOn)return null;const T=taughtEarlier(kind);return T&&!seenCh[T.cid]?T:null;};
-  const lockMsg=kind=>{const L=lockOf(kind);return`${K[kind].label} unlocks when you watch chapter ${L.n}, ${L.title}. Or turn off the component locks.`;};
+  const lockMsg=kind=>{const L=lockOf(kind);return`${K[kind].label} unlocks when you mark chapter ${L.n}, ${L.title}, complete. Open its lesson below, or turn off the component locks.`;};
   const hasEdge=(a,b)=>G.edges.some(e=>e.a===a.id&&e.b===b.id);
   G.out=(n,kinds)=>G.edges.filter(e=>e.a===n.id).map(e=>node(e.b)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
   G.inn=(n,kinds)=>G.edges.filter(e=>e.b===n.id).map(e=>node(e.a)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
@@ -130,37 +130,36 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   function slotFor(kind,list){const cc=o.columns&&o.columns[kind],col=(Array.isArray(cc)?cc[0]:cc)||520,y0=Array.isArray(cc)?cc[1]:null;
     if(y0!=null&&free(col,y0,list))return[col,y0];
     for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y,list))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
-  function add(kind,x,y){if(lockOf(kind)){say(lockMsg(kind));FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,'locked: watch its chapter first',C.amber,14);return null;}
+  function add(kind,x,y){if(lockOf(kind)){say(lockMsg(kind));FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,'locked: complete its chapter first',C.amber,14);return null;}
     if(!canAdd(kind)){FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
     if(cost()+K[kind].cost>o.budget+20){say('Cannot add this component: it would exceed the budget allowance.');return null;}
     remember();const twin=K[kind].clone&&G.of(kind)[0];   // a new copy of a stateless server joins the pool with the same wires
     const n={id:'n'+(++G.seq),kind,x:0,y:0};G.nodes.push(n);if(x==null)[x,y]=slotFor(kind);[n.x,n.y]=clampIn(n,x,y);
     if(twin)G.edges.filter(e=>e.a===twin.id||e.b===twin.id).forEach(e=>G.edges.push({a:e.a===twin.id?n.id:e.a,b:e.b===twin.id?n.id:e.b}));
-    sel={n};save();say(twin&&G.edges.some(e=>e.a===n.id||e.b===n.id)?`Added ${K[kind].label.toLowerCase()} ${letterOf(n)}, wired like ${letterOf(twin)}.`:'');FX.burst(n.x,n.y,K[kind].c||C.accent,12,110);SFX.play('good');return n;}
-  function removeNode(n,snap){if(!n||n.fixed)return;remember(snap);G.nodes=G.nodes.filter(m=>m!==n);G.edges=G.edges.filter(e=>e.a!==n.id&&e.b!==n.id);sel=null;save();say();}
+    sel={n};save();say(`Added ${nameOf(n)} ${letterOf(n)}${twin&&G.edges.some(e=>e.a===n.id||e.b===n.id)?', wired like '+letterOf(twin):''}.`);FX.burst(n.x,n.y,K[kind].c||C.accent,12,110);SFX.play('good');return n;}
+  function removeNode(n,snap){if(!n||n.fixed)return;const name=nameOf(n);remember(snap);G.nodes=G.nodes.filter(m=>m!==n);G.edges=G.edges.filter(e=>e.a!==n.id&&e.b!==n.id);sel=null;save();say(`Removed ${name} and its connections.`);}
   function toggleEdge(a,b){if(hasEdge(a,b)){remember();G.edges=G.edges.filter(e=>!(e.a===a.id&&e.b===b.id));save();say(`Unwired ${nameOf(a)} → ${nameOf(b)}.`);return;}
     if(!allowed(a,b)){const t=(o.links[a.kind]||[]).map(k=>(K[k]||o.fixedKinds[k]).label.toLowerCase());FX.text((a.x+b.x)/2,(a.y+b.y)/2-20,`${kindOf(a).label} can't feed ${kindOf(b).label.toLowerCase()}`,C.red,13);
       say(`${nameOf(a)} can't send to ${nameOf(b)}. ${t.length?nameOf(a)+' can feed: '+t.join(', ')+'.':nameOf(a)+' has nothing to feed.'}`);return;}
     remember();G.edges.push({a:a.id,b:b.id});save();say(`Wired ${nameOf(a)} → ${nameOf(b)}.`);const[p,q]=seg(G.edges[G.edges.length-1]);FX.burst(q[0],q[1],C.accent,8,80);}
   // ---------- status line (read by screen readers) ----------
-  function describe(){const pal=PAL.map((k,i)=>{const L=lockOf(k);return`<kbd>${i+1}</kbd> ${esc(K[k].label)} ${L?`(locked: watch chapter ${L.n})`:'$'+K[k].cost}`;}).join(' · ');
-    const lines=G.nodes.map(n=>{const outs=G.out(n);return`<b>${letterOf(n)}</b> ${esc(nameOf(n))}${outs.length?' → '+outs.map(m=>letterOf(m)).join(', '):''}`;}).join(' · ');
+  function describe(){const pal=PAL.map((k,i)=>{const L=lockOf(k);return`<kbd>${i+1}</kbd> ${esc(K[k].label)} ${L?`(locked: complete chapter ${L.n})`:'$'+K[k].cost}`;}).join(' · ');
+    const lines=G.nodes.map(n=>{const outs=G.out(n);return`<li><b>${letterOf(n)}</b> ${esc(nameOf(n))}${outs.length?' → '+outs.map(m=>letterOf(m)).join(', '):''}</li>`;}).join('');
     const probs=o.check?o.check(G):[];
     const opts=(o.toggles||[]).map(tg=>`${tg.label}: ${G.opts[tg.key]?'on':'off'}`).join(' · ');
     const weak=post&&post.length?' <span class="bad">Weak spots from your last run:</span> '+post.map(m=>{if(m.edge){const e=G.edges.find(x=>x.a+'>'+x.b===m.edge);return e?`${esc(nameOf(node(e.a)))} → ${esc(nameOf(node(e.b)))}: ${esc(m.note)}`:'';}const n=node(m.id);return n?`<b>${letterOf(n)}</b> ${esc(nameOf(n))}: ${esc(m.note)}`:'';}).filter(Boolean).join('; ')+'.':'';
     const best=LAB_BEST[id]!=null?` Your cheapest 3-star design: $${LAB_BEST[id]}/h.`:'';
-    return`Budget $${cost()} of $${o.budget}.${best} Your design: ${lines}.${weak}${opts?' '+esc(opts)+'.':''} ${probs.length?'<span class="bad">To fix:</span> '+esc(probs[0])+' ':''}Add with ${pal}.`;}
-  let lastMsg='';
-  function say(msg){if(msg)lastMsg=msg;const s=sel&&sel.n?` Selected <b>${letterOf(sel.n)}</b> ${esc(nameOf(sel.n))}: press another letter to wire it, Delete to remove.`:'';api.status((lastMsg?esc(lastMsg)+' ':'')+describe()+s+' Press <kbd>Enter</kbd> to run the load test.');lastMsg='';refreshEditor();}
+    return`<p>Budget <b>$${cost()} of $${o.budget}</b>.${best}</p><h3>Your components and connections</h3><ul>${lines}</ul>${weak?'<p>'+weak+'</p>':''}${opts?'<p>Options: '+esc(opts)+'.</p>':''}${probs.length?'<p><b>Next step:</b> '+esc(probs[0])+'</p>':''}<details><summary>Keyboard shortcuts and component costs</summary><p>Add with ${pal}.</p><p>Press two component letters to connect or disconnect them. Delete removes a selection. Enter runs the test; Ctrl/Command+Z on the diagram undoes an edit.</p></details>`;}
+  function say(msg){const s=sel&&sel.n?`Selected ${letterOf(sel.n)}: ${nameOf(sel.n)}.`:'';if(api.summary)api.summary(describe());api.status(esc(msg||s||'Design ready. Add components, connect them, then run the load test.'));refreshEditor();}
   // ---------- run ----------
   let running=false,S=null,t0=0,last=0,done=false,res=null;const fl=[];
   // simT: the run's clock (slowed for a moment when something crashes); vnow: the clock packets move on
   let simT=0,vnow=0,lastNow=null,slowUntil=-1,shakeUntil=-1,badSfx=-9,celebrate=null;
-  const optionControls=(o.toggles||[]).map(tg=>({key:tg.key,el:api.toggle(tg.label,G.opts[tg.key],v=>{if(running)return;remember();G.opts[tg.key]=v;save();say();})}));
+  const optionControls=(o.toggles||[]).map(tg=>({key:tg.key,el:api.toggle(tg.label,G.opts[tg.key],v=>{if(running)return;remember();G.opts[tg.key]=v;save();say(tg.label+': '+(v?'on':'off')+'.');})}));
   function syncOptions(){optionControls.forEach(({key,el})=>{if(el&&el.setAttribute)el.setAttribute('aria-pressed',String(!!G.opts[key]));});}
-  const run=api.button(o.runLabel||'Run load test',()=>start(),{primary:true});
+  const run=api.button(o.runLabel||'Run load test',()=>start(),{primary:true,toolbar:true});
   const clear=api.button('Clear board',()=>{if(running)return;remember();G.nodes=G.nodes.filter(n=>n.fixed);G.edges=[];sel=null;save();say('Board cleared.');});
-  api.button('Undo',()=>undo());
+  api.button('Undo',()=>undo(),{toolbar:true});
   const bestBtn=api.button('Restore best design',()=>{if(running||!LAB_BEST_DESIGNS[id])return;const best=labDecode(id,LAB_BEST_DESIGNS[id].design);if(best){remember();applyDesign(best);say('Best saved design restored.');}});
   bestBtn.hidden=!LAB_BEST_DESIGNS[id];
   const shareBtn=api.button('Copy share link',()=>share());
@@ -170,8 +169,8 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     if(code!==labEncode(id,G))return;
     say(`${copied?'Link copied. Send it to anyone':'Copy the link below and send it to anyone'} to share your $${cost()}/h design.${api.shareLink?'':' '+url}`);}
   // the locks are one setting for every lab, offered where a lab uses components from earlier chapters
-  if(PAL.some(taughtEarlier))api.toggle('Lock components until I have watched their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
-    say(v?'Component locks on, in every lab: a component from a chapter you have not watched waits until you watch it.':'Component locks off: every component is available.');});
+  if(PAL.some(taughtEarlier))api.toggle('Lock components until I have completed their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
+    say(v?'Component locks on, in every lab: a component from a chapter you have not completed waits until you mark it complete.':'Component locks off: every component is available.');});
   let chaosOn=!!LAB_CHAOS_ON[id];
   api.toggle('Chaos mode: incidents strike at random times and places',chaosOn,v=>{chaosOn=v;LAB_CHAOS_ON[id]=v;LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];say(v?'Chaos mode on: each run, the incidents strike at a random time and hit a random component. Survive three runs in a row for the chaos-proof badge.':'Chaos mode off.');});
   // what the run did to each component and wire, for the weak spots afterwards
@@ -244,7 +243,9 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     const removeBtn=button('Remove component',()=>removeNode(node(remove.value))),from=select('Connection from','lab-from'),to=select('Connection to','lab-to');
     const connect=button('Connect',()=>{const a=node(from.value),b=node(to.value);if(a&&b&&!hasEdge(a,b))toggleEdge(a,b);});
     const disconnect=button('Disconnect',()=>{const a=node(from.value),b=node(to.value);if(a&&b&&hasEdge(a,b))toggleEdge(a,b);});
-    const wires=document.createElement('ul');wires.className='editor-wires';field.appendChild(wires);editor={field,kind,addBtn,remove,removeBtn,from,to,connect,disconnect,wires};
+    const guide=document.createElement('p');guide.className='lab-guide';guide.textContent='1. Add a component using the selector. 2. Choose Connection from and Connection to, then Connect. 3. Run the load test above. Undo reverses an edit; Hint helps you choose a design.';field.appendChild(guide);
+    const prerequisites=document.createElement('div');prerequisites.className='lab-prerequisites';field.appendChild(prerequisites);
+    const wires=document.createElement('ul');wires.className='editor-wires';field.appendChild(wires);editor={field,kind,addBtn,remove,removeBtn,from,to,connect,disconnect,wires,prerequisites};
     [kind,remove,from,to].forEach(el=>el.onchange=()=>refreshEditor());}
   function refreshEditor(){if(!editor)return;const e=editor;
     const options=(el,rows)=>{const old=el.value;el.replaceChildren();rows.forEach(([value,text])=>{const opt=document.createElement('option');opt.value=value;opt.textContent=text;el.appendChild(opt);});el.value=rows.some(([v])=>v===old)?old:rows[0]?.[0]||'';};
@@ -252,6 +253,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     const nodes=G.nodes.map(n=>[n.id,`${letterOf(n)}: ${nameOf(n)}`]);options(e.remove,G.nodes.filter(n=>!n.fixed).map(n=>[n.id,`${letterOf(n)}: ${nameOf(n)}`]));options(e.from,nodes);options(e.to,nodes);
     e.field.disabled=running;e.addBtn.disabled=!e.kind.value||!!lockOf(e.kind.value)||!canAdd(e.kind.value)||cost()+K[e.kind.value].cost>o.budget+20;e.removeBtn.disabled=!e.remove.value;
     const a=node(e.from.value),b=node(e.to.value);e.connect.disabled=!a||!b||!allowed(a,b)||hasEdge(a,b);e.disconnect.disabled=!a||!b||!hasEdge(a,b);
+    e.prerequisites.replaceChildren();if(api.lesson){const required=new Map(PAL.filter(k=>lockOf(k)).map(k=>{const L=lockOf(k);return[L.cid,L];}));required.forEach(L=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Open required lesson: '+L.title;b.onclick=()=>{if(!running)api.lesson(L.cid);};e.prerequisites.appendChild(b);});}
     e.wires.replaceChildren();const lines=G.edges.map(edge=>`${letterOf(node(edge.a))}: ${nameOf(node(edge.a))} → ${letterOf(node(edge.b))}: ${nameOf(node(edge.b))}`);
     (lines.length?lines:['No connections yet.']).forEach(text=>{const li=document.createElement('li');li.textContent=text;e.wires.appendChild(li);});}
   if(LAB_SHARED[id]){LAB_SHARED[id]=false;say(`Someone shared this design with you: $${cost()}/h. Press Enter or Run to test it, then try to beat it.`);}else say();
@@ -272,7 +274,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
       PAL.forEach((k,i)=>{const T=TILE(i),kk=K[k],L=lockOf(k),ok=!L&&canAdd(k)&&cost()+kk.cost<=o.budget+20,hot=pal===i&&!running&&!L;
         g.save();g.globalAlpha=running?.45:ok?1:.5;rr(T.x,T.y,T.w,T.h,10);g.fillStyle=hot?hexA(kk.c||C.accent,.18):C.panel;g.fill();g.strokeStyle=hot?kk.c||C.accent:C.line;g.lineWidth=1.3;g.stroke();g.restore();
         icon(kk,T.x+28,T.y+T.h/2,running?.45:1);if(kb)keycap(String(i+1),T.x+11,T.y+11,{a:running?.45:1});
-        tx(kk.short||kk.label,T.x+52,T.y+T.h/2-7,{z:12.5,wt:700,al:'left',a:running?.45:1});tx(L?`watch ch. ${L.n}`:`$${kk.cost}`+(kk.max?` · max ${kk.max}`:''),T.x+52,T.y+T.h/2+9,{z:10.5,c:L?C.amber:C.dim,al:'left',f:MONO,a:running?.45:1});
+        tx(kk.short||kk.label,T.x+52,T.y+T.h/2-7,{z:12.5,wt:700,al:'left',a:running?.45:1});tx(L?`complete ch. ${L.n}`:`$${kk.cost}`+(kk.max?` · max ${kk.max}`:''),T.x+52,T.y+T.h/2+9,{z:10.5,c:L?C.amber:C.dim,al:'left',f:MONO,a:running?.45:1});
         if(L)labLock(T.x+T.w-14,T.y+12);});
       if(!running)tx(kb?'keys: a number adds a component · press two letters to wire them (again to unwire) · Delete removes · Enter runs':'drag a component up onto the board · drag one back down here to remove it · press Tab for keyboard shortcuts',W/2,LAB_PAL_Y+68,{z:11,c:C.dim});
       // empty-board coaching

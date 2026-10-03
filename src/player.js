@@ -12,7 +12,8 @@ let challengeToken=0;
 let renderFault=null,challengeReady=false,challengePaused=false;
 let practiceTimed=store.get('pim-practice-timed')!=='0';
 let shortcuts=store.get('pim-shortcuts')!=='0',diagramEditing=!matchMedia('(pointer:coarse)').matches;
-let cur=0,t=0,playing=false,speed=1,last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
+const resumeRecord=pimResume(store.json('pim-resume',null)),linkedVisit=!!location.hash;let restoring=true,loaded=false,checkpoint=-1;
+let cur=0,t=0,playing=false,speed=pimSpeed(store.get('pim-speed')),last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
 // sidebar
@@ -23,7 +24,7 @@ chapters.forEach((c,i)=>{if(c.group!==grp){if(grp)addQuiz(grp);grp=c.group;const
 // screen readers get one clear name per chapter: number, title, watched, stars
 addQuiz(grp);
 function qzLabel(b){const q=QUIZ[b.dataset.q],k=stars[q.id]||0;b.setAttribute('aria-label',`${q.title}, ${k} of 3 stars`);}
-function tocLabel(b){const j=+b.dataset.i,c=chapters[j],k=stars[c.id]||0;b.setAttribute('aria-label',`${j+1}. ${c.title}${seen[c.id]?', watched':''}${CHAL[c.id]?`, ${k} of 3 stars`:''}`);}
+function tocLabel(b){const j=+b.dataset.i,c=chapters[j],k=stars[c.id]||0;b.setAttribute('aria-label',`${j+1}. ${c.title}${seen[c.id]?', completed':''}${CHAL[c.id]?`, ${k} of 3 stars`:''}`);}
 
 function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2.5);cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.width*H/W*dpr));K=cv.width/W;render();}
 const fmt=s=>{s=Math.max(0,s);return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');};
@@ -81,20 +82,24 @@ function closeDialog(id){const d=$(id);if(d.open)d.close();d.classList.remove('s
 function showCard(v,done){$('card').classList.toggle('done',!!done);if(v)openDialog('card',done?'cardNext':'cardClose');else closeDialog('card');}
 $('card').addEventListener('cancel',e=>{e.preventDefault();showCard(false);});
 $('result').addEventListener('cancel',e=>{e.preventDefault();hideResult();});
-function seek(nt){const c=chapters[cur];t=clamp(nt,0,c.dur);if(t<c.dur)showCard(false);render();}
+function routeState(){return {pim:1,chapter:chapters[cur].id,quiz:quizG,challenge:mode==='play',time:t};}
+function saveRoute(){if(loaded&&!restoring)history.replaceState(routeState(),'');}
+function rememberLesson(){if(!loaded||quizG)return;store.put('pim-resume',{version:1,chapter:chapters[cur].id,time:t,speed});saveRoute();checkpoint=t;}
+function syncCompletion(){const done=!!seen[chapters[cur].id];['completeBtn','cardComplete'].forEach(id=>{$(id).textContent=done?'Lesson completed':'Mark lesson complete';$(id).disabled=done;});}
+function seek(nt){const c=chapters[cur];t=clamp(nt,0,c.dur);if(t<c.dur)showCard(false);render();rememberLesson();}
 window.seek=seek;
-function load(i,autoplay){if(mode==='play')exitChal(true);hideResult();showCard(false);clearRenderFault();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;
+function load(i,autoplay){rememberLesson();if(loaded)$('resume').hidden=true;if(mode==='play')exitChal(true);hideResult();showCard(false);clearRenderFault();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;checkpoint=-1;loaded=true;$('main').scrollTop=0;
   heading();$('cardChal').hidden=!CHAL[c.id];
   $('cardTitle').textContent=c.title;buildTranscript(c);annTitle=true;listTerms($('useList'),c.use);listTerms($('conList'),c.cons);cardLinks(c);
   $('ticks').innerHTML=c.beats.slice(1).map(b=>`<b style="left:${b[0]/c.dur*100}%"></b>`).join('');
   markToc();
   $('nextBtn').disabled=false;$('cardNext').textContent=cur===chapters.length-1?'Back to chapter 1 →':'Next chapter →';
-  setPlaying(!!autoplay);render();}
+  $('learningStatus').textContent='';syncCompletion();setPlaying(!!autoplay);last=null;render();}
 // title, eyebrow, tab title and URL for the current chapter (or the running quiz)
 function heading(){const c=chapters[cur],q=quizG&&QUIZ[quizG];
   $('eyebrow').textContent=q?`${q.group} · Section quiz`:`${c.group} · Chapter ${cur+1} of ${chapters.length}`;$('title').textContent=q?q.title:c.title;
   document.title=(q?q.title:c.title)+' · Packets in Motion';$('chalBtn').hidden=!!q||!CHAL[c.id];
-  const h='#'+(q?q.id:c.id);if(location.hash!==h)history.replaceState(null,'','#'+(q?q.id:c.id));}
+  const h='#'+(q?q.id:c.id);if(location.hash!==h)history[restoring?'replaceState':'pushState'](routeState(),'',h);else if(!restoring)saveRoute();}
 // sidebar state: the current chapter (or quiz), watched marks, names for screen readers
 function markToc(){document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i,on=!quizG&&j===cur;b.classList.toggle('on',on);b.classList.toggle('seen',!!seen[chapters[j].id]);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');tocLabel(b);});
   document.querySelectorAll('.qz').forEach(b=>{const on=b.dataset.q===quizG;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');qzLabel(b);});
@@ -104,16 +109,17 @@ function cardLinks(c){const box=$('cardLinks');box.innerHTML='';
   [['Before this',c.needs],['Related',c.related]].forEach(([label,ids])=>{const list=(ids||[]).map(id=>chapters.findIndex(x=>x.id===id)).filter(i=>i>=0&&i!==cur);if(!list.length)return;
     const span=document.createElement('span'),b=document.createElement('b');b.textContent=label+':';span.appendChild(b);
     list.forEach(i=>{const btn=document.createElement('button');btn.type='button';btn.textContent=chapters[i].title;btn.onclick=()=>load(i,true);span.appendChild(btn);});box.appendChild(span);});}
-function finish(){const c=chapters[cur];seen[c.id]=1;store.set('sdve-seen',JSON.stringify(seen));
-  document.querySelectorAll('.ch').forEach(b=>{b.classList.toggle('seen',!!seen[chapters[+b.dataset.i].id]);tocLabel(b);});updProg();showCard(true,true);}
+function completeLesson(){const c=chapters[cur];seen[c.id]=1;store.set('sdve-seen',JSON.stringify(seen));markToc();updProg();syncCompletion();$('learningStatus').textContent='Lesson marked complete. Challenge stars record your practice separately.';}
+function finish(){rememberLesson();showCard(true,true);}
 function updProg(){$('progBar').style.width=(Object.keys(seen).filter(k=>chapters.some(c=>c.id===k)).length/chapters.length*100)+'%';}
 function frame(ts){if(last==null)last=ts;const dt=Math.min(.06,(ts-last)/1000);last=ts;
   if(mode==='play'){if(challengeReady&&!challengePaused&&!blocked()&&!renderFault){ct+=dt;renderChal(dt);if(!renderFault&&api)try{api.tick();}catch(e){failRender(e);}}}
-  else if(playing&&!dragging&&!blocked()&&!renderFault){const c=chapters[cur];t+=dt*speed;if(t>=c.dur){t=c.dur;setPlaying(false);finish();}render();}
+  else if(playing&&!dragging&&!blocked()&&!renderFault){const c=chapters[cur];t+=dt*speed;if(t>=c.dur){t=c.dur;setPlaying(false);finish();}render();if(Math.abs(t-checkpoint)>=2)rememberLesson();}
   requestAnimationFrame(frame);}
 
 // controls
-$('playBtn').onclick=()=>{const c=chapters[cur];if(!playing&&t>=c.dur)seek(0);showCard(false);setPlaying(!playing);};
+$('playBtn').onclick=()=>{const c=chapters[cur];if(!playing&&t>=c.dur)seek(0);showCard(false);setPlaying(!playing);rememberLesson();};
+$('completeBtn').onclick=completeLesson;$('cardComplete').onclick=completeLesson;
 $('replayBtn').onclick=()=>{seek(0);setPlaying(true);};
 $('cardReplay').onclick=()=>{seek(0);setPlaying(true);};
 $('cardClose').onclick=()=>showCard(false);
@@ -123,7 +129,7 @@ $('nextBtn').onclick=()=>load(cur+1,true);
 $('tradeBtn').onclick=()=>{const v=!$('card').classList.contains('show');if(v)setPlaying(false);showCard(v);};
 $('stepPrev').onclick=()=>{const c=chapters[cur];seek(c.beats[Math.max(0,beatIndex(c,t)-1)][0]+.01);};
 $('stepNext').onclick=()=>{const c=chapters[cur];seek(c.beats[Math.min(c.beats.length-1,beatIndex(c,t)+1)][0]+.01);};
-$('speed').onchange=e=>{speed=+e.target.value;};
+$('speed').onchange=e=>{speed=pimSpeed(e.target.value);store.set('pim-speed',String(speed));rememberLesson();};
 const sc=$('scrub');
 sc.addEventListener('pointerdown',()=>{dragging=true;wasPlaying=playing;});
 sc.addEventListener('input',()=>{seek(sc.value/1000*chapters[cur].dur);});
@@ -143,6 +149,8 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
   let disposed=false,metricAt=-1;const active=()=>!disposed&&token===challengeToken&&mode==='play';ctl.innerHTML='';run.innerHTML='';$('cAccessible').innerHTML='';$('cReadout').innerHTML='';$('cReadout').hidden=true;
   const field=(label,node)=>{const d=document.createElement('div');d.className='ctl';const s=document.createElement('span');s.textContent=label;d.append(s,node);ctl.appendChild(d);return d;};
   return{now:()=>ct,timed:()=>practiceTimed,canInput:()=>active()&&challengeInput(),
+    lesson(id){if(active()){const i=chapters.findIndex(c=>c.id===id);if(i>=0)load(i,false);}},
+    summary(h){if(!active())return;let d=document.getElementById('labSummary');if(!d||!d.parentNode){d=d||document.createElement('div');d.id='labSummary';d.className='lab-summary';d.setAttribute('aria-label','Lab design summary');$('cAccessible').prepend(d);}d.innerHTML=h;},
     targetRadius:()=>Math.max(12,22/(cv.getBoundingClientRect().width/W)),
     surface(title){const d=document.createElement('details'),s=document.createElement('summary'),f=document.createElement('fieldset');s.textContent=title;d.append(s,f);$('cAccessible').appendChild(d);return f;},
     metrics(rows,force=false){if(!active()||!force&&ct-metricAt<1)return;metricAt=ct;const dl=$('cReadout');dl.hidden=false;
@@ -155,7 +163,7 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
     clearShareLink(){if(shareBox)shareBox.hidden=true;},
     shareLink(url){if(!active())return;let box=shareBox;if(!box){box=shareBox=document.createElement('div');box.id='shareLink';box.className='share-link';$('cpanel').appendChild(box);}
       box.hidden=false;box.textContent='';const label=document.createElement('label'),input=document.createElement('input');label.textContent='Share this design';input.type='url';input.readOnly=true;input.value=url;input.setAttribute('aria-label','Share this design link');label.appendChild(input);box.appendChild(label);},
-    button(label,fn,o={}){const b=document.createElement('button');b.type='button';b.className='btn'+(o.primary?' pri':'');b.textContent=label;b.onclick=()=>{if(active()&&challengeInput())fn();};run.appendChild(b);els.push(b);return b;},
+    button(label,fn,o={}){const b=document.createElement('button');b.type='button';b.className='btn'+(o.primary?' pri':'');b.textContent=label;b.onclick=()=>{if(active()&&challengeInput())fn();};if(o.toolbar)$('labActions').insertBefore(b,$('cHintBtn'));else run.appendChild(b);els.push(b);return b;},
     slider(label,min,max,step,val,fmt,fn){const i=document.createElement('input');i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;i.setAttribute('aria-label',label);const o=document.createElement('output');o.textContent=fmt(val);
       i.oninput=()=>{o.textContent=fmt(+i.value);fn(+i.value);};field(label,i).appendChild(o);els.push(i);return i;},
     seg(label,opts,val,fn){const box=document.createElement('div');box.className='seg';box.setAttribute('role','group');box.setAttribute('aria-label',label);
@@ -165,14 +173,15 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
     win(st,title,msg){if(active())showResult(st,title,msg,id,token);}};}
 function disposeChallenge(){cancelPointer();challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
-function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');
+function labLayout(v){const hint=$('cHintBtn');$('cpanel').querySelector('.cbar').appendChild(hint);$('labIntro').hidden=!v;$('labActions').hidden=!v;$('labActions').innerHTML='';(v?$('labIntro'):$('cpanel')).prepend($('cBrief'));if(v)$('labActions').appendChild(hint);}
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');labLayout(!!LAB_DEFS[c.id]&&!gname);
   $('diagramEdit').hidden=false;syncDiagramEditing();
   challengeReady=!!LAB_DEFS[c.id]&&!gname;challengePaused=false;$('cStart').hidden=challengeReady;$('cPause').hidden=!challengeReady;$('cPause').textContent='Pause challenge';$('cPause').setAttribute('aria-pressed','false');
   $('cTimingLabel').hidden=!d.timed;$('cTiming').value=practiceTimed?'timed':'untimed';$('cTiming').disabled=false;
   $('cTitle').textContent=d.title;$('cGoal').textContent=!practiceTimed&&d.untimedGoal?d.untimedGoal:d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();try{inst=d.make(api);}catch(e){failRender(e);}$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
   $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
-function exitChal(quiet){disposeChallenge();clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
+function exitChal(quiet){disposeChallenge();labLayout(false);clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;mode='watch';if(wasQuiz&&!quiet){heading();markToc();}capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet){saveRoute();render();}}
 function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
   $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
@@ -246,12 +255,14 @@ window.addEventListener('keydown',e=>{if($('glossary').open||$('card').open||$('
   else if(e.key==='s'||e.key==='S')$('trBtn').click();
   else if(e.key==='Escape'){showCard(false);setMenu(false);}
   else if(/^[0-9]$/.test(e.key)){const k=e.key==='0'?9:+e.key-1;if(c.beats[k])seek(c.beats[k][0]+.01);}});
-document.addEventListener('visibilitychange',()=>{last=null;if(document.hidden)cancelPointer();});
+document.addEventListener('visibilitychange',()=>{last=null;if(document.hidden){cancelPointer();rememberLesson();}});window.addEventListener('pagehide',rememberLesson);
 window.addEventListener('resize',resize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe(cv);
 const quizFor=h=>Object.keys(QUIZ).find(g=>'#'+QUIZ[g].id===h);
-window.addEventListener('hashchange',()=>{const q=quizFor(location.hash);if(q){if(q!==quizG){load(firstOf(q),false);startQuiz(q);}return;}
-  const i=chapters.findIndex(c=>'#'+c.id===location.hash);if(i>=0&&(i!==cur||quizG))load(i,true);});
+function restoreRoute(){const q=quizFor(location.hash),i=q?firstOf(q):chapters.findIndex(c=>'#'+c.id===location.hash);if(i<0)return;const state=history.state,valid=pimRecord(state)&&state.pim===1&&state.quiz===(q||null)&&chapters.some(c=>c.id===state.chapter)&&(q||state.chapter===chapters[i].id),j=valid?chapters.findIndex(c=>c.id===state.chapter):i;
+  restoring=true;load(j,false);if(valid&&Number.isFinite(state.time))seek(state.time);if(q)startQuiz(q);else if(valid&&state.challenge===true)startChal();restoring=false;saveRoute();}
+window.addEventListener('popstate',restoreRoute);
+window.addEventListener('hashchange',()=>{const q=quizFor(location.hash),h='#'+(quizG?QUIZ[quizG].id:chapters[cur].id);if(location.hash!==h||q&&q!==quizG)restoreRoute();});
 // Fullscreen is optional and never locks the user's device orientation.
 const fsOK=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
 function goFull(){const el=document.documentElement,req=el.requestFullscreen||el.webkitRequestFullscreen;
@@ -345,8 +356,8 @@ function importProgress(text){if(typeof text!=='string'||text.length>IMPORT_LIMI
   Object.entries(pimFilter(d.labBest,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&Number.isSafeInteger(v)&&v>0&&v<=10000)).forEach(([k,n])=>{if(LAB_BEST[k]==null||n<LAB_BEST[k]){LAB_BEST[k]=n;nLabs++;}});
   Object.keys(pimFilter(d.labChaos,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true)).forEach(k=>{if(!LAB_CHAOS[k]){LAB_CHAOS[k]=true;nLabs++;}});labPut('pim-lab-chaos',LAB_CHAOS);
   if(d.version===2)nLabs+=labMergeDesigns(d.labDesigns);labSaveBest();labSaveDesigns();
-  store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();
-  const summary=nSeen||nStars||nLabs?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}`:'Nothing new in the supported records.';
+  store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();syncCompletion();
+  const summary=nSeen||nStars||nLabs?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} completed and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}`:'Nothing new in the supported records.';
   ioMsg(summary+(skipped?` Ignored ${skipped} record${skipped===1?'':'s'} not used by this course.`:''));return true;}
 $('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;try{if(file.size>IMPORT_LIMIT){ioMsg('Progress files must be 1 MB or smaller.');return;}importProgress(await file.text());}catch(_){ioMsg('Could not read that file. Try selecting it again.');}finally{e.target.value='';}};
@@ -362,5 +373,7 @@ const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chap
 const sp=typeof URLSearchParams!=='undefined'?new URLSearchParams(location.search||''):null,sLab=sp&&sp.get('lab'),sIdx=sLab?chapters.findIndex(c=>c.id===sLab):-1;
 const shared=sIdx>=0&&CHAL[sLab]&&labImport(sLab,sp.get('d')||'');
 if(shared){history.replaceState(null,'',location.pathname+'#'+sLab);load(sIdx,false);startChal();}
-else{load(start,!startQ);if(startQ)startQuiz(startQ);}resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
+else{load(start,!startQ&&!resumeRecord);if(startQ)startQuiz(startQ);}restoring=false;saveRoute();$('speed').value=String(speed);
+if(resumeRecord&&!shared&&!startQ&&!location.search&&!linkedVisit){$('resume').hidden=false;$('resumeText').textContent=`Continue ${chapters.find(c=>c.id===resumeRecord.chapter).title} at ${fmt(resumeRecord.time)}.`;$('continueBtn').onclick=()=>{load(chapters.findIndex(c=>c.id===resumeRecord.chapter),false);speed=resumeRecord.speed;$('speed').value=String(speed);store.set('pim-speed',String(speed));seek(resumeRecord.time);$('resume').hidden=true;cv.focus();};}
+resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();

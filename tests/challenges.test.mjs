@@ -18,6 +18,7 @@ function fakeApi(state) {
   return {
     now: () => state.now,
     status(h) { assert.equal(typeof h, 'string'); state.status = h; },
+    summary(h) { state.summary=h; },
     button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary, disabled: false,setAttribute(){} }; state.buttons.push(b); return b; },
     slider(label, min, max, step, val, fmt, fn) {
       assert.ok(min < max, `${label}: min must be below max`);
@@ -136,13 +137,13 @@ test('capstone: URL shortener needs every building block', () => {
 test('capstone: lab keys add, wire and describe the design', () => {
   for (const k in LAB_SAVE) delete LAB_SAVE[k];
   const r = challenge(page, 'capstone');
-  assert.match(r.state.status, /<kbd>1<\/kbd> Rate limiter/);
+  assert.match(r.state.summary, /<kbd>1<\/kbd> Rate limiter/);
   r.press('2', '3', 'a', 'b', 'b', 'c');
-  assert.match(r.state.status, /A<\/b> Users \+ bots → B · <b>B<\/b> Load balancer → C/);
+  assert.match(r.state.summary, /A<\/b> Users \+ bots → B<\/li><li><b>B<\/b> Load balancer → C/);
   r.press('3');
   assert.match(r.state.status, /wired like the first one/);
   r.press('d', 'Delete');
-  assert.doesNotMatch(r.state.status, /<b>D<\/b> App server/);
+  assert.doesNotMatch(r.state.summary, /<b>D<\/b> App server/);
   r.press('c', 'a');
   assert.match(r.state.status, /can't send to/);
 });
@@ -270,8 +271,8 @@ test('lab: a design survives a share link, and a tampered link is refused', () =
   assert.equal(page.get('labImport')('capstone-chat', code), true);
   const again = challenge(page, 'capstone-chat');
   assert.match(again.state.status, /Someone shared this design with you: \$7\/h/);
-  assert.match(again.state.status, /<b>B<\/b> Load balancer → C, E/);
-  assert.match(again.state.status, /resume from their last sequence number: on/);
+  assert.match(again.state.summary, /<b>B<\/b> Load balancer → C, E/);
+  assert.match(again.state.summary, /resume from their last sequence number: on/);
   const decode = page.get('labDecode');
   assert.equal(decode('capstone-chat', code.replace(/~0-1_/, '~1-0_')), null, 'a wire the lab does not allow');
   assert.equal(decode('capstone-chat', '1~0.7.25_1.30.25_1.30.25_1.30.25~~0'), null, 'more load balancers than allowed');
@@ -283,20 +284,20 @@ test('lab: components from chapters you have not watched are locked until you tu
   ls.removeItem('pim-lab-locks');
   try {
     let r = challenge(page, 'spof');
-    assert.match(r.state.status, /<kbd>1<\/kbd> Load balancer \(locked: watch chapter 6\)/, 'on by default');
+    assert.match(r.state.summary, /<kbd>1<\/kbd> Load balancer \(locked: complete chapter 6\)/, 'on by default');
     r.press('1');
-    assert.match(r.state.status, /Load balancer unlocks when you watch chapter 6, .*Or turn off the component locks\./);
-    assert.doesNotMatch(r.state.status, /<b>B<\/b>/);
+    assert.match(r.state.status, /Load balancer unlocks when you mark chapter 6, .*complete\. Open its lesson below, or turn off the component locks\./);
+    assert.doesNotMatch(r.state.summary, /<b>B<\/b>/);
     ls.setItem('sdve-seen', JSON.stringify({ 'load-balancers': 1 }));
     r = challenge(page, 'spof');
     r.press('1');
-    assert.match(r.state.status, /<b>B<\/b> Load balancer/, 'watching the chapter unlocks it');
-    assert.match(r.state.status, /App server \(locked: watch chapter 2\)/);
+    assert.match(r.state.summary, /<b>B<\/b> Load balancer/, 'watching the chapter unlocks it');
+    assert.match(r.state.summary, /App server \(locked: complete chapter 2\)/);
     r.control(/lock components/i).set(false);
     assert.equal(ls.getItem('pim-lab-locks'), 'false');
     r.press('2');
-    assert.match(r.state.status, /<b>C<\/b> App server/);
-    assert.doesNotMatch(challenge(page, 'spof').state.status, /locked/, 'turned off for every lab, and remembered');
+    assert.match(r.state.summary, /<b>C<\/b> App server/);
+    assert.doesNotMatch(challenge(page, 'spof').state.summary, /locked/, 'turned off for every lab, and remembered');
     assert.equal(challenge(page, 'scaling').state.controls.some(c => /lock components/i.test(c.label)), false, 'the scaling lab only uses its own components');
   } finally { ls.setItem('pim-lab-locks', 'false'); ls.setItem('sdve-seen', '{}'); }
 });
@@ -316,16 +317,16 @@ test('lab: undo reverses adds, wires and removals', () => {
   labReset();
   const r = challenge(page, 'scaling');
   r.press('1', '3', 'a', 'b');
-  assert.match(r.state.status, /<b>A<\/b> Your users → B/);
+  assert.match(r.state.summary, /<b>A<\/b> Your users → B/);
   r.press('z');   // a plain letter still selects; only Ctrl+Z undoes
   r.inst.key('z', 0, { ctrlKey: true });
-  assert.doesNotMatch(r.state.status, /Your users → B/);
+  assert.doesNotMatch(r.state.summary, /Your users → B/);
   r.click(/^undo$/i);
-  assert.doesNotMatch(r.state.status, /<b>C<\/b>/, 'the medium server is gone');
+  assert.doesNotMatch(r.state.summary, /<b>C<\/b>/, 'the medium server is gone');
   r.press('b', 'Delete');
-  assert.doesNotMatch(r.state.status, /<b>B<\/b> Load balancer/);
+  assert.doesNotMatch(r.state.summary, /<b>B<\/b> Load balancer/);
   r.click(/^undo$/i);
-  assert.match(r.state.status, /<b>B<\/b> Load balancer/);
+  assert.match(r.state.summary, /<b>B<\/b> Load balancer/);
 });
 test('lab: a failed run marks its weak spots on the board, until you change the design', () => {
   labReset();
@@ -334,9 +335,9 @@ test('lab: a failed run marks its weak spots on the board, until you change the 
   assert.ok(r.result.stars < 3);
   assert.match(r.result.msg, /see where it broke on the board/);
   const again = challenge(page, 'scaling');
-  assert.match(again.state.status, /Weak spots from your last run:<\/span> Your users → Medium server: failing from 11\.0 s/);
+  assert.match(again.state.summary, /Weak spots from your last run:<\/span> Your users → Medium server: failing from 11\.0 s/);
   again.press('1');
-  assert.doesNotMatch(again.state.status, /Weak spots/, 'an edit clears them');
+  assert.doesNotMatch(again.state.summary, /Weak spots/, 'an edit clears them');
 });
 test('lab: the cheapest 3-star cost is kept, with a lean medal to chase', () => {
   labReset();
@@ -350,7 +351,7 @@ test('lab: the cheapest 3-star cost is kept, with a lean medal to chase', () => 
   r.press('1', '2', 'a', 'b', 'b', 'c', '2', '2', '2', '2', '2', '3', 'b', 'i', 'Enter').step(21);
   assert.equal(r.result.stars, 3);
   assert.match(r.result.msg, /New best: \$10\/h, down from \$13\/h\. Lean medal/);
-  assert.match(challenge(page, 'scaling').state.status, /Your cheapest 3-star design: \$10\/h/);
+  assert.match(challenge(page, 'scaling').state.summary, /Your cheapest 3-star design: \$10\/h/);
 });
 test('new chapters: intended answers earn 3 stars', () => {
   assert.equal(runWith('quorums', [[/replicas/i, 3], [/write/i, 2], [/read/i, 2]], 11).stars, 3);

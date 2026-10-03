@@ -82,7 +82,7 @@ test('denied storage reads and failed writes show a backup message without break
 test('drafts and options survive reload; toggle undo restores the option before removing a node',()=>{
   const p=loadPage({storage:{'pim-lab-locks':'false'}}),r=challenge(p,'sessions');r.press('1','2');r.control(/sticky/i).set(true);
   const reloaded=loadPage({storage:saved(p)}),again=challenge(reloaded,'sessions');
-  assert.match(again.state.status,/<b>C<\/b> App server/);assert.equal(reloaded.get('LAB_SAVE').sessions.opts.sticky,true);
+  assert.match(again.state.summary,/<b>C<\/b> App server/);assert.equal(reloaded.get('LAB_SAVE').sessions.opts.sticky,true);
   r.click(/^undo$/i);assert.equal(p.get('LAB_SAVE').sessions.opts.sticky,false);assert.equal(p.get('LAB_SAVE').sessions.nodes.length,3);
   r.click(/^undo$/i);assert.equal(p.get('LAB_SAVE').sessions.nodes.length,2);
 });

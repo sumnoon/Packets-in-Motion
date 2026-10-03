@@ -270,6 +270,15 @@ body.play .stage.editing canvas{touch-action:none}
 .cbar{flex-wrap:wrap}.cbar .btn{white-space:normal;min-height:44px}
 @media(max-width:720px){.scrub{order:9;flex-basis:100%}.diagram-tools .btn{min-height:44px}.orientation-note{display:block}.editor-fields select{font-size:16px}}
 @media(pointer:coarse){button,.btn,.ic{min-height:44px;min-width:44px}input,select{font-size:16px!important}main{padding-bottom:calc(24px + env(safe-area-inset-bottom))}button{touch-action:manipulation}}
+.resume{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-block:1px solid var(--line)}
+.resume p{margin:0;font-size:14px;line-height:1.5}.resume button{white-space:normal;flex:none;min-height:44px}
+.lab-intro{display:flex;flex-direction:column}.lab-intro .cgoal{margin:8px 0 12px}.lab-intro .practice{margin-top:10px}
+.lab-actions{display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.lab-actions button{min-height:44px}.lab-summary{font-size:14px;line-height:1.6;color:var(--text-2)}
+.lab-summary p{margin:10px 0}.learning-status{margin:0;font-size:14px;color:var(--dim)}.learning-status:empty{display:none}
+.caccessible{display:flex;flex-direction:column}.lab-summary h3{font-size:14px;margin:12px 0 6px}.lab-summary ul{margin:0;padding-left:20px}
+.lab-guide{font-size:14px;line-height:1.6;margin:10px 0}.lab-prerequisites{flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:720px){.resume{align-items:flex-start;flex-direction:column}.lab-actions{top:-1px}.lab-intro .practice-note{display:none}}
 </style>
 </head>
 <body>
@@ -306,6 +315,9 @@ body.play .stage.editing canvas{touch-action:none}
           <button class="btn" id="nextBtn" title="Next chapter ( ] )">Next →</button>
         </div>
       </div>
+      <div class="resume" id="resume" hidden><p id="resumeText"></p><button class="btn" id="continueBtn">Continue lesson</button></div>
+      <div id="labIntro" class="lab-intro" hidden><p class="lab-guide">Add a component from the palette or text editor → connect the traffic source to it → run the load test. Undo reverses an edit; Hint helps you choose a design.</p></div>
+      <div id="labActions" class="lab-actions" role="group" aria-label="Architecture lab actions" hidden></div>
       <div class="stageWrap">
         <div class="diagram-tools" role="group" aria-label="Diagram view"><button class="btn sm" id="diagramFit" aria-pressed="true">Fit diagram</button><button class="btn sm" id="diagramReadable" aria-pressed="false">Readable size</button><button class="btn sm" id="diagramEdit" aria-pressed="false" hidden>Drag on diagram: off</button><span>Scroll to pan at readable size. Text controls work at every size.</span></div>
         <p id="orientationNote" class="orientation-note">Portrait works here. Landscape offers more room for the diagram.</p>
@@ -313,9 +325,11 @@ body.play .stage.editing canvas{touch-action:none}
         <section id="renderError" class="render-error" role="alert" hidden><h2>Stage unavailable</h2><p id="renderErrorText"></p><div class="acts"><button class="btn pri" id="renderRetry">Retry stage</button><button class="btn" id="renderRead">Read the lesson</button></div></section>
       </div>
       <div class="cpanel" id="cpanel" aria-label="Challenge">
+        <div id="cBrief">
         <div class="chead"><span class="ctag" id="cTag">Challenge</span><b id="cTitle"></b></div>
         <p class="cgoal" id="cGoal"></p>
         <div class="practice"><button class="btn pri" id="cStart">Start challenge</button><button class="btn" id="cPause" aria-pressed="false" hidden>Pause challenge</button><label id="cTimingLabel" hidden>Practice <select id="cTiming"><option value="timed">Timed</option><option value="untimed">Untimed</option></select></label><span class="practice-note">The challenge pauses while you read the glossary or open chapters.</span></div>
+        </div>
         <div class="caccessible" id="cAccessible"></div>
         <dl class="readout" id="cReadout" aria-label="Live challenge measurements" aria-live="off" hidden></dl>
         <div class="cctl" id="cCtl"></div>
@@ -327,6 +341,7 @@ body.play .stage.editing canvas{touch-action:none}
         <button class="ic" id="playBtn" title="Play / pause (Space)" aria-label="Play"></button>
         <button class="ic" id="replayBtn" title="Replay (R)" aria-label="Replay"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z"/></svg></button>
         <button class="btn sm" id="stepPrev" aria-label="Previous lesson step">Previous step</button><button class="btn sm" id="stepNext" aria-label="Next lesson step">Next step</button>
+        <button class="btn sm" id="completeBtn">Mark lesson complete</button>
         <div class="scrub"><input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Scrub timeline"><div class="ticks" id="ticks"></div></div>
         <div class="time" id="time">0:00 / 0:00</div>
         <select class="ic" id="speed" title="Playback speed" aria-label="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
@@ -336,6 +351,7 @@ body.play .stage.editing canvas{touch-action:none}
         <button class="ic" id="tradeBtn" title="When to use it / trade-offs (T)" aria-label="When to use it and trade-offs"><svg viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.9V17h2V9L12 3zM5 13.2v4L12 21l7-3.8v-4L12 17l-7-3.8z"/></svg></button>
       </div>
       <div class="caption" id="caption"><span class="step" id="capStep">1/1</span><p id="capText"></p></div>
+      <p class="learning-status" id="learningStatus" role="status"></p>
       <p class="sr" id="srLive" aria-live="polite"></p>
       <section class="transcript" id="transcript" aria-labelledby="trTitle" hidden><h2 id="trTitle" tabindex="-1">Transcript</h2><ol id="trList"></ol></section>
       <div class="legend">
@@ -349,13 +365,14 @@ body.play .stage.editing canvas{touch-action:none}
   </main>
 </div>
         <dialog class="card" id="card" hidden aria-labelledby="cardTitle"><div class="in">
-          <h2><span id="cardTitle"></span><small>Chapter complete</small></h2>
+          <h2><span id="cardTitle"></span><small>Lesson ended</small></h2>
           <div class="cols">
             <div class="use"><h3>When to use it</h3><ul id="useList"></ul></div>
             <div class="con"><h3>Trade-offs</h3><ul id="conList"></ul></div>
           </div>
           <div class="links" id="cardLinks"></div>
           <div class="acts">
+            <button class="btn" id="cardComplete">Mark lesson complete</button>
             <button class="btn" id="cardReplay">↺ Replay</button>
             <button class="btn" id="cardClose">Keep watching</button>
             <button class="btn" id="cardNext">Next chapter →</button>
@@ -515,6 +532,8 @@ const pimRecord=v=>v!==null&&typeof v==='object'&&!Array.isArray(v);
 function pimFilter(v,valid){const out={};if(pimRecord(v))Object.entries(v).forEach(([k,x])=>{if(valid(k,x))out[k]=x;});return out;}
 const pimSeen=v=>pimFilter(v,(k,x)=>chapters.some(c=>c.id===k)&&(x===1||x===true));
 const pimStars=v=>pimFilter(v,(k,x)=>(Object.hasOwn(CHAL,k)||Object.values(QUIZ).some(q=>q.id===k))&&Number.isInteger(x)&&x>=0&&x<=3);
+const pimSpeed=v=>[.5,1,1.5,2].includes(Number(v))?Number(v):1;
+function pimResume(v){if(!pimRecord(v)||v.version!==1||typeof v.chapter!=='string'||!Number.isFinite(v.time)||v.time<0)return null;const c=chapters.find(c=>c.id===v.chapter);return c&&v.time<=c.dur&&[.5,1,1.5,2].includes(v.speed)?{version:1,chapter:c.id,time:v.time,speed:v.speed}:null;}
 </script>
 <script>
 /* ---------------- 0. START HERE: PACKETS, IP ADDRESSES & PORTS ---------------- */
@@ -1016,16 +1035,18 @@ const U=[110,300],SV=[470,300],ST=[820,300];                       // browser, s
 const SVS=[160,300,440].map(y=>[560,y]),BOT=[110,470];              // JWT: three servers, a thief
 const OA={u:[110,330],app:[440,330],idp:[800,190],api:[800,450]};  // OAuth: you, the app, the provider, the API
 const toS=[[U[0]+20,U[1]],[SV[0]-58,SV[1]]],toStore=[[SV[0]+58,SV[1]],[ST[0]-50,ST[1]]];
-ch({id:'auth',group:'Traffic',title:'Authentication: Sessions, JWTs & OAuth',dur:38,needs:['sessions'],related:['proxy-gateway','microservices','rate-limiting'],
+ch({id:'auth',group:'Traffic',title:'Authentication: Sessions, JWTs & OpenID Connect',dur:48,needs:['sessions'],related:['proxy-gateway','microservices','rate-limiting'],
 beats:[
 [0,'Who is asking?','HTTP remembers nothing between requests, so every request must carry proof of who sent it, and the server checks it every time.'],
 [5,'Session cookie','Log in once: the server stores a session and gives the browser a random id in a cookie. Each request sends the cookie, and the server looks it up.'],
-[13,'JWT: a signed token','Instead of a lookup, the server signs a token that holds the user id and an expiry. Any server can check the signature without asking a database.'],
+[13,'JWT: validate signature and claims','JWT is a token format. A service must validate the signature with an allowed algorithm, trusted issuer, intended audience and expiry. A valid signature alone does not prove this token is intended for your service.'],
 [21,'The catch: you cannot take it back','A JWT stays valid until it expires, even after logout or theft. Keep JWTs short-lived and use a refresh token to get new ones.'],
-[27,'OAuth: log in through someone else','The app sends you to an identity provider. You approve there, and the app receives an access token. Your password never reaches the app.'],
-[34,'Pick by situation','One web app: session cookies. Many services checking identity: short-lived JWTs. Third-party login or API access: OAuth.']],
-use:['Session cookies: classic web apps, instant logout, admin tools','JWTs: many services or regions verifying identity without a shared store','OAuth: "log in with…" buttons and letting one app use another\'s API on your behalf'],
-cons:['Sessions need a shared store that every server can reach','JWTs cannot be revoked early without a blocklist, and they grow with every claim','OAuth adds redirects, token storage and expiry handling: use a well-tested library'],
+[27,'OAuth: delegated API access','OAuth lets an app obtain an access token for limited API access, such as reading your photos. The token authorizes access; receiving it alone is not proof of login identity.'],
+[34,'OpenID Connect: verified login identity','The identity provider authenticates you. OpenID Connect (OIDC) adds an ID token to OAuth: validate its signature, issuer, audience, expiry and any requested nonce. Use the subject together with the issuer to identify the account.'],
+[40,'Authorization code with PKCE','Use authorization code flow with PKCE: send a SHA-256 challenge, then exchange the code with the original verifier. This binds redemption to the initiating app. A library should also validate redirect responses and state.'],
+[45,'Pick by situation','Session cookies fit one web app. Short-lived JWTs let services verify tokens locally. OAuth access tokens authorize APIs; a validated OIDC ID token establishes the login identity.']],
+use:['Session cookies: classic web apps, instant logout, admin tools','JWTs: services validating signatures and claims without a session lookup','OAuth: delegated API access; OpenID Connect: federated login'],
+cons:['Sessions need a shared store that every server can reach','JWT revocation needs additional server-side checks; use short lifetimes','OIDC and OAuth require PKCE, redirect validation and token validation: use a maintained library'],
 draw(t){
   // ---- 1. sessions
   const p1=V(t,.2,12.6);
@@ -1045,7 +1066,7 @@ draw(t){
       [['header','{alg: "HS256"}',C.red],['payload','{user: 42, exp: 10:15}',C.accent],['signature','x9Kq…  (secret key)',C.blue]].forEach(([k,v,c],i)=>{tx(k,-134,-36+i*42,{z:11.5,c:C.dim,al:'left'});tx(v,-134,-18+i*42,{z:13,f:MONO,wt:700,c,al:'left'});});});
     const toK=k=>[[U[0]+20,U[1]],[SVS[k][0]-61,SVS[k][1]]];
     each(t,14.4,20.6,.9,1.6,(i,s)=>{const k=(i*2+1)%3;pk(t,s,.8,toK(k),C.blue,{label:i===0?'request + JWT':null,a:p2});pop(t,s+.85,SVS[k][0],SVS[k][1]-44,'signature ✓',C.green,{z:12,d:.9});pk(t,s+.9,.7,rev(toK(k)),C.green,{r:4.5,a:p2});});
-    if(t>15.6&&t<21)pill('no session store: every server checks the signature itself',W/2-60,520,{c:C.green,z:12.5,a:p2*V(t,15.6,20.8)});
+    if(t>15.6&&t<21)pill('no session lookup: each server validates signature and claims',W/2-60,520,{c:C.green,z:12.5,a:p2*V(t,15.6,20.8)});
     // logout does not help; a stolen token keeps working
     if(t>21.2)pill('logged out at 10:02',U[0],U[1]-48,{c:C.dim,z:12,a:p2*V(t,21.2)});
     user(BOT[0],BOT[1],{label:'thief',c:C.red,r:15,a:p2*V(t,22)});
@@ -1055,17 +1076,20 @@ draw(t){
   // ---- 3. OAuth
   const p3=V(t,26.8,33.8);
   if(p3>0){user(OA.u[0],OA.u[1],{label:'you',r:18,a:p3});server(OA.app[0],OA.app[1],{label:'Print shop',sub:'the app',w:126,a:p3});
-    box(OA.idp[0],OA.idp[1],{label:'Identity provider',sub:'knows your password',w:176,h:58,a:p3});box(OA.api[0],OA.api[1],{label:'Photos API',sub:'your photos',w:150,h:56,c:C.blue,a:p3});
+    box(OA.idp[0],OA.idp[1],{label:'Authorization server',sub:'grants API access',w:188,h:58,a:p3});box(OA.api[0],OA.api[1],{label:'Photos API',sub:'your photos',w:150,h:56,c:C.blue,a:p3});
     const u2i=[[OA.u[0]+18,OA.u[1]-10],[OA.idp[0]-88,OA.idp[1]]],a2i=[[OA.app[0]+63,OA.app[1]-14],[OA.idp[0]-88,OA.idp[1]+18]],a2p=[[OA.app[0]+63,OA.app[1]+10],[OA.api[0]-75,OA.api[1]]];
-    pk(t,27.2,.9,[[OA.u[0]+18,OA.u[1]],[OA.app[0]-63,OA.app[1]]],C.blue,{label:'① log in with…',a:p3});
+    pk(t,27.2,.9,[[OA.u[0]+18,OA.u[1]],[OA.app[0]-63,OA.app[1]]],C.blue,{label:'① authorize photo access',a:p3});
     pk(t,28.2,1,u2i,C.blue,{label:'② sign in + approve "read photos"',a:p3});
     pk(t,29.3,1,[[OA.idp[0]-88,OA.idp[1]+8],[OA.app[0]+63,OA.app[1]-24]],C.amber,{label:'③ one-time code',a:p3});
     pk(t,30.4,.8,a2i,C.amber,{r:5,a:p3});pk(t,31.2,.8,rev(a2i),C.green,{label:'④ access token',a:p3});
     pk(t,32.1,.9,a2p,C.green,{label:'⑤ GET /photos + token',a:p3});
     if(t>29)pill('your password never reaches the app',OA.idp[0],OA.idp[1]-56,{c:C.green,z:12,a:p3*V(t,29)});}
   // ---- summary
-  const p4=V(t,34.1);
-  if(p4>0)[['Session cookie','one web app · instant logout',C.amber],['Short-lived JWT','many services · no shared lookup',C.accent],['OAuth','log in with… · access another API',C.green]].forEach(([a,b,c],k)=>{const x=190+k*310,v=V(t,34.2+k*.4);
+  const oidc=V(t,34.1,44.8);if(oidc>0){server(190,300,{label:'Your app',sub:'OIDC client',w:150,a:oidc});box(790,300,{label:'Identity provider',sub:'authenticates account',w:180,a:oidc});
+    ln([[280,300],[700,300]],{arrow:true,c:C.blue,a:oidc});pill(t<40?'validated ID token → login identity':'code + PKCE verifier → token exchange',W/2,240,{c:C.accent,z:15,a:oidc});
+    textBlock(t<40?'Check signature, issuer, audience, expiry and requested nonce. Access tokens authorize APIs; ID tokens identify the login.':'PKCE: SHA-256 challenge first; original verifier at redemption. Validate the redirect and state with a maintained library.',W/2,400,740,{z:16,a:oidc});}
+  const p4=V(t,45.1);
+  if(p4>0)[['Session cookie','one web app · instant logout',C.amber],['Short-lived JWT','validate signature and claims',C.accent],['OAuth / OIDC','API access / login identity',C.green]].forEach(([a,b,c],k)=>{const x=190+k*310,v=V(t,45.2+k*.4);
     plate(x,300,280,110,{c,a:v});tx(a,x,282,{z:19,wt:800,c,a:v});tx(b,x,316,{z:13,a:v});});
 }});})();
 
@@ -2813,36 +2837,38 @@ draw(t){
 const SV=[[150,170],[150,300],[150,430]],DBP=[540,300];
 const BAR={x:300,y:112,w:620};const F=[['timestamp (ms)',41,C.accent],['machine',10,C.amber],['sequence',12,C.green]];
 const UU=['f47ac10b-58cc…','0b9e3a12-77d2…','c2e1d4a9-10fe…','7a03b5c8-9e44…','3d99ef01-b2a7…','9e5c7722-4f1b…'];
-ch({id:'unique-ids',group:'Advanced',title:'Unique IDs at Scale: Snowflake IDs',dur:34,needs:['sharding'],related:['idempotency','capstone'],
+ch({id:'unique-ids',group:'Advanced',title:'Unique IDs at Scale: UUIDs & Snowflake',dur:40,needs:['sharding'],related:['idempotency','capstone'],
 beats:[
 [0,'Every row needs a unique ID','Orders, posts, messages: each one needs an ID nobody else will ever get, even with hundreds of servers creating them at the same moment.'],
-[5,'Auto-increment: one counter','One database hands out 1, 2, 3… Simple and ordered, but every server has to ask it, so it becomes a bottleneck and a single point of failure.'],
-[11,'UUIDs: random, no coordination','Each server makes up a random 128-bit ID. No asking anyone, but the IDs are long and random, so they do not sort by time and they index poorly.'],
-[17,'Snowflake: build the ID from parts','A 64-bit number made of three parts: the current time in milliseconds, the machine\'s number, and a counter within that millisecond.'],
-[24,'Unique without asking anyone','Machine numbers never clash, and the counter separates IDs made in the same millisecond. Two servers can never produce the same ID.'],
-[29,'Sorted by time for free','Time is the first part, so newer IDs are bigger numbers. Sorting by ID is almost the same as sorting by creation time.']],
+[5,'Auto-increment allows gaps','A database sequence supplies distinct numbers, but rollbacks can leave gaps. Gapless invoice numbering needs a separate serialized, transactional allocator and an audit trail, including cancelled invoices.'],
+[11,'UUIDv4: random, no coordination','UUIDv4 uses random bits in a 128-bit ID. Independent generators need no central counter; IDs do not sort by creation time. Secure randomness limits guessing, but never replaces authorization.'],
+[16,'UUIDv7: timestamp first','UUIDv7 puts a millisecond timestamp first, with random bits after it. It offers roughly time-ordered 128-bit IDs and better index locality. Clock skew and same-millisecond generation still limit global ordering.'],
+[21,'Snowflake: build the ID from parts','A common Snowflake layout packs a millisecond timestamp, a machine number and a per-millisecond counter into 64 bits. This is a compact alternative to UUIDv7.'],
+[30,'Uniqueness needs safeguards','Assign machine numbers uniquely, guard against backwards clocks, and wait or fail when the per-millisecond counter is exhausted. Those safeguards prevent a generator from reusing the same parts.'],
+[35,'Approximate time order','Snowflake sorts by its encoded timestamp under the generator\'s clock assumptions. Clock skew can reverse send order across servers; exact chat ordering needs a conversation sequence or causal metadata.']],
 use:['High-volume IDs across many servers (Twitter/X, Discord, Instagram)','When IDs should roughly sort by creation time (feeds, timelines)','Anywhere a central counter would become a bottleneck'],
 cons:['Depends on clocks: a clock jumping backwards can create duplicates unless guarded','Machine numbers must be assigned uniquely','IDs reveal when they were created and hint at your volume'],
 draw(t){
-  SV.forEach(([x,y],k)=>server(x,y,{label:`Server ${k+1}`,sub:t>=17?`machine ${k+1}`:'',w:116,h:52,...A(t,.2+k*.1)}));
+  SV.forEach(([x,y],k)=>server(x,y,{label:`Server ${k+1}`,sub:t>=21?`machine ${k+1}`:'',w:116,h:52,...A(t,.2+k*.1)}));
   // auto-increment
   const da=A(t,5.2,11);db(DBP[0],DBP[1],{label:'ID counter',sub:'next = 1045',w:110,h:90,...da});
   let n=0;each(t,5.6,10.2,.25,1.4,(i,s)=>{const k=i%3,p=[[SV[k][0]+58,SV[k][1]],[DBP[0]-56,DBP[1]]];pk(t,s,.6,p,C.blue,{r:4});pk(t,s+.8,.6,rev(p),C.green,{r:4,label:t<s+1.4?`${1041+i}`:null});});
   if(t>8.4&&t<11)pill('everyone waits on one box',DBP[0],DBP[1]+80,{c:C.red,z:12.5,a:V(t,8.4,10.8)});
   if(t>7.5&&t<11)spin(t,DBP[0],DBP[1]-66,{c:C.amber,a:V(t,7.5,10.8)});
   // uuids
-  const ua=V(t,11.2,17);if(ua>0){UU.forEach((u,k)=>{const x=560+(k%2)*230,y=190+Math.floor(k/2)*70,on=t>11.5+k*.5;pill(u,x,y,{c:C.dim,z:12,f:MONO,a:ua*(on?1:0)});});
-    if(t>14.3)pill('random order: newest is not last',675,440,{c:C.amber,z:12.5,a:ua*V(t,14.3)});}
+  const ua=V(t,11.2,16);if(ua>0){UU.forEach((u,k)=>{const x=560+(k%2)*230,y=190+Math.floor(k/2)*70,on=t>11.5+k*.5;pill(u,x,y,{c:C.dim,z:12,f:MONO,a:ua*(on?1:0)});});
+    if(t>14.3)pill('UUIDv4: random order',675,440,{c:C.amber,z:12.5,a:ua*V(t,14.3)});}
+  const v7=V(t,16.2,21);if(v7>0){['017f22e2-79b0-7cc3…','017f22e2-79b1-7a20…'].forEach((s,i)=>pill(s,590,240+i*80,{c:C.accent,z:17,f:MONO,a:v7}));pill('UUIDv7: timestamp prefix · 128 bits',590,430,{c:C.green,z:14,a:v7});}
   // snowflake layout
-  const sa=A(t,17.3);if(sa.a>0){let x=BAR.x;F.forEach(([n,b,c],k)=>{const w=BAR.w*b/63;draw(0,0,{a:sa.a*V(t,17.5+k*.5)},()=>{rr(x,BAR.y-20,w-4,40,8);g.fillStyle=hexA(c,.18);g.fill();g.strokeStyle=c;g.lineWidth=1.8;g.stroke();});
-      tx(`${n} · ${b} bits`,x+w/2,BAR.y+1,{z:12.5,wt:700,c,a:sa.a*V(t,17.5+k*.5)});x+=w;});tx('64-bit ID',BAR.x-12,BAR.y,{z:12,c:C.dim,al:'right',a:sa.a});}
+  const sa=A(t,21.3);if(sa.a>0){let x=BAR.x;F.forEach(([n,b,c],k)=>{const w=BAR.w*b/63;draw(0,0,{a:sa.a*V(t,21.5+k*.5)},()=>{rr(x,BAR.y-20,w-4,40,8);g.fillStyle=hexA(c,.18);g.fill();g.strokeStyle=c;g.lineWidth=1.8;g.stroke();});
+      tx(`${n} · ${b} bits`,x+w/2,BAR.y+1,{z:12.5,wt:700,c,a:sa.a*V(t,21.5+k*.5)});x+=w;});tx('64-bit ID',BAR.x-12,BAR.y,{z:12,c:C.dim,al:'right',a:sa.a});}
   // each server builds IDs locally
-  const IDS=[[0,20,'1727712000123','01','0000'],[1,20.6,'1727712000123','02','0000'],[2,21.2,'1727712000124','03','0000'],[0,21.8,'1727712000124','01','0001']];
+  const IDS=[[0,24,'1727712000123','01','0000'],[1,24.6,'1727712000123','02','0000'],[2,25.2,'1727712000124','03','0000'],[0,25.8,'1727712000124','01','0001']];
   IDS.forEach(([k,s,ts,m,q],i)=>{if(t<s)return;const y=240+i*56,a=V(t,s);tx('→',SV[k][0]+80,SV[k][1],{z:16,c:C.dim,a:a*(t<s+1.2?1:0)});
     pill(ts,420,y,{c:C.accent,z:12,f:MONO,a});pill(m,560,y,{c:C.amber,z:12,f:MONO,a});pill(q,640,y,{c:C.green,z:12,f:MONO,a});tx(`from server ${k+1}`,700,y,{z:11.5,c:C.dim,al:'left',a});});
-  if(t>24.2&&t<29)pill('same millisecond, different machine → different IDs',540,470,{c:C.green,z:12.5,a:V(t,24.2,28.8)});
-  if(t>29.2)pill('bigger number = created later → sorts by time ✓',540,470,{c:C.green,z:12.5,a:V(t,29.2)});
-  if(t>29.2){g.save();g.globalAlpha=V(t,29.4);ln([[790,240],[790,410]],{c:C.green,w:2,arrow:true});tx('newer',812,410,{z:11.5,c:C.green,al:'left'});g.restore();}
+  if(t>30.2&&t<35)pill('unique machines + guarded clocks + counter limits',540,470,{c:C.green,z:12.5,a:V(t,30.2,34.8)});
+  if(t>35.2)pill('approximate timestamp order · not causal order',540,470,{c:C.amber,z:12.5,a:V(t,35.2)});
+  if(t>35.2){g.save();g.globalAlpha=V(t,35.4);ln([[790,240],[790,410]],{c:C.green,w:2,arrow:true});tx('larger timestamp',812,410,{z:11.5,c:C.green,al:'left'});g.restore();}
 }});})();
 
 /* ---------------- A4. BACK-PRESSURE & LOAD SHEDDING ---------------- */
@@ -3431,7 +3457,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   let locksOn=(()=>{try{return localStorage.getItem('pim-lab-locks')!=='false';}catch(e){return true;}})();
   const taughtEarlier=kind=>{const cid=K[kind].teach||LAB_TEACH[kind],j=cid?chapters.findIndex(c=>c.id===cid):-1;return j>=0&&j<myIdx?{cid,n:j+1,title:chapters[j].title}:null;};
   const lockOf=kind=>{if(!locksOn)return null;const T=taughtEarlier(kind);return T&&!seenCh[T.cid]?T:null;};
-  const lockMsg=kind=>{const L=lockOf(kind);return`${K[kind].label} unlocks when you watch chapter ${L.n}, ${L.title}. Or turn off the component locks.`;};
+  const lockMsg=kind=>{const L=lockOf(kind);return`${K[kind].label} unlocks when you mark chapter ${L.n}, ${L.title}, complete. Open its lesson below, or turn off the component locks.`;};
   const hasEdge=(a,b)=>G.edges.some(e=>e.a===a.id&&e.b===b.id);
   G.out=(n,kinds)=>G.edges.filter(e=>e.a===n.id).map(e=>node(e.b)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
   G.inn=(n,kinds)=>G.edges.filter(e=>e.b===n.id).map(e=>node(e.a)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
@@ -3448,37 +3474,36 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   function slotFor(kind,list){const cc=o.columns&&o.columns[kind],col=(Array.isArray(cc)?cc[0]:cc)||520,y0=Array.isArray(cc)?cc[1]:null;
     if(y0!=null&&free(col,y0,list))return[col,y0];
     for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y,list))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
-  function add(kind,x,y){if(lockOf(kind)){say(lockMsg(kind));FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,'locked: watch its chapter first',C.amber,14);return null;}
+  function add(kind,x,y){if(lockOf(kind)){say(lockMsg(kind));FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,'locked: complete its chapter first',C.amber,14);return null;}
     if(!canAdd(kind)){FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
     if(cost()+K[kind].cost>o.budget+20){say('Cannot add this component: it would exceed the budget allowance.');return null;}
     remember();const twin=K[kind].clone&&G.of(kind)[0];   // a new copy of a stateless server joins the pool with the same wires
     const n={id:'n'+(++G.seq),kind,x:0,y:0};G.nodes.push(n);if(x==null)[x,y]=slotFor(kind);[n.x,n.y]=clampIn(n,x,y);
     if(twin)G.edges.filter(e=>e.a===twin.id||e.b===twin.id).forEach(e=>G.edges.push({a:e.a===twin.id?n.id:e.a,b:e.b===twin.id?n.id:e.b}));
-    sel={n};save();say(twin&&G.edges.some(e=>e.a===n.id||e.b===n.id)?`Added ${K[kind].label.toLowerCase()} ${letterOf(n)}, wired like ${letterOf(twin)}.`:'');FX.burst(n.x,n.y,K[kind].c||C.accent,12,110);SFX.play('good');return n;}
-  function removeNode(n,snap){if(!n||n.fixed)return;remember(snap);G.nodes=G.nodes.filter(m=>m!==n);G.edges=G.edges.filter(e=>e.a!==n.id&&e.b!==n.id);sel=null;save();say();}
+    sel={n};save();say(`Added ${nameOf(n)} ${letterOf(n)}${twin&&G.edges.some(e=>e.a===n.id||e.b===n.id)?', wired like '+letterOf(twin):''}.`);FX.burst(n.x,n.y,K[kind].c||C.accent,12,110);SFX.play('good');return n;}
+  function removeNode(n,snap){if(!n||n.fixed)return;const name=nameOf(n);remember(snap);G.nodes=G.nodes.filter(m=>m!==n);G.edges=G.edges.filter(e=>e.a!==n.id&&e.b!==n.id);sel=null;save();say(`Removed ${name} and its connections.`);}
   function toggleEdge(a,b){if(hasEdge(a,b)){remember();G.edges=G.edges.filter(e=>!(e.a===a.id&&e.b===b.id));save();say(`Unwired ${nameOf(a)} → ${nameOf(b)}.`);return;}
     if(!allowed(a,b)){const t=(o.links[a.kind]||[]).map(k=>(K[k]||o.fixedKinds[k]).label.toLowerCase());FX.text((a.x+b.x)/2,(a.y+b.y)/2-20,`${kindOf(a).label} can't feed ${kindOf(b).label.toLowerCase()}`,C.red,13);
       say(`${nameOf(a)} can't send to ${nameOf(b)}. ${t.length?nameOf(a)+' can feed: '+t.join(', ')+'.':nameOf(a)+' has nothing to feed.'}`);return;}
     remember();G.edges.push({a:a.id,b:b.id});save();say(`Wired ${nameOf(a)} → ${nameOf(b)}.`);const[p,q]=seg(G.edges[G.edges.length-1]);FX.burst(q[0],q[1],C.accent,8,80);}
   // ---------- status line (read by screen readers) ----------
-  function describe(){const pal=PAL.map((k,i)=>{const L=lockOf(k);return`<kbd>${i+1}</kbd> ${esc(K[k].label)} ${L?`(locked: watch chapter ${L.n})`:'$'+K[k].cost}`;}).join(' · ');
-    const lines=G.nodes.map(n=>{const outs=G.out(n);return`<b>${letterOf(n)}</b> ${esc(nameOf(n))}${outs.length?' → '+outs.map(m=>letterOf(m)).join(', '):''}`;}).join(' · ');
+  function describe(){const pal=PAL.map((k,i)=>{const L=lockOf(k);return`<kbd>${i+1}</kbd> ${esc(K[k].label)} ${L?`(locked: complete chapter ${L.n})`:'$'+K[k].cost}`;}).join(' · ');
+    const lines=G.nodes.map(n=>{const outs=G.out(n);return`<li><b>${letterOf(n)}</b> ${esc(nameOf(n))}${outs.length?' → '+outs.map(m=>letterOf(m)).join(', '):''}</li>`;}).join('');
     const probs=o.check?o.check(G):[];
     const opts=(o.toggles||[]).map(tg=>`${tg.label}: ${G.opts[tg.key]?'on':'off'}`).join(' · ');
     const weak=post&&post.length?' <span class="bad">Weak spots from your last run:</span> '+post.map(m=>{if(m.edge){const e=G.edges.find(x=>x.a+'>'+x.b===m.edge);return e?`${esc(nameOf(node(e.a)))} → ${esc(nameOf(node(e.b)))}: ${esc(m.note)}`:'';}const n=node(m.id);return n?`<b>${letterOf(n)}</b> ${esc(nameOf(n))}: ${esc(m.note)}`:'';}).filter(Boolean).join('; ')+'.':'';
     const best=LAB_BEST[id]!=null?` Your cheapest 3-star design: $${LAB_BEST[id]}/h.`:'';
-    return`Budget $${cost()} of $${o.budget}.${best} Your design: ${lines}.${weak}${opts?' '+esc(opts)+'.':''} ${probs.length?'<span class="bad">To fix:</span> '+esc(probs[0])+' ':''}Add with ${pal}.`;}
-  let lastMsg='';
-  function say(msg){if(msg)lastMsg=msg;const s=sel&&sel.n?` Selected <b>${letterOf(sel.n)}</b> ${esc(nameOf(sel.n))}: press another letter to wire it, Delete to remove.`:'';api.status((lastMsg?esc(lastMsg)+' ':'')+describe()+s+' Press <kbd>Enter</kbd> to run the load test.');lastMsg='';refreshEditor();}
+    return`<p>Budget <b>$${cost()} of $${o.budget}</b>.${best}</p><h3>Your components and connections</h3><ul>${lines}</ul>${weak?'<p>'+weak+'</p>':''}${opts?'<p>Options: '+esc(opts)+'.</p>':''}${probs.length?'<p><b>Next step:</b> '+esc(probs[0])+'</p>':''}<details><summary>Keyboard shortcuts and component costs</summary><p>Add with ${pal}.</p><p>Press two component letters to connect or disconnect them. Delete removes a selection. Enter runs the test; Ctrl/Command+Z on the diagram undoes an edit.</p></details>`;}
+  function say(msg){const s=sel&&sel.n?`Selected ${letterOf(sel.n)}: ${nameOf(sel.n)}.`:'';if(api.summary)api.summary(describe());api.status(esc(msg||s||'Design ready. Add components, connect them, then run the load test.'));refreshEditor();}
   // ---------- run ----------
   let running=false,S=null,t0=0,last=0,done=false,res=null;const fl=[];
   // simT: the run's clock (slowed for a moment when something crashes); vnow: the clock packets move on
   let simT=0,vnow=0,lastNow=null,slowUntil=-1,shakeUntil=-1,badSfx=-9,celebrate=null;
-  const optionControls=(o.toggles||[]).map(tg=>({key:tg.key,el:api.toggle(tg.label,G.opts[tg.key],v=>{if(running)return;remember();G.opts[tg.key]=v;save();say();})}));
+  const optionControls=(o.toggles||[]).map(tg=>({key:tg.key,el:api.toggle(tg.label,G.opts[tg.key],v=>{if(running)return;remember();G.opts[tg.key]=v;save();say(tg.label+': '+(v?'on':'off')+'.');})}));
   function syncOptions(){optionControls.forEach(({key,el})=>{if(el&&el.setAttribute)el.setAttribute('aria-pressed',String(!!G.opts[key]));});}
-  const run=api.button(o.runLabel||'Run load test',()=>start(),{primary:true});
+  const run=api.button(o.runLabel||'Run load test',()=>start(),{primary:true,toolbar:true});
   const clear=api.button('Clear board',()=>{if(running)return;remember();G.nodes=G.nodes.filter(n=>n.fixed);G.edges=[];sel=null;save();say('Board cleared.');});
-  api.button('Undo',()=>undo());
+  api.button('Undo',()=>undo(),{toolbar:true});
   const bestBtn=api.button('Restore best design',()=>{if(running||!LAB_BEST_DESIGNS[id])return;const best=labDecode(id,LAB_BEST_DESIGNS[id].design);if(best){remember();applyDesign(best);say('Best saved design restored.');}});
   bestBtn.hidden=!LAB_BEST_DESIGNS[id];
   const shareBtn=api.button('Copy share link',()=>share());
@@ -3488,8 +3513,8 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     if(code!==labEncode(id,G))return;
     say(`${copied?'Link copied. Send it to anyone':'Copy the link below and send it to anyone'} to share your $${cost()}/h design.${api.shareLink?'':' '+url}`);}
   // the locks are one setting for every lab, offered where a lab uses components from earlier chapters
-  if(PAL.some(taughtEarlier))api.toggle('Lock components until I have watched their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
-    say(v?'Component locks on, in every lab: a component from a chapter you have not watched waits until you watch it.':'Component locks off: every component is available.');});
+  if(PAL.some(taughtEarlier))api.toggle('Lock components until I have completed their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
+    say(v?'Component locks on, in every lab: a component from a chapter you have not completed waits until you mark it complete.':'Component locks off: every component is available.');});
   let chaosOn=!!LAB_CHAOS_ON[id];
   api.toggle('Chaos mode: incidents strike at random times and places',chaosOn,v=>{chaosOn=v;LAB_CHAOS_ON[id]=v;LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];say(v?'Chaos mode on: each run, the incidents strike at a random time and hit a random component. Survive three runs in a row for the chaos-proof badge.':'Chaos mode off.');});
   // what the run did to each component and wire, for the weak spots afterwards
@@ -3562,7 +3587,9 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     const removeBtn=button('Remove component',()=>removeNode(node(remove.value))),from=select('Connection from','lab-from'),to=select('Connection to','lab-to');
     const connect=button('Connect',()=>{const a=node(from.value),b=node(to.value);if(a&&b&&!hasEdge(a,b))toggleEdge(a,b);});
     const disconnect=button('Disconnect',()=>{const a=node(from.value),b=node(to.value);if(a&&b&&hasEdge(a,b))toggleEdge(a,b);});
-    const wires=document.createElement('ul');wires.className='editor-wires';field.appendChild(wires);editor={field,kind,addBtn,remove,removeBtn,from,to,connect,disconnect,wires};
+    const guide=document.createElement('p');guide.className='lab-guide';guide.textContent='1. Add a component using the selector. 2. Choose Connection from and Connection to, then Connect. 3. Run the load test above. Undo reverses an edit; Hint helps you choose a design.';field.appendChild(guide);
+    const prerequisites=document.createElement('div');prerequisites.className='lab-prerequisites';field.appendChild(prerequisites);
+    const wires=document.createElement('ul');wires.className='editor-wires';field.appendChild(wires);editor={field,kind,addBtn,remove,removeBtn,from,to,connect,disconnect,wires,prerequisites};
     [kind,remove,from,to].forEach(el=>el.onchange=()=>refreshEditor());}
   function refreshEditor(){if(!editor)return;const e=editor;
     const options=(el,rows)=>{const old=el.value;el.replaceChildren();rows.forEach(([value,text])=>{const opt=document.createElement('option');opt.value=value;opt.textContent=text;el.appendChild(opt);});el.value=rows.some(([v])=>v===old)?old:rows[0]?.[0]||'';};
@@ -3570,6 +3597,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     const nodes=G.nodes.map(n=>[n.id,`${letterOf(n)}: ${nameOf(n)}`]);options(e.remove,G.nodes.filter(n=>!n.fixed).map(n=>[n.id,`${letterOf(n)}: ${nameOf(n)}`]));options(e.from,nodes);options(e.to,nodes);
     e.field.disabled=running;e.addBtn.disabled=!e.kind.value||!!lockOf(e.kind.value)||!canAdd(e.kind.value)||cost()+K[e.kind.value].cost>o.budget+20;e.removeBtn.disabled=!e.remove.value;
     const a=node(e.from.value),b=node(e.to.value);e.connect.disabled=!a||!b||!allowed(a,b)||hasEdge(a,b);e.disconnect.disabled=!a||!b||!hasEdge(a,b);
+    e.prerequisites.replaceChildren();if(api.lesson){const required=new Map(PAL.filter(k=>lockOf(k)).map(k=>{const L=lockOf(k);return[L.cid,L];}));required.forEach(L=>{const b=document.createElement('button');b.type='button';b.className='btn';b.textContent='Open required lesson: '+L.title;b.onclick=()=>{if(!running)api.lesson(L.cid);};e.prerequisites.appendChild(b);});}
     e.wires.replaceChildren();const lines=G.edges.map(edge=>`${letterOf(node(edge.a))}: ${nameOf(node(edge.a))} → ${letterOf(node(edge.b))}: ${nameOf(node(edge.b))}`);
     (lines.length?lines:['No connections yet.']).forEach(text=>{const li=document.createElement('li');li.textContent=text;e.wires.appendChild(li);});}
   if(LAB_SHARED[id]){LAB_SHARED[id]=false;say(`Someone shared this design with you: $${cost()}/h. Press Enter or Run to test it, then try to beat it.`);}else say();
@@ -3590,7 +3618,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
       PAL.forEach((k,i)=>{const T=TILE(i),kk=K[k],L=lockOf(k),ok=!L&&canAdd(k)&&cost()+kk.cost<=o.budget+20,hot=pal===i&&!running&&!L;
         g.save();g.globalAlpha=running?.45:ok?1:.5;rr(T.x,T.y,T.w,T.h,10);g.fillStyle=hot?hexA(kk.c||C.accent,.18):C.panel;g.fill();g.strokeStyle=hot?kk.c||C.accent:C.line;g.lineWidth=1.3;g.stroke();g.restore();
         icon(kk,T.x+28,T.y+T.h/2,running?.45:1);if(kb)keycap(String(i+1),T.x+11,T.y+11,{a:running?.45:1});
-        tx(kk.short||kk.label,T.x+52,T.y+T.h/2-7,{z:12.5,wt:700,al:'left',a:running?.45:1});tx(L?`watch ch. ${L.n}`:`$${kk.cost}`+(kk.max?` · max ${kk.max}`:''),T.x+52,T.y+T.h/2+9,{z:10.5,c:L?C.amber:C.dim,al:'left',f:MONO,a:running?.45:1});
+        tx(kk.short||kk.label,T.x+52,T.y+T.h/2-7,{z:12.5,wt:700,al:'left',a:running?.45:1});tx(L?`complete ch. ${L.n}`:`$${kk.cost}`+(kk.max?` · max ${kk.max}`:''),T.x+52,T.y+T.h/2+9,{z:10.5,c:L?C.amber:C.dim,al:'left',f:MONO,a:running?.45:1});
         if(L)labLock(T.x+T.w-14,T.y+12);});
       if(!running)tx(kb?'keys: a number adds a component · press two letters to wire them (again to unwire) · Delete removes · Enter runs':'drag a component up onto the board · drag one back down here to remove it · press Tab for keyboard shortcuts',W/2,LAB_PAL_Y+68,{z:11,c:C.dim});
       // empty-board coaching
@@ -3918,16 +3946,16 @@ chal('proxy-gateway',{timed:true,title:'Run the gateway',goal:'Route each reques
       {t:'GET /orders/981 · expired token',b:'x',why:'An expired token is not valid. Reject it.'},{t:'GET /users/me · no token',b:'x',why:'No token, no entry.'},{t:'PATCH /orders/12 · valid token',b:'o',why:'/orders goes to Orders.'}]})});
 
 /* ---------------- 4b. AUTH: pick the credential ---------------- */
-chal('auth',{title:'Pick the credential',goal:'Sort each situation into the best fit: a session cookie, a short-lived JWT, or OAuth.',
-  hint:'Need instant logout in one app? Sessions. Many services checking identity without a shared lookup? JWTs. Another company\'s login or API? OAuth.',
-  make:sortGame({bins:[{id:'s',label:'Session cookie',sub:'server keeps the session',c:C.amber},{id:'j',label:'Short-lived JWT',sub:'signed, checked anywhere',c:C.accent},{id:'o',label:'OAuth',sub:'delegated access',c:C.green}],
+chal('auth',{title:'Pick the credential',goal:'Choose session cookies, short-lived JWTs, OAuth delegated access, or OpenID Connect (OIDC) login.',
+  hint:'Sessions fit revocable app login. JWTs are a token format and need claim validation. OAuth access tokens authorize APIs; OIDC adds authenticated identity through an ID token. Use authorization code flow with PKCE.',
+  make:sortGame({bins:[{id:'s',label:'Session cookie',sub:'server keeps the session',c:C.amber},{id:'j',label:'Short-lived JWT',sub:'validate signature + claims',c:C.accent},{id:'o',label:'OAuth',sub:'delegated API access',c:C.green},{id:'oidc',label:'OpenID Connect',sub:'OIDC · federated login',c:C.blue}],
     cards:[{t:'One server-rendered web app with a login form',b:'s',why:'A single app with a session store is the simplest, safest choice.'},
       {t:'Logging out must take effect at once, everywhere',b:'s',why:'Deleting the session revokes it immediately. A JWT stays valid until it expires.'},
-      {t:'20 microservices check who the user is on every call',b:'j',why:'Each service verifies the signature itself, with no shared session lookup.'},
+      {t:'20 microservices check who the user is on every call',b:'j',why:'Each service validates the trusted issuer, audience, expiry and signature using an allowed algorithm, with no shared session lookup.'},
       {t:'Stateless API servers in three regions',b:'j',why:'No region needs to reach a session store elsewhere; the token carries what they need.'},
-      {t:'"Log in with your work account" on a new app',b:'o',why:'The identity provider checks the password and hands the app a token.'},
+      {t:'"Log in with your work account" on a new app',b:'oidc',why:'OIDC adds authentication to OAuth. Validate the ID token signature, issuer, audience, expiry and any requested nonce before accepting the identity.'},
       {t:'A print shop wants read access to your photos on another site',b:'o',why:'OAuth grants limited, revocable access without sharing your password.'},
-      {t:'Your app must never see the user\'s password',b:'o',why:'With OAuth the password only ever goes to the identity provider.'},
+      {t:'Federated login where the app must not handle the provider password',b:'oidc',why:'Use OIDC authorization code flow with PKCE. The access token authorizes API access; the validated ID token supplies the login identity.'},
       {t:'The admin panel of a small internal tool',b:'s',why:'One app, few users, instant logout: plain sessions fit.'}]})});
 
 /* ---------------- 5. CDN: place two edges ---------------- */
@@ -4554,7 +4582,7 @@ quiz('Foundations',{title:'Foundations recap',goal:'Seven questions on page load
     {q:'A service has 20 M daily users making 5 requests each. Roughly how many requests per second is that on average?',a:['About 1,000','About 100','About 20,000','About 100,000'],why:'100 M requests a day ÷ ~100,000 seconds ≈ 1,000 per second. Plan for 2–3× that at peak.',ch:'estimation'}]})});
 
 /* ---------------- QUIZ: TRAFFIC ---------------- */
-quiz('Traffic',{title:'Traffic recap',goal:'Seven questions on load balancing, sessions, gateways, CDNs and rate limits. Answer with a click or keys 1–4.',
+quiz('Traffic',{title:'Traffic recap',goal:'Nine questions on load balancing, sessions, authentication, gateways, CDNs and rate limits. Answer with a click or keys 1–4.',
   hint:'Think about where each decision is best made: at the balancer, at the gateway, at the edge, or in a shared store.',
   make:quizGame({title:'Traffic',questions:[
     {q:'One server is older and slower, and requests vary a lot in size. Which balancing strategy fits best?',a:['Least connections','Round robin','Random','Always the first server'],why:'Least connections looks at how busy each server really is, so the slow one naturally gets less work.',ch:'load-balancers'},
@@ -4563,7 +4591,9 @@ quiz('Traffic',{title:'Traffic recap',goal:'Seven questions on load balancing, s
     {q:'A video is requested by users on four continents. What cuts their wait the most?',a:['Serving it from CDN edge caches near them','A bigger origin server','A faster database','Switching from REST to gRPC'],why:'Distance is latency. Edge caches serve the bytes from close by, so most requests never cross an ocean.',ch:'cdn'},
     {q:'You want to allow short bursts but cap the average at 10 requests per second. Which limiter fits?',a:['Token bucket','Leaky bucket','No limiter, just add servers','A longer timeout'],why:'A token bucket saves unused tokens for bursts, while its refill rate caps the average. A leaky bucket smooths everything to one fixed rate.',ch:'rate-limiting'},
     {q:'A client goes over its rate limit. What should the server send back?',a:['429 Too Many Requests','500 Internal Server Error','200 OK with an empty body','301 Moved Permanently'],why:'429 tells the client it is being limited, ideally with a Retry-After header, so it can back off.',ch:'rate-limiting'},
-    {q:'Logging out must take effect immediately in your one web app. Which credential fits best?',a:['A session cookie backed by a session store','A JWT that lasts 30 days','An API key in the URL','No credential at all'],why:'Deleting the session revokes it at once. A JWT stays valid until it expires.',ch:'auth'}]})});
+    {q:'Logging out must take effect immediately in your one web app. Which credential fits best?',a:['A session cookie backed by a session store','A JWT that lasts 30 days','An API key in the URL','No credential at all'],why:'Deleting the session revokes it at once. A JWT stays valid until it expires.',ch:'auth'},
+    {q:'Which protocol supplies a validated login identity for a work-account sign-in?',a:['OpenID Connect, using a validated ID token','OAuth access token possession alone','A public API key','UUIDv7'],why:'OIDC adds authentication to OAuth. Validate ID token claims and signature; access tokens authorize API access.',ch:'auth'},
+    {q:'What binds an authorization code exchange to the app that initiated it?',a:['PKCE: a challenge followed by the original verifier','Sending an ID token to every API','Making the code predictable','Ignoring redirect state'],why:'PKCE prevents redeeming an intercepted code without the verifier. Redirect and state validation are also needed.',ch:'auth'}]})});
 
 /* ---------------- QUIZ: DATA ---------------- */
 quiz('Data',{title:'Data recap',goal:'Eight questions on quorums, indexes, replicas, shards, caches and CAP. Answer with a click or keys 1–4.',
@@ -4625,14 +4655,16 @@ quiz('Architecture',{title:'Architecture recap',goal:'Six questions on service b
     {q:'What is the main cost of splitting a monolith into microservices?',a:['In-process calls become network calls that can be slow or fail','The code becomes impossible to test','You can no longer use a database','You must rewrite it in a new language'],why:'You trade simple function calls for timeouts, retries, partial failures and distributed tracing.',ch:'microservices'}]})});
 
 /* ---------------- QUIZ: ADVANCED ---------------- */
-quiz('Advanced',{title:'Advanced recap',goal:'Eight questions on consensus, locks, conflicts, distributed transactions, ids and overload. Answer with a click or keys 1–4.',
+quiz('Advanced',{title:'Advanced recap',goal:'Ten questions on consensus, locks, conflicts, distributed transactions, IDs and overload. Answer with a click or keys 1–4.',
   hint:'Count majorities. Prefer undoing steps to locking everything. Shed load before it sheds you.',
   make:quizGame({title:'Advanced',questions:[
     {q:'A five-node Raft cluster loses two nodes. Can it still accept writes?',a:['Yes: three of five is still a majority','No: any lost node stops writes','Only reads, no writes','Only if the leader survived'],why:'Raft needs a majority. With three of five alive, it elects a leader if needed and carries on.',ch:'consensus'},
     {q:'A four-node cluster splits into two halves of two. What happens?',a:['Neither half has a majority, so writes stop','Both halves elect a leader','The half with the old leader carries on','The cluster grows to eight nodes'],why:'Two of four is not a majority. This is why clusters use odd sizes like 3 or 5.',ch:'consensus'},
     {q:'An order spans Payments, Stock and Shipping, each with its own database, and shipping fails. How does a saga recover?',a:['It runs compensating steps: release the stock, refund the payment','It rolls all three databases back at once','It retries forever','It ignores the failure'],why:'Each saga step has an undo. On failure, the steps already done are compensated in reverse order.',ch:'transactions'},
     {q:'What is the main weakness of two-phase commit?',a:['If the coordinator dies mid-commit, participants can be stuck holding locks','It is never consistent','It needs no coordinator','It only works with NoSQL'],why:'Participants that voted yes must wait for the coordinator\'s decision, holding their locks until it returns.',ch:'transactions'},
-    {q:'You need ids that are unique across 100 machines, roughly time-ordered and 64 bits long. Which scheme?',a:['Snowflake IDs','Auto-increment from one database','Random UUIDs','Usernames'],why:'Timestamp + machine number + sequence: no coordination, sortable by time, and it fits in 64 bits.',ch:'unique-ids'},
+    {q:'You need ids across 100 machines, roughly timestamp-ordered and 64 bits long. Which scheme fits with unique machine numbers and guarded clocks?',a:['Snowflake IDs','Auto-increment from one database','UUIDv4','Usernames'],why:'Snowflake packs time, machine and sequence into 64 bits. Clock skew limits cross-server ordering; it does not guarantee causal order.',ch:'unique-ids'},
+    {q:'Can an ordinary database sequence guarantee gapless invoice numbers?',a:['No: use a serialized transactional allocator and an audit trail','Yes: every rollback returns its number','Yes: UUIDv4 fixes the gaps','Yes: a Snowflake timestamp is gapless'],why:'Sequence values may be consumed even when a transaction aborts. Business numbering needs explicit allocation and cancellation records.',ch:'unique-ids'},
+    {q:'Which UUID version puts a millisecond timestamp first for approximate time ordering?',a:['UUIDv7','UUIDv4','All UUID versions are random','No UUID can contain a timestamp'],why:'UUIDv7 has a timestamp prefix; UUIDv4 is random. Neither establishes global causal order across unsynchronized clocks.',ch:'unique-ids'},
     {q:'A service is overloaded. What is load shedding?',a:['Rejecting some requests early so the rest still succeed','Adding servers automatically','Retrying faster','Caching the errors'],why:'Serving 80% well beats serving 100% so slowly that everything times out.',ch:'backpressure'},
     {q:'A worker pauses, its lock lease expires and another worker takes over. What stops the paused worker\'s stale write?',a:['Storage rejects writes with an older fencing token','A longer timeout on the paused worker','Retrying the write','A bigger server'],why:'The paused worker cannot know it lost the lease. The storage can, by comparing tokens.',ch:'locks'},
     {q:'Version X has clock [A:2, B:0] and version Y has [A:1, B:1]. What are they?',a:['Concurrent: a real conflict','X happened first','Y happened first','The same version'],why:'X is ahead on A and Y is ahead on B, so neither saw the other.',ch:'conflicts'}]})});
@@ -4895,12 +4927,12 @@ chal('transactions',{title:'Unwind the saga',goal:'Booking the car fails. Put th
     steps:[{t:'Book flight',sub:'✓ committed'},{t:'Book hotel',sub:'✓ committed'},{t:'Book car',sub:'✕ no cars left'},{t:'Cancel hotel',sub:'compensation'},{t:'Refund flight',sub:'compensation'},{t:'Tell the customer',sub:'trip cancelled'}]})});
 
 /* ---------------- A3. UNIQUE IDS: pick the scheme ---------------- */
-chal('unique-ids',{title:'Pick the ID scheme',goal:'For each situation, choose auto-increment, UUID or Snowflake IDs.',
-  hint:'One small database → auto-increment. No coordination possible, or IDs must be unguessable → UUID. Huge scale and time-sorted → Snowflake.',
-  make:sortGame({bins:[{id:'auto',label:'Auto-increment',sub:'1, 2, 3… from one DB',c:C.blue},{id:'uuid',label:'UUID',sub:'random 128-bit',c:C.accent},{id:'snow',label:'Snowflake',sub:'time · machine · seq',c:C.green}],
+chal('unique-ids',{title:'Pick the ID scheme',goal:'Choose auto-increment, UUIDv4, Snowflake, or a transactional business-number allocator. UUIDv7 is another choice when you need roughly time-ordered 128-bit IDs.',
+  hint:'A small database can use a sequence with gaps. Offline or unpredictable IDs fit UUIDv4. Rough time order in 64 bits fits Snowflake with clock safeguards. Gapless business numbering needs serialized allocation and an audit trail.',
+  make:sortGame({bins:[{id:'auto',label:'Auto-increment',sub:'DB sequence; gaps allowed',c:C.blue},{id:'uuid',label:'UUIDv4',sub:'random 128-bit',c:C.accent},{id:'snow',label:'Snowflake',sub:'time · machine · seq',c:C.green},{id:'business',label:'Business numbering',sub:'transactional allocator',c:C.amber}],
     cards:[{t:'A small app with one database and light traffic',b:'auto',why:'One counter is simple and plenty at this scale.'},{t:'Notes created offline on phones and synced later',b:'uuid',why:'Phones cannot ask a central counter while offline.'},
-      {t:'500 servers creating a million posts per second, shown newest first',b:'snow',why:'No central counter, and the IDs sort by time.'},{t:'Public order links nobody should be able to guess',b:'uuid',why:'Random IDs cannot be guessed or counted.'},
-      {t:'Invoice numbers that must be sequential with no gaps',b:'auto',why:'Only a single counter guarantees 1, 2, 3 with no gaps.'},{t:'Chat messages that must sort by send time across many servers',b:'snow',why:'Time comes first in the ID, so sorting by ID sorts by time.'},
+      {t:'Many servers need roughly time-ordered IDs that fit in 64 bits',b:'snow',why:'Snowflake fits in 64 bits. Unique machine IDs, guarded clocks and sequence overflow handling are required; it does not establish causal order.'},{t:'Public order links should not reveal a predictable counter',b:'uuid',why:'UUIDv4 from a secure random generator is hard to predict. Authorization checks are still required.'},
+      {t:'Invoice numbers require gapless allocation and an audit trail',b:'business',why:'An ordinary sequence can consume numbers on rollback. Serialize business-number allocation with invoice creation in one transaction; record cancellations and follow the applicable audit rules.'},{t:'Chat messages need compact 64-bit IDs with approximate timestamp order',b:'snow',why:'Clock skew can reverse cross-server send order. Use a conversation sequence or causal metadata if exact message order matters.'},
       {t:'Merging two companies\' databases without clashes',b:'uuid',why:'Random 128-bit IDs practically never collide.'}]})});
 
 /* ---------------- A4. BACK-PRESSURE: keep checkout alive ---------------- */
@@ -5282,8 +5314,11 @@ const GLOSSARY=[
 ['two-phase commit','A coordinator asks every participant to prepare, then tells all of them to commit or all to abort.',['2PC']],
 ['saga','A long transaction split into steps, each with a compensating step that undoes it.',['sagas']],
 ['compensation','An action that undoes an earlier step, like a refund for a charge.',['compensating']],
-['Snowflake ID','A 64-bit id made of a timestamp, a machine number and a sequence, so machines can create ids without coordinating.',['Snowflake','Snowflake IDs']],
-['UUID','A random 128-bit id: practically never collides, but large and unordered.',['UUIDs']],
+['Snowflake ID','A compact timestamp-based id, commonly 64 bits, with a unique machine number and counter. Guarded clocks and counter limits are required; timestamp order does not establish causal order.',['Snowflake','Snowflake IDs']],
+['UUID','A 128-bit identifier with several versions, including random UUIDv4 and timestamp-based UUIDv7.',['UUIDs']],
+['UUIDv4','A UUID with random bits, suitable for independent generation without a central counter. It does not sort by creation time.',[]],
+['UUIDv7','A UUID with a millisecond timestamp prefix and random bits, offering approximate time order and improved index locality, subject to clock assumptions.',[]],
+['auto-increment','A database-generated numeric identifier that can have gaps when numbers are consumed by aborted transactions or other events.',[]],
 ['back-pressure','A slow component signalling upstream to slow down instead of being overwhelmed.',['backpressure']],
 ['load shedding','Deliberately rejecting some requests under overload so the rest still succeed.',[]],
 ['base62','Writing numbers with 0–9, a–z and A–Z, which makes short codes.',[]],
@@ -5292,7 +5327,10 @@ const GLOSSARY=[
 ['cookie','A small value the browser stores and sends back with every request to that site.',['cookies']],
 ['JWT','JSON Web Token: a signed token carrying claims such as the user id and an expiry, checked without a database lookup.',['JWTs']],
 ['OAuth','A standard that lets an app act for you on another service with an access token, without ever seeing your password.',[]],
-['access token','A short-lived credential that proves a request is allowed.',['access tokens']],
+['OpenID Connect','An authentication layer on OAuth that provides login identity through a validated ID token.',['OIDC']],
+['ID token','A token for the OIDC client describing an authentication event. Validate its signature, issuer, audience, expiry and any requested nonce; it is not an API access credential.',['ID tokens']],
+['PKCE','A code-flow safeguard that binds an authorization code to an initiating app using a challenge and verifier, preventing redemption with the intercepted code alone.',[]],
+['access token','A credential authorizing access to an API within its granted permissions; receiving it alone does not establish a login identity.',['access tokens']],
 ['refresh token','A longer-lived credential used only to get new access tokens.',['refresh tokens']],
 ['identity provider','The service that checks who you are and issues tokens in a "log in with…" flow.',['identity providers']],
 ['quorum','How many replicas must answer for a read (R) or write (W) to count.',['quorums','read quorum','write quorum']],
@@ -5341,7 +5379,8 @@ let challengeToken=0;
 let renderFault=null,challengeReady=false,challengePaused=false;
 let practiceTimed=store.get('pim-practice-timed')!=='0';
 let shortcuts=store.get('pim-shortcuts')!=='0',diagramEditing=!matchMedia('(pointer:coarse)').matches;
-let cur=0,t=0,playing=false,speed=1,last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
+const resumeRecord=pimResume(store.json('pim-resume',null)),linkedVisit=!!location.hash;let restoring=true,loaded=false,checkpoint=-1;
+let cur=0,t=0,playing=false,speed=pimSpeed(store.get('pim-speed')),last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
 // sidebar
@@ -5352,7 +5391,7 @@ chapters.forEach((c,i)=>{if(c.group!==grp){if(grp)addQuiz(grp);grp=c.group;const
 // screen readers get one clear name per chapter: number, title, watched, stars
 addQuiz(grp);
 function qzLabel(b){const q=QUIZ[b.dataset.q],k=stars[q.id]||0;b.setAttribute('aria-label',`${q.title}, ${k} of 3 stars`);}
-function tocLabel(b){const j=+b.dataset.i,c=chapters[j],k=stars[c.id]||0;b.setAttribute('aria-label',`${j+1}. ${c.title}${seen[c.id]?', watched':''}${CHAL[c.id]?`, ${k} of 3 stars`:''}`);}
+function tocLabel(b){const j=+b.dataset.i,c=chapters[j],k=stars[c.id]||0;b.setAttribute('aria-label',`${j+1}. ${c.title}${seen[c.id]?', completed':''}${CHAL[c.id]?`, ${k} of 3 stars`:''}`);}
 
 function resize(){const r=cv.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2.5);cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.width*H/W*dpr));K=cv.width/W;render();}
 const fmt=s=>{s=Math.max(0,s);return Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');};
@@ -5410,20 +5449,24 @@ function closeDialog(id){const d=$(id);if(d.open)d.close();d.classList.remove('s
 function showCard(v,done){$('card').classList.toggle('done',!!done);if(v)openDialog('card',done?'cardNext':'cardClose');else closeDialog('card');}
 $('card').addEventListener('cancel',e=>{e.preventDefault();showCard(false);});
 $('result').addEventListener('cancel',e=>{e.preventDefault();hideResult();});
-function seek(nt){const c=chapters[cur];t=clamp(nt,0,c.dur);if(t<c.dur)showCard(false);render();}
+function routeState(){return {pim:1,chapter:chapters[cur].id,quiz:quizG,challenge:mode==='play',time:t};}
+function saveRoute(){if(loaded&&!restoring)history.replaceState(routeState(),'');}
+function rememberLesson(){if(!loaded||quizG)return;store.put('pim-resume',{version:1,chapter:chapters[cur].id,time:t,speed});saveRoute();checkpoint=t;}
+function syncCompletion(){const done=!!seen[chapters[cur].id];['completeBtn','cardComplete'].forEach(id=>{$(id).textContent=done?'Lesson completed':'Mark lesson complete';$(id).disabled=done;});}
+function seek(nt){const c=chapters[cur];t=clamp(nt,0,c.dur);if(t<c.dur)showCard(false);render();rememberLesson();}
 window.seek=seek;
-function load(i,autoplay){if(mode==='play')exitChal(true);hideResult();showCard(false);clearRenderFault();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;
+function load(i,autoplay){rememberLesson();if(loaded)$('resume').hidden=true;if(mode==='play')exitChal(true);hideResult();showCard(false);clearRenderFault();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;checkpoint=-1;loaded=true;$('main').scrollTop=0;
   heading();$('cardChal').hidden=!CHAL[c.id];
   $('cardTitle').textContent=c.title;buildTranscript(c);annTitle=true;listTerms($('useList'),c.use);listTerms($('conList'),c.cons);cardLinks(c);
   $('ticks').innerHTML=c.beats.slice(1).map(b=>`<b style="left:${b[0]/c.dur*100}%"></b>`).join('');
   markToc();
   $('nextBtn').disabled=false;$('cardNext').textContent=cur===chapters.length-1?'Back to chapter 1 →':'Next chapter →';
-  setPlaying(!!autoplay);render();}
+  $('learningStatus').textContent='';syncCompletion();setPlaying(!!autoplay);last=null;render();}
 // title, eyebrow, tab title and URL for the current chapter (or the running quiz)
 function heading(){const c=chapters[cur],q=quizG&&QUIZ[quizG];
   $('eyebrow').textContent=q?`${q.group} · Section quiz`:`${c.group} · Chapter ${cur+1} of ${chapters.length}`;$('title').textContent=q?q.title:c.title;
   document.title=(q?q.title:c.title)+' · Packets in Motion';$('chalBtn').hidden=!!q||!CHAL[c.id];
-  const h='#'+(q?q.id:c.id);if(location.hash!==h)history.replaceState(null,'','#'+(q?q.id:c.id));}
+  const h='#'+(q?q.id:c.id);if(location.hash!==h)history[restoring?'replaceState':'pushState'](routeState(),'',h);else if(!restoring)saveRoute();}
 // sidebar state: the current chapter (or quiz), watched marks, names for screen readers
 function markToc(){document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i,on=!quizG&&j===cur;b.classList.toggle('on',on);b.classList.toggle('seen',!!seen[chapters[j].id]);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');tocLabel(b);});
   document.querySelectorAll('.qz').forEach(b=>{const on=b.dataset.q===quizG;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');qzLabel(b);});
@@ -5433,16 +5476,17 @@ function cardLinks(c){const box=$('cardLinks');box.innerHTML='';
   [['Before this',c.needs],['Related',c.related]].forEach(([label,ids])=>{const list=(ids||[]).map(id=>chapters.findIndex(x=>x.id===id)).filter(i=>i>=0&&i!==cur);if(!list.length)return;
     const span=document.createElement('span'),b=document.createElement('b');b.textContent=label+':';span.appendChild(b);
     list.forEach(i=>{const btn=document.createElement('button');btn.type='button';btn.textContent=chapters[i].title;btn.onclick=()=>load(i,true);span.appendChild(btn);});box.appendChild(span);});}
-function finish(){const c=chapters[cur];seen[c.id]=1;store.set('sdve-seen',JSON.stringify(seen));
-  document.querySelectorAll('.ch').forEach(b=>{b.classList.toggle('seen',!!seen[chapters[+b.dataset.i].id]);tocLabel(b);});updProg();showCard(true,true);}
+function completeLesson(){const c=chapters[cur];seen[c.id]=1;store.set('sdve-seen',JSON.stringify(seen));markToc();updProg();syncCompletion();$('learningStatus').textContent='Lesson marked complete. Challenge stars record your practice separately.';}
+function finish(){rememberLesson();showCard(true,true);}
 function updProg(){$('progBar').style.width=(Object.keys(seen).filter(k=>chapters.some(c=>c.id===k)).length/chapters.length*100)+'%';}
 function frame(ts){if(last==null)last=ts;const dt=Math.min(.06,(ts-last)/1000);last=ts;
   if(mode==='play'){if(challengeReady&&!challengePaused&&!blocked()&&!renderFault){ct+=dt;renderChal(dt);if(!renderFault&&api)try{api.tick();}catch(e){failRender(e);}}}
-  else if(playing&&!dragging&&!blocked()&&!renderFault){const c=chapters[cur];t+=dt*speed;if(t>=c.dur){t=c.dur;setPlaying(false);finish();}render();}
+  else if(playing&&!dragging&&!blocked()&&!renderFault){const c=chapters[cur];t+=dt*speed;if(t>=c.dur){t=c.dur;setPlaying(false);finish();}render();if(Math.abs(t-checkpoint)>=2)rememberLesson();}
   requestAnimationFrame(frame);}
 
 // controls
-$('playBtn').onclick=()=>{const c=chapters[cur];if(!playing&&t>=c.dur)seek(0);showCard(false);setPlaying(!playing);};
+$('playBtn').onclick=()=>{const c=chapters[cur];if(!playing&&t>=c.dur)seek(0);showCard(false);setPlaying(!playing);rememberLesson();};
+$('completeBtn').onclick=completeLesson;$('cardComplete').onclick=completeLesson;
 $('replayBtn').onclick=()=>{seek(0);setPlaying(true);};
 $('cardReplay').onclick=()=>{seek(0);setPlaying(true);};
 $('cardClose').onclick=()=>showCard(false);
@@ -5452,7 +5496,7 @@ $('nextBtn').onclick=()=>load(cur+1,true);
 $('tradeBtn').onclick=()=>{const v=!$('card').classList.contains('show');if(v)setPlaying(false);showCard(v);};
 $('stepPrev').onclick=()=>{const c=chapters[cur];seek(c.beats[Math.max(0,beatIndex(c,t)-1)][0]+.01);};
 $('stepNext').onclick=()=>{const c=chapters[cur];seek(c.beats[Math.min(c.beats.length-1,beatIndex(c,t)+1)][0]+.01);};
-$('speed').onchange=e=>{speed=+e.target.value;};
+$('speed').onchange=e=>{speed=pimSpeed(e.target.value);store.set('pim-speed',String(speed));rememberLesson();};
 const sc=$('scrub');
 sc.addEventListener('pointerdown',()=>{dragging=true;wasPlaying=playing;});
 sc.addEventListener('input',()=>{seek(sc.value/1000*chapters[cur].dur);});
@@ -5472,6 +5516,8 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
   let disposed=false,metricAt=-1;const active=()=>!disposed&&token===challengeToken&&mode==='play';ctl.innerHTML='';run.innerHTML='';$('cAccessible').innerHTML='';$('cReadout').innerHTML='';$('cReadout').hidden=true;
   const field=(label,node)=>{const d=document.createElement('div');d.className='ctl';const s=document.createElement('span');s.textContent=label;d.append(s,node);ctl.appendChild(d);return d;};
   return{now:()=>ct,timed:()=>practiceTimed,canInput:()=>active()&&challengeInput(),
+    lesson(id){if(active()){const i=chapters.findIndex(c=>c.id===id);if(i>=0)load(i,false);}},
+    summary(h){if(!active())return;let d=document.getElementById('labSummary');if(!d||!d.parentNode){d=d||document.createElement('div');d.id='labSummary';d.className='lab-summary';d.setAttribute('aria-label','Lab design summary');$('cAccessible').prepend(d);}d.innerHTML=h;},
     targetRadius:()=>Math.max(12,22/(cv.getBoundingClientRect().width/W)),
     surface(title){const d=document.createElement('details'),s=document.createElement('summary'),f=document.createElement('fieldset');s.textContent=title;d.append(s,f);$('cAccessible').appendChild(d);return f;},
     metrics(rows,force=false){if(!active()||!force&&ct-metricAt<1)return;metricAt=ct;const dl=$('cReadout');dl.hidden=false;
@@ -5484,7 +5530,7 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
     clearShareLink(){if(shareBox)shareBox.hidden=true;},
     shareLink(url){if(!active())return;let box=shareBox;if(!box){box=shareBox=document.createElement('div');box.id='shareLink';box.className='share-link';$('cpanel').appendChild(box);}
       box.hidden=false;box.textContent='';const label=document.createElement('label'),input=document.createElement('input');label.textContent='Share this design';input.type='url';input.readOnly=true;input.value=url;input.setAttribute('aria-label','Share this design link');label.appendChild(input);box.appendChild(label);},
-    button(label,fn,o={}){const b=document.createElement('button');b.type='button';b.className='btn'+(o.primary?' pri':'');b.textContent=label;b.onclick=()=>{if(active()&&challengeInput())fn();};run.appendChild(b);els.push(b);return b;},
+    button(label,fn,o={}){const b=document.createElement('button');b.type='button';b.className='btn'+(o.primary?' pri':'');b.textContent=label;b.onclick=()=>{if(active()&&challengeInput())fn();};if(o.toolbar)$('labActions').insertBefore(b,$('cHintBtn'));else run.appendChild(b);els.push(b);return b;},
     slider(label,min,max,step,val,fmt,fn){const i=document.createElement('input');i.type='range';i.min=min;i.max=max;i.step=step;i.value=val;i.setAttribute('aria-label',label);const o=document.createElement('output');o.textContent=fmt(val);
       i.oninput=()=>{o.textContent=fmt(+i.value);fn(+i.value);};field(label,i).appendChild(o);els.push(i);return i;},
     seg(label,opts,val,fn){const box=document.createElement('div');box.className='seg';box.setAttribute('role','group');box.setAttribute('aria-label',label);
@@ -5494,14 +5540,15 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
     win(st,title,msg){if(active())showResult(st,title,msg,id,token);}};}
 function disposeChallenge(){cancelPointer();challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
-function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');
+function labLayout(v){const hint=$('cHintBtn');$('cpanel').querySelector('.cbar').appendChild(hint);$('labIntro').hidden=!v;$('labActions').hidden=!v;$('labActions').innerHTML='';(v?$('labIntro'):$('cpanel')).prepend($('cBrief'));if(v)$('labActions').appendChild(hint);}
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');labLayout(!!LAB_DEFS[c.id]&&!gname);
   $('diagramEdit').hidden=false;syncDiagramEditing();
   challengeReady=!!LAB_DEFS[c.id]&&!gname;challengePaused=false;$('cStart').hidden=challengeReady;$('cPause').hidden=!challengeReady;$('cPause').textContent='Pause challenge';$('cPause').setAttribute('aria-pressed','false');
   $('cTimingLabel').hidden=!d.timed;$('cTiming').value=practiceTimed?'timed':'untimed';$('cTiming').disabled=false;
   $('cTitle').textContent=d.title;$('cGoal').textContent=!practiceTimed&&d.untimedGoal?d.untimedGoal:d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();try{inst=d.make(api);}catch(e){failRender(e);}$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
   $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
-function exitChal(quiet){disposeChallenge();clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
+function exitChal(quiet){disposeChallenge();labLayout(false);clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;mode='watch';if(wasQuiz&&!quiet){heading();markToc();}capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet){saveRoute();render();}}
 function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
   $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
@@ -5575,12 +5622,14 @@ window.addEventListener('keydown',e=>{if($('glossary').open||$('card').open||$('
   else if(e.key==='s'||e.key==='S')$('trBtn').click();
   else if(e.key==='Escape'){showCard(false);setMenu(false);}
   else if(/^[0-9]$/.test(e.key)){const k=e.key==='0'?9:+e.key-1;if(c.beats[k])seek(c.beats[k][0]+.01);}});
-document.addEventListener('visibilitychange',()=>{last=null;if(document.hidden)cancelPointer();});
+document.addEventListener('visibilitychange',()=>{last=null;if(document.hidden){cancelPointer();rememberLesson();}});window.addEventListener('pagehide',rememberLesson);
 window.addEventListener('resize',resize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe(cv);
 const quizFor=h=>Object.keys(QUIZ).find(g=>'#'+QUIZ[g].id===h);
-window.addEventListener('hashchange',()=>{const q=quizFor(location.hash);if(q){if(q!==quizG){load(firstOf(q),false);startQuiz(q);}return;}
-  const i=chapters.findIndex(c=>'#'+c.id===location.hash);if(i>=0&&(i!==cur||quizG))load(i,true);});
+function restoreRoute(){const q=quizFor(location.hash),i=q?firstOf(q):chapters.findIndex(c=>'#'+c.id===location.hash);if(i<0)return;const state=history.state,valid=pimRecord(state)&&state.pim===1&&state.quiz===(q||null)&&chapters.some(c=>c.id===state.chapter)&&(q||state.chapter===chapters[i].id),j=valid?chapters.findIndex(c=>c.id===state.chapter):i;
+  restoring=true;load(j,false);if(valid&&Number.isFinite(state.time))seek(state.time);if(q)startQuiz(q);else if(valid&&state.challenge===true)startChal();restoring=false;saveRoute();}
+window.addEventListener('popstate',restoreRoute);
+window.addEventListener('hashchange',()=>{const q=quizFor(location.hash),h='#'+(quizG?QUIZ[quizG].id:chapters[cur].id);if(location.hash!==h||q&&q!==quizG)restoreRoute();});
 // Fullscreen is optional and never locks the user's device orientation.
 const fsOK=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
 function goFull(){const el=document.documentElement,req=el.requestFullscreen||el.webkitRequestFullscreen;
@@ -5674,8 +5723,8 @@ function importProgress(text){if(typeof text!=='string'||text.length>IMPORT_LIMI
   Object.entries(pimFilter(d.labBest,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&Number.isSafeInteger(v)&&v>0&&v<=10000)).forEach(([k,n])=>{if(LAB_BEST[k]==null||n<LAB_BEST[k]){LAB_BEST[k]=n;nLabs++;}});
   Object.keys(pimFilter(d.labChaos,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true)).forEach(k=>{if(!LAB_CHAOS[k]){LAB_CHAOS[k]=true;nLabs++;}});labPut('pim-lab-chaos',LAB_CHAOS);
   if(d.version===2)nLabs+=labMergeDesigns(d.labDesigns);labSaveBest();labSaveDesigns();
-  store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();
-  const summary=nSeen||nStars||nLabs?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} watched and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}`:'Nothing new in the supported records.';
+  store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();syncCompletion();
+  const summary=nSeen||nStars||nLabs?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} completed and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}`:'Nothing new in the supported records.';
   ioMsg(summary+(skipped?` Ignored ${skipped} record${skipped===1?'':'s'} not used by this course.`:''));return true;}
 $('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;try{if(file.size>IMPORT_LIMIT){ioMsg('Progress files must be 1 MB or smaller.');return;}importProgress(await file.text());}catch(_){ioMsg('Could not read that file. Try selecting it again.');}finally{e.target.value='';}};
@@ -5691,7 +5740,9 @@ const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chap
 const sp=typeof URLSearchParams!=='undefined'?new URLSearchParams(location.search||''):null,sLab=sp&&sp.get('lab'),sIdx=sLab?chapters.findIndex(c=>c.id===sLab):-1;
 const shared=sIdx>=0&&CHAL[sLab]&&labImport(sLab,sp.get('d')||'');
 if(shared){history.replaceState(null,'',location.pathname+'#'+sLab);load(sIdx,false);startChal();}
-else{load(start,!startQ);if(startQ)startQuiz(startQ);}resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
+else{load(start,!startQ&&!resumeRecord);if(startQ)startQuiz(startQ);}restoring=false;saveRoute();$('speed').value=String(speed);
+if(resumeRecord&&!shared&&!startQ&&!location.search&&!linkedVisit){$('resume').hidden=false;$('resumeText').textContent=`Continue ${chapters.find(c=>c.id===resumeRecord.chapter).title} at ${fmt(resumeRecord.time)}.`;$('continueBtn').onclick=()=>{load(chapters.findIndex(c=>c.id===resumeRecord.chapter),false);speed=resumeRecord.speed;$('speed').value=String(speed);store.set('pim-speed',String(speed));seek(resumeRecord.time);$('resume').hidden=true;cv.focus();};}
+resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();
 </script>
 </body>
