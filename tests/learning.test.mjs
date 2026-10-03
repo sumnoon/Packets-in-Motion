@@ -142,18 +142,18 @@ test('glossary terms in captions and the glossary dialog', () => {
 test('progress export and import merge, and reject bad files', async () => {
   const p = loadPage({ player: true });
   p.context.localStorage.setItem('x', '1');
-  const file = { app: 'packets-in-motion', version: 1, seen: { caching: 1, nope: 1 }, stars: { caching: 3, 'quiz-data': 2, sharding: 9 } };
+  const file = { app: 'packets-in-motion', version: 1, seen: { caching: 1, nope: 1 }, stars: { caching: 3, 'quiz-data': 2, 'unknown-challenge': 9 } };
   const input = p.document.getElementById('importFile');
   const load = text => input.onchange({ target: { files: [{ text: () => Promise.resolve(text) }], value: 'x' } });
   await load(JSON.stringify(file));
-  assert.match(p.document.getElementById('ioMsg').textContent, /^Imported 1 more chapter watched and 5 more stars\.$/);
+  assert.match(p.document.getElementById('ioMsg').textContent, /^Imported 1 more chapter watched and 5 more stars\. Ignored 2 records/);
   const stars = JSON.parse(p.context.localStorage.getItem('pim-stars'));
   assert.deepEqual(stars, { caching: 3, 'quiz-data': 2 });
   assert.match(p.document.getElementById('starTotal').textContent, /^★ 5 \//);
   await load(JSON.stringify(file));
   assert.match(p.document.getElementById('ioMsg').textContent, /^Nothing new/);
   await load('{"hello":1}');
-  assert.match(p.document.getElementById('ioMsg').textContent, /not a Packets in Motion progress file/);
+  assert.match(p.document.getElementById('ioMsg').textContent, /Packets in Motion progress file/);
   await load('not json');
   assert.match(p.document.getElementById('ioMsg').textContent, /not valid JSON/);
   // export carries what was imported

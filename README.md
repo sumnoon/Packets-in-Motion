@@ -44,6 +44,8 @@ Every lesson ends with a hands-on challenge played on the same stage, scored wit
 - **Stop the retry storm**: tune retries, backoff, jitter and a circuit breaker through an outage.
 - **Find the culprit**: use metrics, logs and a trace to find a slow service.
 
+**Start challenge** (or your first answer) starts the clock; **Pause challenge** freezes it, including delayed results. Reading the glossary, opening the mobile chapter drawer, hiding the tab, or showing the rotate prompt pauses automatically. Timed sorting games and load balancing also offer **Untimed** practice before starting. Untimed balancing finishes after 30 routed requests, with no request deadlines.
+
 The rest use the same kinds of mechanics: sort cards into boxes, put steps in order, or tune a system and run it.
 
 ### Architecture labs
@@ -67,7 +69,7 @@ After a run that falls short, the board marks the weak spots: the component that
 
 Lab drafts, including wires and design options, survive reloads. **Restore best design** brings back the cheapest saved three-star board; restoring it can also be undone. Older progress files retain their best-cost records, and a new successful run saves a restorable board. The shortener only earns three stars when every successful redirect's click event has been persisted, with none left pending.
 
-Once a design holds, turn on **chaos mode**: every run, the incidents strike at a random time and hit a random component, and three 3-star runs in a row earn the lab's chaos-proof badge. **Copy share link** packs your design into a link, so anyone who opens it gets the same board and can try to beat your cost. Components grow with the course: a component from a chapter you haven't watched yet stays locked until you watch it. Already know the material? Turn off **Lock components until I have watched their chapter** in any lab.
+Once a design holds, turn on **chaos mode**: every run, the incidents strike at a random time and hit a random component, and three 3-star runs with distinct random seeds on the same architecture earn its chaos-proof badge. Changing components, wires or options resets the streak; moving a component does not. The tested design and seeds are saved and exported. Earlier badges remain learner achievements, but do not certify an untested board. **Copy share link** packs your design into a link, so anyone who opens it gets the same board and can try to beat your cost. Components grow with the course: a component from a chapter you haven't watched yet stays locked until you watch it. Already know the material? Turn off **Lock components until I have watched their chapter** in any lab.
 
 Shared boards are saved before their URL is tidied, so they survive reloads too. When using the downloaded HTML, share links open the hosted course. If clipboard access fails, the selectable link remains available to copy manually. If browser storage is unavailable or full, the sidebar asks you to export before closing the tab.
 
@@ -79,8 +81,9 @@ Each section with more than one chapter ends with a **section quiz**: six multip
 
 - **Search** the sidebar (press `/`) by title, caption or trade-off: "stampede", "429" or "leader" all find the right chapters.
 - **Glossary:** key terms in captions, the transcript and the trade-offs are underlined; hover, focus or tap one for a one-line definition. Press G for the full glossary, with links to every chapter that uses each term.
+- **Stage recovery:** a failed drawing stops playback and offers Retry or the readable lesson transcript while keeping saved lab designs. Trade-offs and results use modal dialogs with keyboard focus containment and Escape to close.
 - **Before this / Related:** the trade-offs card links to the chapters a lesson builds on and the ones that go further.
-- **Export / import progress** from the sidebar. Progress (chapters watched, stars, lab drafts, your cheapest saved lab designs and chaos-proof badges) lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost, and an existing draft is kept. Both original version 1 files and the new version 2 files are supported.
+- **Export / import progress** from the sidebar. Progress (chapters watched, stars, lab drafts, your cheapest saved lab designs and chaos-proof badges) lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost, and an existing draft is kept. Both original version 1 files and the new version 2 files are supported. Files are limited to 1 MB; invalid supported records or design schemas reject the whole import before merging, and unknown course records are reported as ignored.
 - **Sound cues** (off by default): soft tones for right and wrong moves, new steps and results. They are synthesized in the browser; nothing is downloaded.
 
 ## Visual language

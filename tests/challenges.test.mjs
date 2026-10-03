@@ -113,7 +113,7 @@ const runWith = (id, set, seconds) => {
 // capstones are architecture labs: build the design with keys (digits add, letter pairs wire), then load-test it
 const LAB_SAVE = page.get('LAB_SAVE');
 // a fresh start: no saved design, weak spots, hints, undo history, failures or best costs
-const labReset = () => ['LAB_SAVE', 'LAB_POST', 'LAB_HINT', 'LAB_UNDO', 'LAB_FAILS', 'LAB_BEST', 'LAB_CHAOS', 'LAB_CHAOS_ON', 'LAB_STREAK', 'LAB_SHARED'].forEach(n => { const o = page.get(n); for (const k in o) delete o[k]; });
+const labReset = () => ['LAB_SAVE', 'LAB_POST', 'LAB_HINT', 'LAB_UNDO', 'LAB_FAILS', 'LAB_BEST', 'LAB_CHAOS', 'LAB_CHAOS_ON', 'LAB_STREAK', 'LAB_STREAK_KEYS', 'LAB_STREAK_SEEDS', 'LAB_CERTIFIED', 'LAB_BEST_DESIGNS', 'LAB_SHARED'].forEach(n => { const o = page.get(n); for (const k in o) delete o[k]; });
 const lab = (id, keys, opts, seconds) => {
   labReset();
   const r = challenge(page, id);

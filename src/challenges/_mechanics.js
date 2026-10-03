@@ -56,14 +56,14 @@ function sortGame(o){return api=>{
   const HOME=[W/2,o.side?205:200];let i=0,miss=0,streak=0,best=0,cx=HOME[0],cy=HOME[1],drag=null,hover=-1,shake=0,dealt=0,flying=[],over=false,deadline=0;
   const state={cards,get i(){return i;}};
   const keyList=o.bins.map((b,k)=>`<kbd>${k+1}</kbd> ${esc(b.label)}`).join(' · ');
-  function deal(now){dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer)deadline=now+o.timer;api.status(`Card <b>${i+1}</b> of ${cards.length}: “${esc(cards[i].t)}”. Drag it into a box, or press ${keyList}.`);}
+  function deal(now){dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer&&(!api.timed||api.timed()))deadline=now+o.timer;api.status(`Card <b>${i+1}</b> of ${cards.length}: “${esc(cards[i].t)}”. Drag it into a box, or press ${keyList}.`);}
   function place(k,now){if(over||i>=cards.length)return;const c=cards[i],b=bins[k],right=o.bins[k].id===c.b;
     const tgt=bins.find(q=>q.id===c.b);flying.push({c,from:[cx,cy],to:[tgt.x+tgt.w/2,tgt.y+40+Math.min(tgt.got.length,4)*14],t0:now,ok:right});
     if(right){streak++;best=Math.max(best,streak);FX.burst(b.x+b.w/2,b.y+30,b.c);FX.text(b.x+b.w/2,b.y-10,streak>2?`${streak} in a row!`:'Right!',C.green);}
     else{miss++;streak=0;shake=now;FX.text(b.x+b.w/2,b.y-10,'Not quite',C.red);api.status(`<span class="bad">✕</span> ${c.why||''}`);}
     tgt.got.push(c);i++;if(i>=cards.length){over=true;chalLater(api,()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
       api.win(st,r&&r.title||(miss===0?'Flawless sorting':`${cards.length-miss} of ${cards.length} right`),r&&r.msg||(miss?`You missed ${miss}. Replay the lesson if a box felt fuzzy, then try again for three stars.`:'Every card in the right box.'));},900);}
-    else{if(right)deal(now);else{dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer)deadline=now+o.timer+2;}}}
+    else{if(right)deal(now);else{dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer&&(!api.timed||api.timed()))deadline=now+o.timer+2;}}}
   let started=false;
   return{
     draw(now,dt){if(!started){started=true;deal(now);}
@@ -77,7 +77,7 @@ function sortGame(o){return api=>{
         const sh=now-shake<.35?Math.sin((now-shake)*60)*6*(1-(now-shake)/.35):0,lines=wrapLines(c.t,270,16,650),h=Math.max(70,lines.length*21+34);
         plate(cx+sh,cy,320,h,{c:drag?C.accent:C.edge,fill:C.panel2,glow:drag?20:0,r:14});
         textBlock(c.t,cx+sh,cy,270,{z:16,wt:650});
-        if(o.timer&&deadline){const left=clamp((deadline-now)/o.timer);meter(cx-150,cy+h/2+10,300,5,left,left>.35?C.accent:C.red);if(now>deadline){deadline=0;place((bins.findIndex(b=>b.id!==c.b)+n)%n,now);}}
+        if(o.timer&&deadline&&(!api.timed||api.timed())){const left=clamp((deadline-now)/o.timer);meter(cx-150,cy+h/2+10,300,5,left,left>.35?C.accent:C.red);if(now>deadline){deadline=0;place((bins.findIndex(b=>b.id!==c.b)+n)%n,now);}}
         if(streak>1)pill(`streak ×${streak}`,W-80,34,{c:C.amber,z:12});
         tx(`${i+1} / ${cards.length}`,80,34,{z:13,wt:700,c:C.dim,f:MONO});}
     },

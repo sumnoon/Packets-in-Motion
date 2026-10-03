@@ -108,11 +108,11 @@ function makeDocument(ctx) {
     // text nodes are kept as {text} entries so textContent reads back like the DOM
     get textContent() { return this._text + this.children.map(c => (c.text !== undefined ? c.text : c.textContent)).join(''); }
     set textContent(v) { this._text = String(v); this.children = []; }
-    appendChild(c) { this.children.push(c); c.parentNode = this; return c; }
+    appendChild(c) { if(c.parentNode)c.remove();this.children.push(c); c.parentNode = this; return c; }
     append(...cs) { cs.forEach(c => (typeof c === 'string' ? this.children.push({ text: c }) : this.appendChild(c))); }
     remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); }
     closest(sel) { let e = this; while (e) { if (e.classList && match(sel, [e]).length) return e; e = e.parentNode; } return null; }
-    showModal() { this.open = true; } close() { this.open = false; }
+    showModal() { this.returnFocus=document.activeElement;this.open = true; } close() { this.open = false;if(this.returnFocus)this.returnFocus.focus(); }
     setAttribute(k, v) { this.attrs[k] = String(v); }
     getAttribute(k) { return this.attrs[k] ?? null; }
     removeAttribute(k) { delete this.attrs[k]; }
@@ -130,22 +130,35 @@ function makeDocument(ctx) {
   }
   const descendants = el => el.children.filter(c => c.tagName).flatMap(c => [c, ...descendants(c)]);
   const match = (sel, list) => {
+    if(sel.includes(',')){const hits=new Set(sel.split(',').flatMap(s=>match(s.trim(),list)));return list.filter(e=>hits.has(e));}
+    if(sel==='[hidden]')return list.filter(e=>e.hidden);
+    if(/^[a-z]+(\[href\])?$/.test(sel))return list.filter(e=>e.tagName===sel.split('[')[0].toUpperCase()&&(!sel.includes('[')||e.getAttribute('href')!==null));
     const cls = sel.split('.').filter(Boolean);
     if (!sel.startsWith('.')) return [];
     return list.filter(e => cls.every(c => e.classList.contains(c)));
   };
   const byId = new Map();
   const document = {
-    title: '',
+    title: '',hidden:false,
     body: new El('body'),
     documentElement: new El('html'),
     fullscreenEnabled: false,
-    getElementById(id) { if (!byId.has(id)) { const tag = id === 'cv' ? 'canvas' : id === 'speed' ? 'select' : id === 'scrub' ? 'input' : 'div'; byId.set(id, new El(tag, id)); } return byId.get(id); },
+    getElementById(id) { if (!byId.has(id)) { const existing=all.find(e=>e.id===id);if(existing)byId.set(id,existing);else{const tag = id === 'cv' ? 'canvas' : id === 'speed' ? 'select' : id === 'scrub' ? 'input' : 'div'; byId.set(id, new El(tag, id));}} return byId.get(id); },
     createElement: tag => new El(tag),
     querySelector(sel) { return this.querySelectorAll(sel)[0] || null; },
     querySelectorAll(sel) { return match(sel, all); },
     addEventListener(type, fn) { (listeners.get(type) || listeners.set(type, []).get(type)).push(fn); },
+    dispatch(type,ev={}){(listeners.get(type)||[]).forEach(fn=>fn({target:this,preventDefault(){},...ev}));},
   };
+  // Real initial tags, hidden attributes and ancestry matter for dialogs and drawers.
+  const body=fs.readFileSync(path.join(ROOT,'index.html'),'utf8').split('<body>')[1]?.split('<script>')[0]||'';
+  const stack=[document.body],voids=new Set(['input','img','path','meta','link','br']);
+  for(const m of body.matchAll(/<!--[^]*?-->|<\/?([\w-]+)([^>]*?)>/g)){
+    if(!m[1])continue;const tag=m[1];if(m[0].startsWith('</')){if(stack[stack.length-1].tagName===tag.toUpperCase())stack.pop();continue;}
+    const el=new El(tag);for(const a of m[2].matchAll(/([\w-]+)(?:="([^"]*)")?/g)){el.setAttribute(a[1],a[2]||'');if(a[1]==='id'){el.id=a[2];byId.set(el.id,el);}if(a[1]==='class')el.className=a[2];if(a[1]==='hidden')el.hidden=true;if(a[1]==='value')el.value=a[2];if(a[1]==='type')el.type=a[2];}
+    stack[stack.length-1].appendChild(el);if(!voids.has(tag)&&!m[0].endsWith('/>'))stack.push(el);
+  }
+  document.activeElement=document.body;
   return document;
 }
 
@@ -158,12 +171,13 @@ export function loadPage(opts = {}) {
   const timers = [];
   const frames = [];
   const winListeners = {};
+  const media=new Map();
   const storage = new Map(Object.entries(opts.storage || {}));
   let timerId=0;
   const context = {
     document,
     console: { log() {}, info() {}, warn() {}, error: (...a) => errors.push(a.map(x => (x && x.stack) || String(x)).join(' ')) },
-    matchMedia: () => ({ matches: false, addEventListener() {}, addListener() {} }),
+    matchMedia(query) {if(!media.has(query)){const handlers=[];media.set(query,{matches:!!opts.media?.[query],addEventListener(_,fn){handlers.push(fn);},addListener(fn){handlers.push(fn);},change(matches){this.matches=matches;handlers.forEach(fn=>fn(this));}});}return media.get(query);},
     localStorage: { getItem(k) { if(opts.storageError?.get)throw new Error('storage denied');return storage.has(k)?storage.get(k):null; }, setItem(k,v) { if(opts.storageError?.set)throw new Error('storage full');storage.set(k,String(v)); }, removeItem: k => storage.delete(k) },
     location: { hash: opts.hash || '', search: opts.search || '', pathname: '/index.html', href: opts.href || 'https://example.test/index.html' + (opts.search || '') + (opts.hash || '') },
     history: { replaceState(_, __, url) { context.location.hash = url; } },
@@ -185,9 +199,9 @@ export function loadPage(opts = {}) {
   // let-declared globals (chapters, CHAL, ...) live in the script scope, not on the context object
   const get = name => vm.runInContext(name, context);
   return {
-    context, get, log, reset, errors, frames, timers, winListeners, document, storage,
+    context, get, log, reset, errors, frames, timers, winListeners, document, storage,media,
     runTimers(now) { context.__now = now; for (let i = 0; i < timers.length; i++) if (timers[i].at <= now) { const t = timers.splice(i--, 1)[0]; t.fn(); } },
-    key(key, target = { tagName: 'BODY' }) { (winListeners.keydown || []).forEach(fn => fn({ key, target, preventDefault() {} })); },
+    key(key, target = { tagName: 'BODY' }, extra={}) { (winListeners.keydown || []).forEach(fn => fn({ key, target, preventDefault() {},...extra }));if(key==='Escape'){const dialogs=document.querySelectorAll('dialog').filter(d=>d.open);dialogs.at(-1)?.dispatch('cancel');} },
     frame(ts) { const fs = frames.splice(0); fs.forEach(fn => fn(ts)); },
   };
 }
@@ -195,10 +209,11 @@ export { CanvasError };
 
 // ---------- drive one challenge without the player ----------
 // A stand-in for the player's api: records buttons, controls, status and results.
-export function challenge(page, id, def) {
+export function challenge(page, id, def, opts={}) {
   const state = { now: 0, buttons: [], controls: [], wins: [], locked: false, status: '' };
   const api = {
     now: () => state.now,
+    timed:()=>opts.timed!==false,
     status(h) { state.status = String(h); },
     button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary }; state.buttons.push(b); return b; },
     slider(label, min, max, step, val, fmt, fn) { const c = { kind: 'slider', label, min: +min, max: +max, step: +step, fmt, set: v => { fmt(v); fn(v); } }; state.controls.push(c); return c; },
