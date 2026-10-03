@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <title>Packets in Motion · System Design</title>
 <meta name="description" content="An animated, interactive system design course: watch requests flow through load balancers, caches, queues and databases, solve a hands-on challenge for every lesson, and build systems yourself in architecture labs that load-test your design.">
 <meta name="theme-color" content="#0a0e16">
@@ -27,12 +27,6 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to the lesson</a>
-<div id="rotate" role="dialog" aria-label="Rotate your phone"><div>
-  <svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18.5h2"/></svg>
-  <b>Turn your phone sideways</b>
-  <p>The animations are built for landscape,<br>so every label stays readable.</p>
-  <button class="btn pri" id="rotateFs">Go fullscreen in landscape</button>
-</div></div>
 <div id="app">
   <aside id="side" aria-label="Course navigation"><button class="btn sm" id="menuClose">Close chapters</button>
     <div class="brand"><div class="brand-heading"><img class="brand-mark" width="44" height="44" alt="" src="<!-- datauri: assets/logo-96.png -->"><b>Packets in Motion</b></div><span>Watch it, then solve it</span><span class="stars" id="starTotal"></span></div>
@@ -42,6 +36,7 @@
     <p class="nofind" id="noFind" hidden>No chapters match. Try another word.</p>
     <div class="side-foot">
       <button class="btn sm" id="glossBtn" title="Glossary (G)">Glossary</button>
+      <button class="btn sm tg" id="shortcutsBtn" aria-pressed="true">Keyboard shortcuts: on</button>
       <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button>
       <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
       <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
@@ -65,13 +60,17 @@
         </div>
       </div>
       <div class="stageWrap">
-        <div class="stage"><canvas id="cv" role="img" aria-label="Animation stage"></canvas></div>
+        <div class="diagram-tools" role="group" aria-label="Diagram view"><button class="btn sm" id="diagramFit" aria-pressed="true">Fit diagram</button><button class="btn sm" id="diagramReadable" aria-pressed="false">Readable size</button><button class="btn sm" id="diagramEdit" aria-pressed="false" hidden>Drag on diagram: off</button><span>Scroll to pan at readable size. Text controls work at every size.</span></div>
+        <p id="orientationNote" class="orientation-note">Portrait works here. Landscape offers more room for the diagram.</p>
+        <div class="stage" id="stage" tabindex="0" aria-label="Diagram viewport"><canvas id="cv" tabindex="0" role="img" aria-label="Animation stage"></canvas></div>
         <section id="renderError" class="render-error" role="alert" hidden><h2>Stage unavailable</h2><p id="renderErrorText"></p><div class="acts"><button class="btn pri" id="renderRetry">Retry stage</button><button class="btn" id="renderRead">Read the lesson</button></div></section>
       </div>
       <div class="cpanel" id="cpanel" aria-label="Challenge">
         <div class="chead"><span class="ctag" id="cTag">Challenge</span><b id="cTitle"></b></div>
         <p class="cgoal" id="cGoal"></p>
         <div class="practice"><button class="btn pri" id="cStart">Start challenge</button><button class="btn" id="cPause" aria-pressed="false" hidden>Pause challenge</button><label id="cTimingLabel" hidden>Practice <select id="cTiming"><option value="timed">Timed</option><option value="untimed">Untimed</option></select></label><span class="practice-note">The challenge pauses while you read the glossary or open chapters.</span></div>
+        <div class="caccessible" id="cAccessible"></div>
+        <dl class="readout" id="cReadout" aria-label="Live challenge measurements" aria-live="off" hidden></dl>
         <div class="cctl" id="cCtl"></div>
         <div class="cbar"><p class="cstatus" id="cStatus" aria-live="polite"></p><span id="cRun" class="cbar"></span>
           <button class="btn" id="cHintBtn">Hint</button><button class="btn" id="cRestart">↺ Restart</button><button class="btn" id="cBack">Back to lesson</button></div>
@@ -80,6 +79,7 @@
       <div class="controls">
         <button class="ic" id="playBtn" title="Play / pause (Space)" aria-label="Play"></button>
         <button class="ic" id="replayBtn" title="Replay (R)" aria-label="Replay"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z"/></svg></button>
+        <button class="btn sm" id="stepPrev" aria-label="Previous lesson step">Previous step</button><button class="btn sm" id="stepNext" aria-label="Next lesson step">Next step</button>
         <div class="scrub"><input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Scrub timeline"><div class="ticks" id="ticks"></div></div>
         <div class="time" id="time">0:00 / 0:00</div>
         <select class="ic" id="speed" title="Playback speed" aria-label="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
@@ -96,7 +96,7 @@
         <span><i style="background:var(--green);box-shadow:0 0 8px var(--green)"></i>Success / response</span>
         <span><i style="background:var(--red);box-shadow:0 0 8px var(--red)"></i>Failure</span>
         <span><i style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></i>Cached / queued</span>
-        <span class="keys">Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary</span>
+        <span class="keys">Focus the lesson for shortcuts · Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary</span>
       </div>
     </div>
   </main>

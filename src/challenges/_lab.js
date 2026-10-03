@@ -91,6 +91,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   // ---------- the graph ----------
   let G=LAB_SAVE[id]?JSON.parse(JSON.stringify(LAB_SAVE[id])):{nodes:o.fixed.map((f,i)=>({id:'f'+i,kind:f.kind,x:f.x,y:f.y,label:f.label,fixed:true})),edges:[],seq:0};
   if(!G.opts)G.opts={};(o.toggles||[]).forEach(tg=>{if(!(tg.key in G.opts))G.opts[tg.key]=tg.val;});
+  let editor=null,lastPhase='';
   const save=()=>{if(LAB_STREAK_KEYS[id]!==labDesignKey(G)){LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];LAB_STREAK_KEYS[id]=labDesignKey(G);}LAB_SAVE[id]=JSON.parse(JSON.stringify(G));labSaveDesigns();if(api.clearShareLink)api.clearShareLink();if(!running){S=null;post=null;LAB_POST[id]=null;}};   // an edit clears the last run's readings and weak spots
   // undo history: a snapshot of the graph before each change
   const undoStack=LAB_UNDO[id]||(LAB_UNDO[id]=[]),snapshot=()=>JSON.stringify({nodes:G.nodes,edges:G.edges,seq:G.seq,opts:G.opts});
@@ -131,6 +132,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     for(const dx of [0,130,-130,260,-260])for(let y=LAB_BOARD.y+60;y<LAB_BOARD.y+LAB_BOARD.h-40;y+=78){const x=clamp(col+dx,LAB_BOARD.x+60,LAB_BOARD.x+LAB_BOARD.w-60);if(free(x,y,list))return[x,y];}return[LAB_BOARD.x+LAB_BOARD.w/2,LAB_BOARD.y+LAB_BOARD.h/2];}
   function add(kind,x,y){if(lockOf(kind)){say(lockMsg(kind));FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,'locked: watch its chapter first',C.amber,14);return null;}
     if(!canAdd(kind)){FX.text(x||LAB_BOARD.x+LAB_BOARD.w/2,(y||LAB_BOARD.y+LAB_BOARD.h/2)-40,`max ${K[kind].max} ${K[kind].label.toLowerCase()}s`,C.red,14);return null;}
+    if(cost()+K[kind].cost>o.budget+20){say('Cannot add this component: it would exceed the budget allowance.');return null;}
     remember();const twin=K[kind].clone&&G.of(kind)[0];   // a new copy of a stateless server joins the pool with the same wires
     const n={id:'n'+(++G.seq),kind,x:0,y:0};G.nodes.push(n);if(x==null)[x,y]=slotFor(kind);[n.x,n.y]=clampIn(n,x,y);
     if(twin)G.edges.filter(e=>e.a===twin.id||e.b===twin.id).forEach(e=>G.edges.push({a:e.a===twin.id?n.id:e.a,b:e.b===twin.id?n.id:e.b}));
@@ -149,7 +151,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     const best=LAB_BEST[id]!=null?` Your cheapest 3-star design: $${LAB_BEST[id]}/h.`:'';
     return`Budget $${cost()} of $${o.budget}.${best} Your design: ${lines}.${weak}${opts?' '+esc(opts)+'.':''} ${probs.length?'<span class="bad">To fix:</span> '+esc(probs[0])+' ':''}Add with ${pal}.`;}
   let lastMsg='';
-  function say(msg){if(msg)lastMsg=msg;const s=sel&&sel.n?` Selected <b>${letterOf(sel.n)}</b> ${esc(nameOf(sel.n))}: press another letter to wire it, Delete to remove.`:'';api.status((lastMsg?esc(lastMsg)+' ':'')+describe()+s+' Press <kbd>Enter</kbd> to run the load test.');lastMsg='';}
+  function say(msg){if(msg)lastMsg=msg;const s=sel&&sel.n?` Selected <b>${letterOf(sel.n)}</b> ${esc(nameOf(sel.n))}: press another letter to wire it, Delete to remove.`:'';api.status((lastMsg?esc(lastMsg)+' ':'')+describe()+s+' Press <kbd>Enter</kbd> to run the load test.');lastMsg='';refreshEditor();}
   // ---------- run ----------
   let running=false,S=null,t0=0,last=0,done=false,res=null;const fl=[];
   // simT: the run's clock (slowed for a moment when something crashes); vnow: the clock packets move on
@@ -224,25 +226,45 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     hintLvl=Math.min(3,hintLvl+1);LAB_HINT[id]=hintLvl;ghostOn=true;
     const text=hintLvl<3&&h[hintLvl-1]?h[hintLvl-1]:outlineText(full);
     return{text:`Hint ${hintLvl} of 3: ${text}`,label:hintLabel()};}
-  function start(){if(running)return;sel=null;drag=null;post=null;LAB_POST[id]=null;S=o.init(G);S.chaos=chaosOn;S.seed=Math.floor(Math.random()*2147483647);S.rng=labRng(S.seed);celebrate=null;running=true;done=false;res=null;api.lock(true);t0=api.now();simT=0;last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
+  function start(){if(running)return;cancelDrag();sel=null;post=null;LAB_POST[id]=null;S=o.init(G);S.chaos=chaosOn;S.seed=Math.floor(Math.random()*2147483647);S.rng=labRng(S.seed);celebrate=null;running=true;done=false;res=null;api.lock(true);refreshEditor();lastPhase='';t0=api.now();simT=0;last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
   // ---------- pointer ----------
   let sel=null,drag=null,hover=null,pal=-1,kb=false;   // kb: shortcut keycaps show once the player uses the keyboard
+  function cancelDrag(){if(drag&&drag.type==='move'){drag.n.x=drag.ox;drag.n.y=drag.oy;}drag=null;hover=null;pal=-1;}
   const TW=Math.min(150,(LAB_BOARD.w+12-(PAL.length-1)*8)/PAL.length),TX0=LAB_BOARD.x-6+(LAB_BOARD.w+12-(PAL.length*TW+(PAL.length-1)*8))/2;
   const TILE=k=>({x:TX0+k*(TW+8),y:LAB_PAL_Y,w:TW,h:50});
   const nodeAt=(x,y)=>{for(let i=G.nodes.length-1;i>=0;i--){const n=G.nodes[i],[w,h]=sizeOf(n);if(Math.abs(x-n.x)<=w/2+4&&Math.abs(y-n.y)<=h/2+4)return n;}return null;};
-  const portAt=(x,y)=>G.nodes.find(n=>(o.links[n.kind]||[]).length&&Math.hypot(x-port(n)[0],y-port(n)[1])<12)||null;
+  const portAt=(x,y)=>G.nodes.filter(n=>(o.links[n.kind]||[]).length).sort((a,b)=>Math.hypot(x-port(a)[0],y-port(a)[1])-Math.hypot(x-port(b)[0],y-port(b)[1])).find(n=>Math.hypot(x-port(n)[0],y-port(n)[1])<(api.targetRadius?api.targetRadius():12))||null;
   const edgeAt=(x,y)=>G.edges.find(e=>{const[[x0,y0],[x1,y1]]=seg(e),L=Math.hypot(x1-x0,y1-y0)||1,u=clamp(((x-x0)*(x1-x0)+(y-y0)*(y1-y0))/(L*L));return Math.hypot(x-(x0+u*(x1-x0)),y-(y0+u*(y1-y0)))<7;})||null;
   const delBtn=()=>{if(!sel)return null;if(sel.n){if(sel.n.fixed)return null;const[w,h]=sizeOf(sel.n);return[sel.n.x+w/2,sel.n.y-h/2];}const[[a,b],[c,d]]=seg(sel.e);return[(a+c)/2,(b+d)/2];};
+  if(api.surface){const field=api.surface('Components and connections');
+    const select=(label,id)=>{const wrap=document.createElement('label'),el=document.createElement('select');wrap.textContent=label+' ';el.id=id;wrap.appendChild(el);field.appendChild(wrap);return el;};
+    const button=(label,fn)=>{const el=document.createElement('button');el.type='button';el.className='btn';el.textContent=label;el.onclick=()=>{if(!running&&(!api.canInput||api.canInput()))fn();};field.appendChild(el);return el;};
+    field.className='editor-fields';const kind=select('Component to add','lab-kind');
+    const addBtn=button('Add component',()=>add(kind.value)),remove=select('Component to remove','lab-remove');
+    const removeBtn=button('Remove component',()=>removeNode(node(remove.value))),from=select('Connection from','lab-from'),to=select('Connection to','lab-to');
+    const connect=button('Connect',()=>{const a=node(from.value),b=node(to.value);if(a&&b&&!hasEdge(a,b))toggleEdge(a,b);});
+    const disconnect=button('Disconnect',()=>{const a=node(from.value),b=node(to.value);if(a&&b&&hasEdge(a,b))toggleEdge(a,b);});
+    const wires=document.createElement('ul');wires.className='editor-wires';field.appendChild(wires);editor={field,kind,addBtn,remove,removeBtn,from,to,connect,disconnect,wires};
+    [kind,remove,from,to].forEach(el=>el.onchange=()=>refreshEditor());}
+  function refreshEditor(){if(!editor)return;const e=editor;
+    const options=(el,rows)=>{const old=el.value;el.replaceChildren();rows.forEach(([value,text])=>{const opt=document.createElement('option');opt.value=value;opt.textContent=text;el.appendChild(opt);});el.value=rows.some(([v])=>v===old)?old:rows[0]?.[0]||'';};
+    options(e.kind,PAL.map(k=>[k,`${K[k].label} — $${K[k].cost}${lockOf(k)?' (locked)':''}`]));
+    const nodes=G.nodes.map(n=>[n.id,`${letterOf(n)}: ${nameOf(n)}`]);options(e.remove,G.nodes.filter(n=>!n.fixed).map(n=>[n.id,`${letterOf(n)}: ${nameOf(n)}`]));options(e.from,nodes);options(e.to,nodes);
+    e.field.disabled=running;e.addBtn.disabled=!e.kind.value||!!lockOf(e.kind.value)||!canAdd(e.kind.value)||cost()+K[e.kind.value].cost>o.budget+20;e.removeBtn.disabled=!e.remove.value;
+    const a=node(e.from.value),b=node(e.to.value);e.connect.disabled=!a||!b||!allowed(a,b)||hasEdge(a,b);e.disconnect.disabled=!a||!b||!hasEdge(a,b);
+    e.wires.replaceChildren();const lines=G.edges.map(edge=>`${letterOf(node(edge.a))}: ${nameOf(node(edge.a))} → ${letterOf(node(edge.b))}: ${nameOf(node(edge.b))}`);
+    (lines.length?lines:['No connections yet.']).forEach(text=>{const li=document.createElement('li');li.textContent=text;e.wires.appendChild(li);});}
   if(LAB_SHARED[id]){LAB_SHARED[id]=false;say(`Someone shared this design with you: $${cost()}/h. Press Enter or Run to test it, then try to beat it.`);}else say();
   return{hint,hintLabel,
     draw(now,dt){
       // run loop
       const fdt=lastNow==null?0:clamp(now-lastNow,0,.1),slowF=running&&now<slowUntil?.45:1;lastNow=now;vnow+=fdt*slowF;
       if(running){simT+=fdt*slowF;const el=simT,step=el-last;if(step>0){const out=o.step(S,G,step,el);S.view=out;last=el;spawn(out,vnow,step);track(out,el,step);react(out,now);}
-        if(el>=o.dur&&!done){done=true;running=false;api.lock(false);finish(now);}}
+        if(el>=o.dur&&!done){done=true;running=false;api.lock(false);refreshEditor();finish(now);}}
       if(celebrate&&now-celebrate.at>=.8){const m=celebrate.msg;celebrate=null;api.win(res.stars,res.title,m);chalLater(api,()=>say(),50);}
       const shake=now<shakeUntil?(shakeUntil-now)/.35*5:0;g.save();if(shake)g.translate((Math.random()-.5)*2*shake,(Math.random()-.5)*2*shake);
       const V_=S&&S.view;
+      if(S&&V_){if(api.metrics)api.metrics([['Phase',V_.phase||'Load test'],['Elapsed',simT.toFixed(1)+' of '+o.dur+' seconds'],...o.hud(S,G),...G.nodes.map(n=>[`${letterOf(n)}: ${nameOf(n)}`,V_.dead&&V_.dead.has(n.id)?'Unavailable':V_.load&&V_.load[n.id]!=null?Math.round(V_.load[n.id]*100)+'% of capacity':'Available'])]);if(running&&V_.phase&&lastPhase!==V_.phase){lastPhase=V_.phase;api.status(esc(V_.phase)+'.');}}
       // board
       g.save();rr(LAB_BOARD.x-6,LAB_BOARD.y-6,LAB_BOARD.w+12,LAB_BOARD.h+12,14);g.fillStyle=hexA(C.panel,.35);g.fill();g.strokeStyle=hexA(C.line,.8);g.setLineDash([3,6]);g.lineWidth=1;g.stroke();g.restore();
       for(let x=LAB_BOARD.x+10;x<LAB_BOARD.x+LAB_BOARD.w;x+=40)for(let y=LAB_BOARD.y+10;y<LAB_BOARD.y+LAB_BOARD.h;y+=40){g.fillStyle='rgba(255,255,255,.035)';g.fillRect(x-1,y-1,2,2);}
@@ -292,7 +314,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
         let hx=W-14;o.hud(S,G).slice().reverse().forEach(([l,v,c])=>{tx(v,hx,LAB_BOARD.y-24,{z:12.5,wt:800,c:c||C.text,al:'right',f:MONO});hx-=tw(v,12.5,800,MONO)+6;tx(l,hx,LAB_BOARD.y-24,{z:11,c:C.dim,al:'right'});hx-=tw(l,11,500)+16;});}
       g.restore();
     },
-    down(x,y){if(running)return;const d=delBtn();if(d&&Math.hypot(x-d[0],y-d[1])<11){if(sel.n)removeNode(sel.n);else{remember();G.edges=G.edges.filter(e=>e!==sel.e);sel=null;save();say('Wire removed.');}return;}
+    down(x,y){if(running)return;const d=delBtn();if(d&&Math.hypot(x-d[0],y-d[1])<(api.targetRadius?api.targetRadius():11)){if(sel.n)removeNode(sel.n);else{remember();G.edges=G.edges.filter(e=>e!==sel.e);sel=null;save();say('Wire removed.');}return;}
       const pi=PAL.findIndex((k,i)=>inBox(x,y,TILE(i)));if(pi>=0){if(lockOf(PAL[pi])){say(lockMsg(PAL[pi]));return;}drag={type:'new',kind:PAL[pi],x,y};return;}
       const pn=portAt(x,y);if(pn){drag={type:'wire',from:pn,x,y};sel={n:pn};return;}
       const n=nodeAt(x,y);if(n){drag={type:'move',n,dx:x-n.x,dy:y-n.y,x0:x,y0:y,ox:n.x,oy:n.y,snap:snapshot()};sel={n};say();return;}
@@ -301,9 +323,10 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     move(x,y){pal=PAL.findIndex((k,i)=>inBox(x,y,TILE(i)));hover=portAt(x,y)||nodeAt(x,y);if(!drag)return;drag.x=x;drag.y=y;
       if(drag.type==='move'&&!drag.n.fixed||drag.type==='move'&&drag.n.fixed){[drag.n.x,drag.n.y]=clampIn(drag.n,x-drag.dx,y-drag.dy);if(!drag.n.fixed&&y>LAB_BOARD.y+LAB_BOARD.h+6)drag.n.y=snap(y-drag.dy);}},
     up(x,y){if(!drag)return;const d=drag;drag=null;
-      if(d.type==='new'){if(y<LAB_BOARD.y+LAB_BOARD.h+10){if(cost()+K[d.kind].cost>o.budget+20){FX.text(x,y-30,'way over budget',C.red,13);return;}add(d.kind,x,y);}return;}
+      if(d.type==='new'){if(y<LAB_BOARD.y+LAB_BOARD.h+10)add(d.kind,x,y);return;}
       if(d.type==='wire'){const tgt=nodeAt(x,y);if(tgt&&tgt!==d.from)toggleEdge(d.from,tgt);return;}
       if(d.type==='move'){if(y>LAB_BOARD.y+LAB_BOARD.h+6&&!d.n.fixed){removeNode(d.n,d.snap);FX.text(x,LAB_BOARD.y+LAB_BOARD.h-14,'removed',C.dim,13);return;}if(d.n.x!==d.ox||d.n.y!==d.oy)remember(d.snap);save();}},
+    cancel:cancelDrag,
     key(k,now,e){kb=true;if(running)return;
       if(e&&(e.ctrlKey||e.metaKey)){if(k==='z'||k==='Z')undo();return;}
       if(k==='Enter'){start();return;}

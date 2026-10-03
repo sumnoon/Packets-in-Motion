@@ -18,7 +18,7 @@ function fakeApi(state) {
   return {
     now: () => state.now,
     status(h) { assert.equal(typeof h, 'string'); state.status = h; },
-    button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary, disabled: false }; state.buttons.push(b); return b; },
+    button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary, disabled: false,setAttribute(){} }; state.buttons.push(b); return b; },
     slider(label, min, max, step, val, fmt, fn) {
       assert.ok(min < max, `${label}: min must be below max`);
       assert.equal(typeof fmt(val), 'string', `${label}: format must return a string`);

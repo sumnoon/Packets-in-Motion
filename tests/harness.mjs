@@ -110,6 +110,7 @@ function makeDocument(ctx) {
     set textContent(v) { this._text = String(v); this.children = []; }
     appendChild(c) { if(c.parentNode)c.remove();this.children.push(c); c.parentNode = this; return c; }
     append(...cs) { cs.forEach(c => (typeof c === 'string' ? this.children.push({ text: c }) : this.appendChild(c))); }
+    replaceChildren(...cs) { this.children.forEach(c=>{if(c.tagName)c.parentNode=null;});this.children=[];this._text='';this.append(...cs); }
     remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); }
     closest(sel) { let e = this; while (e) { if (e.classList && match(sel, [e]).length) return e; e = e.parentNode; } return null; }
     showModal() { this.returnFocus=document.activeElement;this.open = true; } close() { this.open = false;if(this.returnFocus)this.returnFocus.focus(); }
@@ -167,6 +168,7 @@ function makeDocument(ctx) {
 export function loadPage(opts = {}) {
   const { ctx, log, reset } = makeContext();
   const document = makeDocument(ctx);
+  if(opts.fullscreen){document.fullscreenEnabled=true;document.documentElement.requestFullscreen=()=>{document.fullscreenElement=document.documentElement;return Promise.resolve();};}
   const errors = [];
   const timers = [];
   const frames = [];
@@ -201,7 +203,7 @@ export function loadPage(opts = {}) {
   return {
     context, get, log, reset, errors, frames, timers, winListeners, document, storage,media,
     runTimers(now) { context.__now = now; for (let i = 0; i < timers.length; i++) if (timers[i].at <= now) { const t = timers.splice(i--, 1)[0]; t.fn(); } },
-    key(key, target = { tagName: 'BODY' }, extra={}) { (winListeners.keydown || []).forEach(fn => fn({ key, target, preventDefault() {},...extra }));if(key==='Escape'){const dialogs=document.querySelectorAll('dialog').filter(d=>d.open);dialogs.at(-1)?.dispatch('cancel');} },
+    key(key, target = opts.player ? document.getElementById('main') : document.body, extra={}) { (winListeners.keydown || []).forEach(fn => fn({ key, target, preventDefault() {},...extra }));if(key==='Escape'){const dialogs=document.querySelectorAll('dialog').filter(d=>d.open);dialogs.at(-1)?.dispatch('cancel');} },
     frame(ts) { const fs = frames.splice(0); fs.forEach(fn => fn(ts)); },
   };
 }
@@ -215,7 +217,9 @@ export function challenge(page, id, def, opts={}) {
     now: () => state.now,
     timed:()=>opts.timed!==false,
     status(h) { state.status = String(h); },
-    button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary }; state.buttons.push(b); return b; },
+    metrics(rows) { state.metrics=rows; },
+    surface(title) { const field=page.document.createElement('fieldset');field.title=title;page.document.body.appendChild(field);return field; },
+    button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary,attrs:{},setAttribute(k,v){this.attrs[k]=String(v);} }; state.buttons.push(b); return b; },
     slider(label, min, max, step, val, fmt, fn) { const c = { kind: 'slider', label, min: +min, max: +max, step: +step, fmt, set: v => { fmt(v); fn(v); } }; state.controls.push(c); return c; },
     seg(label, opts, val, fn) { const c = { kind: 'seg', label, opts, set: fn }; state.controls.push(c); return c; },
     toggle(label, val, fn) { let v = !!val; const c = { kind: 'toggle', label, set: x => fn((v = x === undefined ? !v : !!x)) }; state.controls.push(c); return c; },
