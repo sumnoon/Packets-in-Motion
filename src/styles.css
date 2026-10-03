@@ -58,10 +58,6 @@ select.ic{width:auto;padding:0 8px;font-size:13px;color:var(--text);appearance:n
 .legend span{display:inline-flex;align-items:center;gap:7px}
 .legend i{width:10px;height:10px;border-radius:50%;display:inline-block}
 .keys{margin-left:auto;font-size:12px;color:var(--faint)}
-.card{position:absolute;inset:0;display:grid;place-items:center;background:rgba(7,10,17,.74);-webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);opacity:0;pointer-events:none;transition:opacity .45s;border-radius:16px;padding:18px}
-.card.show{opacity:1;pointer-events:auto}
-.card .in{width:min(780px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 26px;transform:translateY(14px) scale(.98);transition:transform .55s cubic-bezier(.2,.9,.25,1.15)}
-.card.show .in{transform:none}
 .card h2{margin:0 0 14px;font-size:19px;display:flex;align-items:center;gap:10px}
 .card:not(.done) h2 small{display:none}
 .card h2 small{font-size:12px;font-weight:600;color:var(--green);border:1px solid color-mix(in srgb,var(--green) 45%,transparent);border-radius:20px;padding:2px 9px}
@@ -108,10 +104,6 @@ body.play canvas{cursor:default}
 .cstatus .bad{color:var(--red);font-weight:700}
 kbd{font:600 11.5px ui-monospace,Consolas,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;background:var(--bg);color:var(--text)}
 .chint{margin:0;font-size:14px;color:var(--amber);line-height:1.5}
-.result{position:absolute;inset:0;display:grid;place-items:center;background:rgba(4,6,13,.72);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);border-radius:16px;padding:18px;opacity:0;visibility:hidden;transition:opacity 180ms cubic-bezier(.23,1,.32,1),visibility 0s linear 180ms}
-.result.show{opacity:1;visibility:visible;transition:opacity 220ms cubic-bezier(.23,1,.32,1),visibility 0s}
-.result .in{width:min(560px,100%);background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px 28px;text-align:center;transform:translateY(8px) scale(.97);transition:transform 220ms cubic-bezier(.23,1,.32,1)}
-.result.show .in{transform:none}
 .result .stars{font-size:44px;letter-spacing:8px;line-height:1;margin-bottom:12px}
 .result .stars i{font-style:normal;color:var(--star-off);display:inline-block}
 .result .stars i.on{color:var(--amber);text-shadow:0 0 18px color-mix(in srgb,var(--amber) 55%,transparent)}
@@ -136,9 +128,6 @@ kbd{font:600 11.5px ui-monospace,Consolas,monospace;border:1px solid var(--line)
   .keys{display:none}
 }
 @media (max-width:720px){
-  .card{position:static;display:none;background:none;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0;margin-top:14px}
-  .card.show{display:block}
-  .card .in{width:100%}
   .cols{grid-template-columns:1fr}
   .top{flex-wrap:wrap}
   .nav{flex:1 1 100%;flex-wrap:wrap}
@@ -175,8 +164,6 @@ kbd{font:600 11.5px ui-monospace,Consolas,monospace;border:1px solid var(--line)
   .caption{grid-area:cap;font-size:13px;line-height:1.45;padding:10px 12px;min-height:0;flex-direction:column;gap:6px}
   .caption .step{margin-top:0;align-self:flex-start}
   .legend{display:none}
-  .card{position:fixed;inset:0;z-index:30;border-radius:0;display:grid;background:rgba(7,10,17,.9);padding:12px}
-  .card:not(.show){display:none}
   .card .in{padding:14px 18px;width:min(760px,100%)}
   .cols{grid-template-columns:1fr 1fr}
   .cols ul{font-size:13px}
@@ -192,10 +179,10 @@ kbd{font:600 11.5px ui-monospace,Consolas,monospace;border:1px solid var(--line)
 .transcript[hidden]{display:none}
 .transcript h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);margin:8px 12px 6px;font-weight:600}
 .transcript ol{list-style:none;margin:0;padding:0}
-.transcript li button{display:grid;grid-template-columns:52px 1fr;gap:4px 12px;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:9px 12px;cursor:pointer;color:var(--text-2);font-size:14.5px;line-height:1.5}
-.transcript li button:hover{background:var(--hover-bg)}
-.transcript li.now button{background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--strong)}
-.transcript .ts{grid-row:span 2;font-variant-numeric:tabular-nums;color:var(--accent);font-size:13px;font-weight:650;padding-top:1px}
+.transcript li .tr-step{display:grid;grid-template-columns:52px 1fr;gap:4px 12px;width:100%;text-align:left;background:none;border:0;border-radius:10px;padding:9px 12px;cursor:pointer;color:var(--text-2);font-size:14.5px;line-height:1.5}
+.transcript li .tr-step:hover{background:var(--hover-bg)}
+.transcript li.now .tr-step{background:color-mix(in srgb,var(--accent) 13%,transparent);color:var(--strong)}
+.transcript .ts{font-variant-numeric:tabular-nums;color:var(--accent);font-size:13px;font-weight:650;padding-top:1px}
 .transcript b{color:var(--text);font-weight:650}
 body.play .transcript{display:none}
 /* ---- themes: the stage stays dark (it is the video); the chrome follows the theme ---- */
@@ -249,3 +236,21 @@ dialog.gloss::backdrop{background:rgba(4,6,13,.7)}
 .gloss dd .in{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .gloss dd .in button{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:2px 9px;font-size:12px;cursor:pointer;color:var(--dim)}
 .gloss dd .in button:hover{border-color:var(--accent);color:var(--strong)}
+
+/* Native dialogs stay outside the page's layout and protect keyboard focus. */
+.card,.result{position:fixed;inset:0;margin:auto;width:min(780px,calc(100% - 32px));height:fit-content;max-height:calc(100dvh - 32px);overflow:auto;padding:0;border:0;border-radius:16px;background:transparent;color:var(--text);opacity:1;visibility:visible;transform:none;transition:none;pointer-events:auto;backdrop-filter:none;-webkit-backdrop-filter:none}
+.card:not([open]),.result:not([open]){display:none}
+.card[open],.result[open]{display:block}
+.result{width:min(560px,calc(100% - 32px))}
+.card .in,.result .in{width:100%;max-height:none;transform:none;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:22px 26px}
+.result .in{padding:24px 28px;text-align:center}
+.card::backdrop,.result::backdrop{background:rgba(4,6,13,.78);backdrop-filter:blur(6px)}
+#menuClose{display:none;margin:12px 16px 0}
+@media(max-width:900px){#menuClose{display:inline-flex}}
+.practice{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0}
+.practice label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2)}
+.practice select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:6px;padding:7px}
+.practice-note{font-size:12px;color:var(--text-2);max-width:45ch}
+.render-error{padding:28px;background:var(--panel);border:1px solid var(--line);border-radius:16px;color:var(--text)}
+.render-error h2{margin:0 0 12px}.render-error p{max-width:60ch;line-height:1.6}.render-error .acts{display:flex;gap:10px;flex-wrap:wrap}
+.transcript .tr-copy{margin:0;padding:4px 12px 14px 76px;font-size:14.5px;line-height:1.6;color:var(--text-2)}

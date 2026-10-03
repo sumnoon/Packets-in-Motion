@@ -34,7 +34,7 @@
   <button class="btn pri" id="rotateFs">Go fullscreen in landscape</button>
 </div></div>
 <div id="app">
-  <aside id="side">
+  <aside id="side" aria-label="Course navigation"><button class="btn sm" id="menuClose">Close chapters</button>
     <div class="brand"><div class="brand-heading"><img class="brand-mark" width="44" height="44" alt="" src="<!-- datauri: assets/logo-96.png -->"><b>Packets in Motion</b></div><span>Watch it, then solve it</span><span class="stars" id="starTotal"></span></div>
     <div class="prog"><i id="progBar"></i></div>
     <div class="find"><input type="search" id="find" placeholder="Search chapters  ( / )" aria-label="Search chapters" aria-controls="toc" autocomplete="off" spellcheck="false"><p class="sr" id="findMsg" aria-live="polite"></p></div>
@@ -49,7 +49,7 @@
       <p class="io-msg" id="storageMsg" role="status"></p>
     </div>
   </aside>
-  <div class="scrim" id="scrim"></div>
+  <div class="scrim" id="scrim" aria-hidden="true"></div>
   <main id="main" tabindex="-1">
     <div class="wrap">
       <div class="top">
@@ -58,7 +58,7 @@
           <h1 id="title"></h1>
         </div>
         <div class="nav">
-          <button class="btn" id="menuBtn">☰ Chapters</button>
+          <button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button>
           <button class="btn chal" id="chalBtn" title="Hands-on challenge (P)" aria-pressed="false">★ Challenge</button>
           <button class="btn" id="prevBtn" title="Previous chapter ( [ )">← Prev</button>
           <button class="btn" id="nextBtn" title="Next chapter ( ] )">Next →</button>
@@ -66,29 +66,12 @@
       </div>
       <div class="stageWrap">
         <div class="stage"><canvas id="cv" role="img" aria-label="Animation stage"></canvas></div>
-        <div class="card" id="card" role="dialog" aria-labelledby="cardTitle"><div class="in">
-          <h2><span id="cardTitle"></span><small>Chapter complete</small></h2>
-          <div class="cols">
-            <div class="use"><h3>When to use it</h3><ul id="useList"></ul></div>
-            <div class="con"><h3>Trade-offs</h3><ul id="conList"></ul></div>
-          </div>
-          <div class="links" id="cardLinks"></div>
-          <div class="acts">
-            <button class="btn" id="cardReplay">↺ Replay</button>
-            <button class="btn" id="cardClose">Keep watching</button>
-            <button class="btn" id="cardNext">Next chapter →</button>
-            <button class="btn pri" id="cardChal">★ Take the challenge</button>
-          </div>
-        </div></div>
-        <div class="result" id="result" role="dialog" aria-labelledby="resTitle"><div class="in">
-          <div class="stars" id="resStars" aria-hidden="true"></div>
-          <h2 id="resTitle"></h2><p id="resMsg"></p>
-          <div class="acts"><button class="btn" id="resRetry">↺ Try again</button><button class="btn" id="resWatch">Watch the lesson</button><button class="btn pri" id="resNext">Next lesson →</button></div>
-        </div></div>
+        <section id="renderError" class="render-error" role="alert" hidden><h2>Stage unavailable</h2><p id="renderErrorText"></p><div class="acts"><button class="btn pri" id="renderRetry">Retry stage</button><button class="btn" id="renderRead">Read the lesson</button></div></section>
       </div>
       <div class="cpanel" id="cpanel" aria-label="Challenge">
         <div class="chead"><span class="ctag" id="cTag">Challenge</span><b id="cTitle"></b></div>
         <p class="cgoal" id="cGoal"></p>
+        <div class="practice"><button class="btn pri" id="cStart">Start challenge</button><button class="btn" id="cPause" aria-pressed="false" hidden>Pause challenge</button><label id="cTimingLabel" hidden>Practice <select id="cTiming"><option value="timed">Timed</option><option value="untimed">Untimed</option></select></label><span class="practice-note">The challenge pauses while you read the glossary or open chapters.</span></div>
         <div class="cctl" id="cCtl"></div>
         <div class="cbar"><p class="cstatus" id="cStatus" aria-live="polite"></p><span id="cRun" class="cbar"></span>
           <button class="btn" id="cHintBtn">Hint</button><button class="btn" id="cRestart">↺ Restart</button><button class="btn" id="cBack">Back to lesson</button></div>
@@ -107,7 +90,7 @@
       </div>
       <div class="caption" id="caption"><span class="step" id="capStep">1/1</span><p id="capText"></p></div>
       <p class="sr" id="srLive" aria-live="polite"></p>
-      <section class="transcript" id="transcript" aria-labelledby="trTitle" hidden><h2 id="trTitle">Transcript</h2><ol id="trList"></ol></section>
+      <section class="transcript" id="transcript" aria-labelledby="trTitle" hidden><h2 id="trTitle" tabindex="-1">Transcript</h2><ol id="trList"></ol></section>
       <div class="legend">
         <span><i style="background:var(--blue);box-shadow:0 0 8px var(--blue)"></i>Request</span>
         <span><i style="background:var(--green);box-shadow:0 0 8px var(--green)"></i>Success / response</span>
@@ -118,6 +101,25 @@
     </div>
   </main>
 </div>
+        <dialog class="card" id="card" hidden aria-labelledby="cardTitle"><div class="in">
+          <h2><span id="cardTitle"></span><small>Chapter complete</small></h2>
+          <div class="cols">
+            <div class="use"><h3>When to use it</h3><ul id="useList"></ul></div>
+            <div class="con"><h3>Trade-offs</h3><ul id="conList"></ul></div>
+          </div>
+          <div class="links" id="cardLinks"></div>
+          <div class="acts">
+            <button class="btn" id="cardReplay">↺ Replay</button>
+            <button class="btn" id="cardClose">Keep watching</button>
+            <button class="btn" id="cardNext">Next chapter →</button>
+            <button class="btn pri" id="cardChal">★ Take the challenge</button>
+          </div>
+        </div></dialog>
+        <dialog class="result" id="result" hidden aria-labelledby="resTitle"><div class="in">
+          <div class="stars" id="resStars" aria-hidden="true"></div>
+          <h2 id="resTitle"></h2><p id="resMsg"></p>
+          <div class="acts"><button class="btn" id="resRetry">↺ Try again</button><button class="btn" id="resWatch">Watch the lesson</button><button class="btn pri" id="resNext">Next lesson →</button></div>
+        </div></dialog>
 <div class="tip" id="tip" role="tooltip" hidden></div>
 <dialog class="gloss" id="glossary" aria-labelledby="glTitle"><div class="gh"><h2 id="glTitle">Glossary</h2><input type="search" id="glFind" placeholder="Filter terms" aria-label="Filter terms" autocomplete="off"><button class="btn sm" id="glClose">Close</button></div><dl id="glList"></dl></dialog>
 <script>

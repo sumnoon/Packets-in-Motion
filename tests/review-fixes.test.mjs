@@ -17,7 +17,7 @@ test('delayed completion cannot score or focus another lesson, or a restarted ch
     assert.equal(p.document.getElementById('result').classList.contains('show'),false,action);
     assert.notEqual(p.document.activeElement?.id,'resNext');
   }
-  const p=loadPage({player:true,hash:'#auth'});p.key('p');for(let i=0;i<8;i++)p.key('1');p.runTimers(2);
+  const p=loadPage({player:true,hash:'#auth'});p.key('p');for(let i=0;i<8;i++)p.key('1');for(let t=0;t<=1200;t+=60)p.frame(t);
   assert.ok(JSON.parse(p.context.localStorage.getItem('pim-stars')).auth>0,'active completion still scores');
 });
 

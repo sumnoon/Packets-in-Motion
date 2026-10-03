@@ -34,7 +34,10 @@ const LAB_BEST={},LAB_BEST_DESIGNS={};
 function labSaveBest(){labPut('pim-lab-best',LAB_BEST);}
 // chaos mode: each run's incidents strike at random times and hit a random component.
 // Three 3-star runs in a row earn the lab's chaos-proof badge.
-const LAB_CHAOS={},LAB_CHAOS_ON={},LAB_STREAK={};
+const LAB_CHAOS={},LAB_CHAOS_ON={},LAB_STREAK={},LAB_STREAK_KEYS={},LAB_STREAK_SEEDS={},LAB_CERTIFIED={};
+// Layout is cosmetic; certification follows the components, wires and options.
+function labDesignKey(G){const ids=G.nodes.map(n=>n.id);return JSON.stringify([G.nodes.map(n=>n.kind),G.edges.map(e=>[ids.indexOf(e.a),ids.indexOf(e.b)]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]),Object.entries(G.opts||{}).sort(([a],[b])=>a.localeCompare(b))]);}
+function labCertificate(id,b){return pimRecord(b)&&labDecode(id,b.design)&&Array.isArray(b.seeds)&&b.seeds.length===3&&new Set(b.seeds).size===3&&b.seeds.every(s=>Number.isSafeInteger(s)&&s>=0&&s<2147483647);}
 function labRng(seed){return()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 // an incident's time: the scripted one, or in chaos mode a random time between lo and hi (fixed for the run)
 function labAt(S,key,def,lo,hi){if(!S.chaos)return def;const m=S._at||(S._at={});if(!(key in m))m[key]=lo+(hi-lo)*S.rng();return m[key];}
@@ -76,8 +79,9 @@ function labMergeDesigns(data){if(!pimRecord(data)||data.version!==1)return 0;le
   if(pimRecord(data.drafts))Object.entries(data.drafts).forEach(([id,code])=>{const G=labDecode(id,code);if(G&&!LAB_SAVE[id]){LAB_SAVE[id]=G;added++;}});
   if(pimRecord(data.best))Object.entries(data.best).forEach(([id,b])=>{if(!pimRecord(b))return;const G=labDecode(id,b.design);
     if(G&&Number.isSafeInteger(b.cost)&&b.cost>0&&b.cost===labDesignCost(id,G)&&(!LAB_BEST_DESIGNS[id]||b.cost<LAB_BEST_DESIGNS[id].cost)){
-      LAB_BEST_DESIGNS[id]={cost:b.cost,design:labEncode(id,G)};LAB_BEST[id]=Math.min(LAB_BEST[id]??Infinity,b.cost);added++;}});return added;}
-function labDesigns(){const drafts={};Object.entries(LAB_SAVE).forEach(([id,G])=>{if(Object.hasOwn(LAB_DEFS,id))drafts[id]=labEncode(id,G);});return{version:1,drafts,best:LAB_BEST_DESIGNS};}
+      LAB_BEST_DESIGNS[id]={cost:b.cost,design:labEncode(id,G)};LAB_BEST[id]=Math.min(LAB_BEST[id]??Infinity,b.cost);added++;}});
+  if(pimRecord(data.chaos))Object.entries(data.chaos).forEach(([id,b])=>{if(labCertificate(id,b)&&!LAB_CERTIFIED[id]){LAB_CERTIFIED[id]={design:labEncode(id,labDecode(id,b.design)),seeds:b.seeds.slice()};LAB_CHAOS[id]=true;added++;}});return added;}
+function labDesigns(){const drafts={};Object.entries(LAB_SAVE).forEach(([id,G])=>{if(Object.hasOwn(LAB_DEFS,id))drafts[id]=labEncode(id,G);});return{version:1,drafts,best:LAB_BEST_DESIGNS,chaos:LAB_CERTIFIED};}
 function labSaveDesigns(){labPut('pim-lab-designs',labDesigns());}
 const LAB_BOARD={x:14,y:62,w:972,h:380};
 const LAB_PAL_Y=LAB_BOARD.y+LAB_BOARD.h+16;   // the palette is a row of tiles under the board
@@ -87,7 +91,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   // ---------- the graph ----------
   let G=LAB_SAVE[id]?JSON.parse(JSON.stringify(LAB_SAVE[id])):{nodes:o.fixed.map((f,i)=>({id:'f'+i,kind:f.kind,x:f.x,y:f.y,label:f.label,fixed:true})),edges:[],seq:0};
   if(!G.opts)G.opts={};(o.toggles||[]).forEach(tg=>{if(!(tg.key in G.opts))G.opts[tg.key]=tg.val;});
-  const save=()=>{LAB_SAVE[id]=JSON.parse(JSON.stringify(G));labSaveDesigns();if(api.clearShareLink)api.clearShareLink();if(!running){S=null;post=null;LAB_POST[id]=null;}};   // an edit clears the last run's readings and weak spots
+  const save=()=>{if(LAB_STREAK_KEYS[id]!==labDesignKey(G)){LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];LAB_STREAK_KEYS[id]=labDesignKey(G);}LAB_SAVE[id]=JSON.parse(JSON.stringify(G));labSaveDesigns();if(api.clearShareLink)api.clearShareLink();if(!running){S=null;post=null;LAB_POST[id]=null;}};   // an edit clears the last run's readings and weak spots
   // undo history: a snapshot of the graph before each change
   const undoStack=LAB_UNDO[id]||(LAB_UNDO[id]=[]),snapshot=()=>JSON.stringify({nodes:G.nodes,edges:G.edges,seq:G.seq,opts:G.opts});
   const remember=s=>{undoStack.push(s||snapshot());if(undoStack.length>60)undoStack.shift();};
@@ -167,7 +171,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   if(PAL.some(taughtEarlier))api.toggle('Lock components until I have watched their chapter',locksOn,v=>{locksOn=v;labPut('pim-lab-locks',v);
     say(v?'Component locks on, in every lab: a component from a chapter you have not watched waits until you watch it.':'Component locks off: every component is available.');});
   let chaosOn=!!LAB_CHAOS_ON[id];
-  api.toggle('Chaos mode: incidents strike at random times and places',chaosOn,v=>{chaosOn=v;LAB_CHAOS_ON[id]=v;LAB_STREAK[id]=0;say(v?'Chaos mode on: each run, the incidents strike at a random time and hit a random component. Survive three runs in a row for the chaos-proof badge.':'Chaos mode off.');});
+  api.toggle('Chaos mode: incidents strike at random times and places',chaosOn,v=>{chaosOn=v;LAB_CHAOS_ON[id]=v;LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];say(v?'Chaos mode on: each run, the incidents strike at a random time and hit a random component. Survive three runs in a row for the chaos-proof badge.':'Chaos mode off.');});
   // what the run did to each component and wire, for the weak spots afterwards
   // a crash shakes the board, slows time for a moment and sounds; failing traffic sounds once
   function react(out,now){const seen=S._dead||(S._dead=new Set());let crash=false;(out.dead||[]).forEach(d=>{if(!seen.has(d)){seen.add(d);crash=true;}});
@@ -187,10 +191,12 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     if(o.lean!=null)m+=c<=o.lean?` Lean medal: no 3-star design we know of costs less than $${o.lean}/h.`:` A 3-star design exists for $${o.lean}/h. Can you find it?`;
     return m;}
   function chaosNote(stars){if(!chaosOn)return stars===3&&!LAB_CHAOS[id]?' Ready for more? Turn on chaos mode: the incidents strike at random.':'';
-    if(stars<3){LAB_STREAK[id]=0;return' Chaos streak reset.';}
-    const n=LAB_STREAK[id]=(LAB_STREAK[id]||0)+1;
-    if(n>=3&&!LAB_CHAOS[id]){LAB_CHAOS[id]=true;labPut('pim-lab-chaos',LAB_CHAOS);return' Chaos-proof badge earned: your design survived three random runs in a row.';}
-    return LAB_CHAOS[id]?` Chaos-proof, again (${n} in a row).`:` Chaos streak: ${n} of 3.`;}
+    const key=labDesignKey(G);if(LAB_STREAK_KEYS[id]!==key){LAB_STREAK_KEYS[id]=key;LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];}
+    if(stars<3){LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];return' Chaos streak reset.';}
+    const seeds=LAB_STREAK_SEEDS[id]||(LAB_STREAK_SEEDS[id]=[]);if(!seeds.includes(S.seed))seeds.push(S.seed);if(seeds.length>3)seeds.shift();
+    const n=LAB_STREAK[id]=seeds.length;
+    if(n>=3){LAB_CERTIFIED[id]={design:labEncode(id,G),seeds:seeds.slice(-3)};LAB_CHAOS[id]=true;labPut('pim-lab-chaos',LAB_CHAOS);labSaveDesigns();return' Chaos-proof badge earned: this design survived three distinct random seeds in a row.';}
+    return` Chaos streak: ${n} of 3 for this design.`;}
   function finish(now){const c=cost();res=o.score(S,G,c);let msg=res.msg;
     post=res.stars<3?weakSpots():[];LAB_POST[id]=post;
     if(post.length)msg+=' Press Try again to see where it broke on the board.';
@@ -218,7 +224,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     hintLvl=Math.min(3,hintLvl+1);LAB_HINT[id]=hintLvl;ghostOn=true;
     const text=hintLvl<3&&h[hintLvl-1]?h[hintLvl-1]:outlineText(full);
     return{text:`Hint ${hintLvl} of 3: ${text}`,label:hintLabel()};}
-  function start(){if(running)return;sel=null;drag=null;post=null;LAB_POST[id]=null;S=o.init(G);S.chaos=chaosOn;S.rng=labRng(Math.floor(Math.random()*2147483647));celebrate=null;running=true;done=false;res=null;api.lock(true);t0=api.now();simT=0;last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
+  function start(){if(running)return;sel=null;drag=null;post=null;LAB_POST[id]=null;S=o.init(G);S.chaos=chaosOn;S.seed=Math.floor(Math.random()*2147483647);S.rng=labRng(S.seed);celebrate=null;running=true;done=false;res=null;api.lock(true);t0=api.now();simT=0;last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
   // ---------- pointer ----------
   let sel=null,drag=null,hover=null,pal=-1,kb=false;   // kb: shortcut keycaps show once the player uses the keyboard
   const TW=Math.min(150,(LAB_BOARD.w+12-(PAL.length-1)*8)/PAL.length),TX0=LAB_BOARD.x-6+(LAB_BOARD.w+12-(PAL.length*TW+(PAL.length-1)*8))/2;
@@ -280,7 +286,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
       if(!running){const c=cost(),b=LAB_BEST[id],bt=`budget $${c} / $${o.budget}`;tx(bt,LAB_BOARD.x+6,LAB_BOARD.y-24,{z:13,wt:800,c:c<=o.budget?C.green:C.red,al:'left',f:MONO});
         let bx=LAB_BOARD.x+6+tw(bt,13,800,MONO)+18;
         if(b!=null){const s_=`best 3★ $${b}`+(o.lean==null?'':b<=o.lean?' · lean medal':` · lean is $${o.lean}`);tx(s_,bx,LAB_BOARD.y-24,{z:12,wt:700,c:o.lean!=null&&b<=o.lean?C.amber:C.dim,al:'left',f:MONO});bx+=tw(s_,12,700,MONO)+18;}
-        if(chaosOn||LAB_CHAOS[id])tx(LAB_CHAOS[id]?'chaos-proof ✓':`chaos mode · streak ${LAB_STREAK[id]||0}/3`,bx,LAB_BOARD.y-24,{z:12,wt:800,c:C.red,al:'left',f:MONO});}
+        if(chaosOn||LAB_CHAOS[id]){const b=LAB_CERTIFIED[id],cert=b&&labDesignKey(labDecode(id,b.design))===labDesignKey(G);tx(cert?'this design · chaos-proof ✓':chaosOn?`chaos mode · streak ${LAB_STREAK_KEYS[id]===labDesignKey(G)?LAB_STREAK[id]||0:0}/3`:'chaos badge earned · test this design',bx,LAB_BOARD.y-24,{z:12,wt:800,c:C.red,al:'left',f:MONO});}}
       if(running&&V_){tx(V_.phase||'',LAB_BOARD.x+6,LAB_BOARD.y-24,{al:'left',z:16,wt:800,c:/die|attack|storm|spike|star/i.test(V_.phase||'')?C.red:C.accent});const f=clamp(simT/o.dur);meter(LAB_BOARD.x,H-12,LAB_BOARD.w,4,f,C.accent);
         // live readout along the top bar, right-aligned, clear of the board
         let hx=W-14;o.hud(S,G).slice().reverse().forEach(([l,v,c])=>{tx(v,hx,LAB_BOARD.y-24,{z:12.5,wt:800,c:c||C.text,al:'right',f:MONO});hx-=tw(v,12.5,800,MONO)+6;tx(l,hx,LAB_BOARD.y-24,{z:11,c:C.dim,al:'right'});hx-=tw(l,11,500)+16;});}

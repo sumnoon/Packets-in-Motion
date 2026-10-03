@@ -1,5 +1,5 @@
 /* ---------------- 0. PACKETS: knock on the right door ---------------- */
-chal('packets',{title:'Knock on the right door',goal:'Every packet reaches the same server address. Send each one to the program it is meant for, using the port it carries.',
+chal('packets',{timed:true,title:'Knock on the right door',goal:'Every packet reaches the same server address. Send each one to the program it is meant for, using the port it carries.',
   hint:':443 → web server (https), :5432 → database, :53 → DNS, :22 → remote login (SSH).',
   make:sortGame({timer:8,bins:[{id:'443',label:'Web server',sub:'port 443',c:C.blue},{id:'5432',label:'Database',sub:'port 5432',c:C.green},{id:'53',label:'DNS',sub:'port 53',c:C.accent},{id:'22',label:'Remote login',sub:'port 22 (SSH)',c:C.amber}],
     cards:[{t:'to 93.184.216.34 :443 · "GET /index.html"',b:'443',why:'Port 443 is HTTPS, the web server.'},{t:'to 93.184.216.34 :5432 · "SELECT * FROM users"',b:'5432',why:'5432 is PostgreSQL, the database.'},
