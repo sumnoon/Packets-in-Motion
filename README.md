@@ -24,7 +24,7 @@ Or run it offline: `index.html` is a single self-contained file with no dependen
 | --- | --- |
 | Start Here | How computers talk: packets, IP addresses & ports |
 | Foundations | Client–server & typing a URL · Latency vs throughput, vertical vs horizontal scaling · Autoscaling · Back-of-the-envelope estimation |
-| Traffic | Load balancers · Sessions: sticky vs shared storage · Reverse proxies & API gateways · Authentication: sessions, JWTs & OAuth · CDNs & edge caching · Rate limiting |
+| Traffic | Load balancers · Sessions: sticky vs shared storage · Reverse proxies & API gateways · Authentication: sessions, JWTs & OpenID Connect · CDNs & edge caching · Rate limiting |
 | Data | SQL vs NoSQL · Indexing · Replication · Quorums (N, W, R) · Sharding · Caching & LRU · Cache expiry (TTL) & invalidation · Hot keys & request coalescing · Bloom filters · CAP & consistency |
 | Storage & Search | B-trees vs LSM trees · Search with inverted indexes · Geospatial indexes: geohash & quadtrees |
 | Communication | REST vs gRPC vs WebSockets · Message queues & pub/sub · Sync vs async · Stream vs batch processing |
@@ -69,21 +69,27 @@ After a run that falls short, the board marks the weak spots: the component that
 
 Lab drafts, including wires and design options, survive reloads. **Restore best design** brings back the cheapest saved three-star board; restoring it can also be undone. Older progress files retain their best-cost records, and a new successful run saves a restorable board. The shortener only earns three stars when every successful redirect's click event has been persisted, with none left pending.
 
-Once a design holds, turn on **chaos mode**: every run, the incidents strike at a random time and hit a random component, and three 3-star runs with distinct random seeds on the same architecture earn its chaos-proof badge. Changing components, wires or options resets the streak; moving a component does not. The tested design and seeds are saved and exported. Earlier badges remain learner achievements, but do not certify an untested board. **Copy share link** packs your design into a link, so anyone who opens it gets the same board and can try to beat your cost. Components grow with the course: a component from a chapter you haven't watched yet stays locked until you watch it. Already know the material? Turn off **Lock components until I have watched their chapter** in any lab.
+Once a design holds, turn on **chaos mode**: every run, the incidents strike at a random time and hit a random component, and three 3-star runs with distinct random seeds on the same architecture earn its chaos-proof badge. Changing components, wires or options resets the streak; moving a component does not. The tested design and seeds are saved and exported. Earlier badges remain learner achievements, but do not certify an untested board. **Copy share link** packs your design into a link, so anyone who opens it gets the same board and can try to beat your cost. Components grow with the course: a component stays locked until you mark its prerequisite lesson complete. Already know the material? Turn off **Lock components until I have completed their chapter** in any lab.
 
 Shared boards are saved before their URL is tidied, so they survive reloads too. When using the downloaded HTML, share links open the hosted course. If clipboard access fails, the selectable link remains available to copy manually. If browser storage is unavailable or full, the sidebar asks you to export before closing the tab.
 
-Labs work with the keyboard too: digits add components, pressing two components' letters wires them, Delete removes the selection, Ctrl+Z undoes, and Enter runs the test. The status line reads the whole design aloud, including the weak spots from the last run.
+Labs work with the keyboard too: digits add components, pressing two components' letters wires them, Delete removes the selection, Ctrl+Z undoes, and Enter runs the test. The goal appears above the board, and Run, Undo and Hint stay available in a sticky toolbar. The live status announces only the latest action; a persistent design summary lists budget, components, connections, options and weak spots. Expand the text editor for an add → connect → run walkthrough, or the keyboard guide for shortcuts and costs.
 
-Each section with more than one chapter ends with a **section quiz**: six multiple-choice questions with an explanation for every answer, scored with stars like the challenges. A miss names the chapter worth rewatching.
+Each section with more than one chapter ends with a **section quiz**, with an explanation for every answer, scored with stars like the challenges. A miss names the chapter worth rewatching.
 
 ## Learning tools
+
+Chapter and quiz changes create browser-history entries; Back and Forward restore lessons paused at their saved position, or reopen challenges ready to start. Timeline changes update the current entry without creating more entries. On an unlinked return visit, **Continue lesson** offers the saved lesson and position without autoplay. Playback speed, captions and transcript preferences are remembered.
+
+**Mark lesson complete** records your own completion decision. Reaching or seeking to the end does not mark completion. Challenge stars record practice separately, and three stars indicate challenge mastery. Older watched records are retained as completed records for compatibility. Locked components provide a direct route to their prerequisite lesson; mark that lesson complete to unlock them, or disable component locks when you already know the material.
+
+The ID lesson distinguishes sequences that allow gaps, transactional business-number allocation, random UUIDv4, time-based UUIDv7, and Snowflake's clock-dependent timestamp ordering. The authentication lesson separates OAuth API authorization from OpenID Connect login, explains access versus ID tokens, and covers validation and authorization code flow with PKCE. References: [PostgreSQL sequences](https://www.postgresql.org/docs/18/functions-sequence.html), [UUID specification](https://www.rfc-editor.org/rfc/rfc9562.html), [Snowflake generator safeguards](https://github.com/twitter-archive/snowflake/blob/snowflake-2010/src/main/scala/com/twitter/service/snowflake/IdWorker.scala), [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html), and [PKCE](https://www.rfc-editor.org/rfc/rfc7636.html).
 
 - **Search** the sidebar (press `/`) by title, caption or trade-off: "stampede", "429" or "leader" all find the right chapters.
 - **Glossary:** key terms in captions, the transcript and the trade-offs are underlined; hover, focus or tap one for a one-line definition. Press G for the full glossary, with links to every chapter that uses each term.
 - **Stage recovery:** a failed drawing stops playback and offers Retry or the readable lesson transcript while keeping saved lab designs. Trade-offs and results use modal dialogs with keyboard focus containment and Escape to close.
 - **Before this / Related:** the trade-offs card links to the chapters a lesson builds on and the ones that go further.
-- **Export / import progress** from the sidebar. Progress (chapters watched, stars, lab drafts, your cheapest saved lab designs and chaos-proof badges) lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost, and an existing draft is kept. Both original version 1 files and the new version 2 files are supported. Files are limited to 1 MB; invalid supported records or design schemas reject the whole import before merging, and unknown course records are reported as ignored.
+- **Export / import progress** from the sidebar. Progress (chapters completed, stars, lab drafts, your cheapest saved lab designs and chaos-proof badges) lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost, and an existing draft is kept. Both original version 1 files and the new version 2 files are supported. Files are limited to 1 MB; invalid supported records or design schemas reject the whole import before merging, and unknown course records are reported as ignored.
 - **Sound cues** (off by default): soft tones for right and wrong moves, new steps and results. They are synthesized in the browser; nothing is downloaded.
 
 ## Visual language
@@ -117,7 +123,7 @@ Player shortcuts work while focus is inside the lesson. Native inputs retain the
 
 ## Accessibility
 
-- **Screen readers:** each step is announced as it plays (title and caption), the stage is labelled with the current step, and the transcript (S) lists every step as text. The sidebar reads each chapter's number, title, whether you've watched it and your stars.
+- **Screen readers:** each step is announced as it plays (title and caption), the stage is labelled with the current step, and the transcript (S) lists every step as text. The sidebar reads each chapter's number, title, whether you've marked it complete and your stars.
 - **Keyboard only:** every lesson control and every challenge works without a mouse. Challenge status lines name the cards, slots and targets so you know which key does what.
 - **Themes:** pick Dark, Light or High contrast at the bottom of the sidebar. The stage stays dark in Light (it's the video); High contrast also brightens labels and lines on the stage. High contrast is chosen for you if your system asks for more contrast.
 - **Reduced motion** stills the drifting background, tones down the particle bursts and turns off the labs' screen shake and slow motion.

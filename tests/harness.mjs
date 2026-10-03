@@ -104,11 +104,13 @@ function makeDocument(ctx) {
       all.push(this);
     }
     get innerHTML() { return this._html; }
-    set innerHTML(v) { this._html = String(v); if (v === '') { this.children = []; this._text = ''; } }
+    set innerHTML(v) { this._html = String(v); if (v === '') { this.children.forEach(c=>{if(c.tagName)c.parentNode=null;});this.children = []; this._text = ''; } }
     // text nodes are kept as {text} entries so textContent reads back like the DOM
     get textContent() { return this._text + this.children.map(c => (c.text !== undefined ? c.text : c.textContent)).join(''); }
     set textContent(v) { this._text = String(v); this.children = []; }
     appendChild(c) { if(c.parentNode)c.remove();this.children.push(c); c.parentNode = this; return c; }
+    prepend(c) { if(c.parentNode)c.remove();this.children.unshift(c);c.parentNode=this; }
+    insertBefore(c,ref) { if(c.parentNode)c.remove();const i=this.children.indexOf(ref);this.children.splice(i<0?this.children.length:i,0,c);c.parentNode=this;return c; }
     append(...cs) { cs.forEach(c => (typeof c === 'string' ? this.children.push({ text: c }) : this.appendChild(c))); }
     replaceChildren(...cs) { this.children.forEach(c=>{if(c.tagName)c.parentNode=null;});this.children=[];this._text='';this.append(...cs); }
     remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); }
@@ -193,6 +195,10 @@ export function loadPage(opts = {}) {
     URLSearchParams, Math, JSON, Object, Array, Number, String, Set, Map, Promise, Date, Error, Symbol, Proxy, Reflect, Infinity, NaN, parseInt, parseFloat, isFinite,
   };
   context.window = context;
+  const historyEntries=[{state:null,url:context.location.href}];let historyIndex=0;
+  const updateLocation=url=>{const u=new URL(url,context.location.href);Object.assign(context.location,{href:u.href,hash:u.hash,search:u.search,pathname:u.pathname});};
+  const travel=delta=>{const next=historyIndex+delta;if(next<0||next>=historyEntries.length)return;const old=context.location.href;historyIndex=next;const entry=historyEntries[next];updateLocation(entry.url);(winListeners.popstate||[]).forEach(fn=>fn({state:entry.state}));if(old!==entry.url)(winListeners.hashchange||[]).forEach(fn=>fn({oldURL:old,newURL:entry.url}));};
+  context.history={get state(){return historyEntries[historyIndex].state;},get length(){return historyEntries.length;},pushState(state,_,url){if(url!==undefined)updateLocation(url);historyEntries.splice(++historyIndex);historyEntries.push({state:JSON.parse(JSON.stringify(state)),url:context.location.href});},replaceState(state,_,url){if(url!==undefined)updateLocation(url);historyEntries[historyIndex]={state:JSON.parse(JSON.stringify(state)),url:context.location.href};},back(){travel(-1);},forward(){travel(1);}};
   context.globalThis = context;
   vm.createContext(context);
   const src = scripts();
@@ -217,6 +223,7 @@ export function challenge(page, id, def, opts={}) {
     now: () => state.now,
     timed:()=>opts.timed!==false,
     status(h) { state.status = String(h); },
+    summary(h) { state.summary=String(h); },
     metrics(rows) { state.metrics=rows; },
     surface(title) { const field=page.document.createElement('fieldset');field.title=title;page.document.body.appendChild(field);return field; },
     button(label, fn, o = {}) { const b = { label, fn, primary: !!o.primary,attrs:{},setAttribute(k,v){this.attrs[k]=String(v);} }; state.buttons.push(b); return b; },

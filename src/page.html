@@ -59,6 +59,9 @@
           <button class="btn" id="nextBtn" title="Next chapter ( ] )">Next →</button>
         </div>
       </div>
+      <div class="resume" id="resume" hidden><p id="resumeText"></p><button class="btn" id="continueBtn">Continue lesson</button></div>
+      <div id="labIntro" class="lab-intro" hidden><p class="lab-guide">Add a component from the palette or text editor → connect the traffic source to it → run the load test. Undo reverses an edit; Hint helps you choose a design.</p></div>
+      <div id="labActions" class="lab-actions" role="group" aria-label="Architecture lab actions" hidden></div>
       <div class="stageWrap">
         <div class="diagram-tools" role="group" aria-label="Diagram view"><button class="btn sm" id="diagramFit" aria-pressed="true">Fit diagram</button><button class="btn sm" id="diagramReadable" aria-pressed="false">Readable size</button><button class="btn sm" id="diagramEdit" aria-pressed="false" hidden>Drag on diagram: off</button><span>Scroll to pan at readable size. Text controls work at every size.</span></div>
         <p id="orientationNote" class="orientation-note">Portrait works here. Landscape offers more room for the diagram.</p>
@@ -66,9 +69,11 @@
         <section id="renderError" class="render-error" role="alert" hidden><h2>Stage unavailable</h2><p id="renderErrorText"></p><div class="acts"><button class="btn pri" id="renderRetry">Retry stage</button><button class="btn" id="renderRead">Read the lesson</button></div></section>
       </div>
       <div class="cpanel" id="cpanel" aria-label="Challenge">
+        <div id="cBrief">
         <div class="chead"><span class="ctag" id="cTag">Challenge</span><b id="cTitle"></b></div>
         <p class="cgoal" id="cGoal"></p>
         <div class="practice"><button class="btn pri" id="cStart">Start challenge</button><button class="btn" id="cPause" aria-pressed="false" hidden>Pause challenge</button><label id="cTimingLabel" hidden>Practice <select id="cTiming"><option value="timed">Timed</option><option value="untimed">Untimed</option></select></label><span class="practice-note">The challenge pauses while you read the glossary or open chapters.</span></div>
+        </div>
         <div class="caccessible" id="cAccessible"></div>
         <dl class="readout" id="cReadout" aria-label="Live challenge measurements" aria-live="off" hidden></dl>
         <div class="cctl" id="cCtl"></div>
@@ -80,6 +85,7 @@
         <button class="ic" id="playBtn" title="Play / pause (Space)" aria-label="Play"></button>
         <button class="ic" id="replayBtn" title="Replay (R)" aria-label="Replay"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z"/></svg></button>
         <button class="btn sm" id="stepPrev" aria-label="Previous lesson step">Previous step</button><button class="btn sm" id="stepNext" aria-label="Next lesson step">Next step</button>
+        <button class="btn sm" id="completeBtn">Mark lesson complete</button>
         <div class="scrub"><input type="range" id="scrub" min="0" max="1000" step="1" value="0" aria-label="Scrub timeline"><div class="ticks" id="ticks"></div></div>
         <div class="time" id="time">0:00 / 0:00</div>
         <select class="ic" id="speed" title="Playback speed" aria-label="Playback speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
@@ -89,6 +95,7 @@
         <button class="ic" id="tradeBtn" title="When to use it / trade-offs (T)" aria-label="When to use it and trade-offs"><svg viewBox="0 0 24 24"><path d="M12 3 1 9l11 6 9-4.9V17h2V9L12 3zM5 13.2v4L12 21l7-3.8v-4L12 17l-7-3.8z"/></svg></button>
       </div>
       <div class="caption" id="caption"><span class="step" id="capStep">1/1</span><p id="capText"></p></div>
+      <p class="learning-status" id="learningStatus" role="status"></p>
       <p class="sr" id="srLive" aria-live="polite"></p>
       <section class="transcript" id="transcript" aria-labelledby="trTitle" hidden><h2 id="trTitle" tabindex="-1">Transcript</h2><ol id="trList"></ol></section>
       <div class="legend">
@@ -102,13 +109,14 @@
   </main>
 </div>
         <dialog class="card" id="card" hidden aria-labelledby="cardTitle"><div class="in">
-          <h2><span id="cardTitle"></span><small>Chapter complete</small></h2>
+          <h2><span id="cardTitle"></span><small>Lesson ended</small></h2>
           <div class="cols">
             <div class="use"><h3>When to use it</h3><ul id="useList"></ul></div>
             <div class="con"><h3>Trade-offs</h3><ul id="conList"></ul></div>
           </div>
           <div class="links" id="cardLinks"></div>
           <div class="acts">
+            <button class="btn" id="cardComplete">Mark lesson complete</button>
             <button class="btn" id="cardReplay">↺ Replay</button>
             <button class="btn" id="cardClose">Keep watching</button>
             <button class="btn" id="cardNext">Next chapter →</button>

@@ -49,7 +49,7 @@ test('every chapter plays, seeks and opens its challenge without errors', () => 
   assert.equal(page.context.location.hash, '#' + chapters[0].id, '] on the last chapter wraps to the first');
 });
 
-test('playing a chapter to the end marks it seen and shows the trade-offs card', () => {
+test('playing a chapter to the end offers explicit completion and shows the trade-offs card', () => {
   const page = loadPage({ player: true, hash: '#packets' });
   const c = page.get('chapters')[0];
   let ts = 0;
@@ -57,7 +57,7 @@ test('playing a chapter to the end marks it seen and shows the trade-offs card',
   page.document.getElementById('speed').onchange({ target: { value: '2' } });
   for (let i = 0; i < (c.dur / 2 + 2) / 0.06; i++) { ts += 60; page.frame(ts); }
   assert.ok(page.document.getElementById('card').classList.contains('show'), 'trade-offs card not shown');
-  assert.match(page.context.localStorage.getItem('sdve-seen'), /"packets":1/);
+  assert.equal(page.context.localStorage.getItem('sdve-seen'),null);page.document.getElementById('cardComplete').click();assert.match(page.context.localStorage.getItem('sdve-seen'), /"packets":1/);
   assert.deepEqual(page.errors, []);
 });
 

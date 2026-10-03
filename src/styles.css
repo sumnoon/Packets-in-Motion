@@ -246,3 +246,12 @@ body.play .stage.editing canvas{touch-action:none}
 .cbar{flex-wrap:wrap}.cbar .btn{white-space:normal;min-height:44px}
 @media(max-width:720px){.scrub{order:9;flex-basis:100%}.diagram-tools .btn{min-height:44px}.orientation-note{display:block}.editor-fields select{font-size:16px}}
 @media(pointer:coarse){button,.btn,.ic{min-height:44px;min-width:44px}input,select{font-size:16px!important}main{padding-bottom:calc(24px + env(safe-area-inset-bottom))}button{touch-action:manipulation}}
+.resume{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-block:1px solid var(--line)}
+.resume p{margin:0;font-size:14px;line-height:1.5}.resume button{white-space:normal;flex:none;min-height:44px}
+.lab-intro{display:flex;flex-direction:column}.lab-intro .cgoal{margin:8px 0 12px}.lab-intro .practice{margin-top:10px}
+.lab-actions{display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:10;background:var(--bg);padding:10px 0;border-bottom:1px solid var(--line)}
+.lab-actions button{min-height:44px}.lab-summary{font-size:14px;line-height:1.6;color:var(--text-2)}
+.lab-summary p{margin:10px 0}.learning-status{margin:0;font-size:14px;color:var(--dim)}.learning-status:empty{display:none}
+.caccessible{display:flex;flex-direction:column}.lab-summary h3{font-size:14px;margin:12px 0 6px}.lab-summary ul{margin:0;padding-left:20px}
+.lab-guide{font-size:14px;line-height:1.6;margin:10px 0}.lab-prerequisites{flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap}
+@media(max-width:720px){.resume{align-items:flex-start;flex-direction:column}.lab-actions{top:-1px}.lab-intro .practice-note{display:none}}
