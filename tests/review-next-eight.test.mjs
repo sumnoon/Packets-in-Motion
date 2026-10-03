@@ -90,15 +90,14 @@ test('transcript definitions are independent buttons rather than nested inside s
   const before=el(p,'scrub').value;li.children[1].querySelector('.term').click();assert.equal(el(p,'scrub').value,before);li.children[0].click();assert.equal(li.children[0].getAttribute('aria-current'),'step');
 });
 
-test('challenge start, pause, modal, visibility, drawer and orientation gates freeze the same clock',()=>{
+test('challenge start, pause, modal, visibility and drawer gates freeze the same clock; portrait stays available',()=>{
   const p=loadPage({player:true,hash:'#packets',media:{'(max-width:900px)':true}});p.key('p');p.key('Tab');advance(p,10);assert.equal(el(p,'cStart').hidden,false);assert.match(el(p,'cStatus').innerHTML,/Card <b>1<\/b>/);
   el(p,'cStart').click();advance(p,1,10050);const before=el(p,'cStatus').innerHTML;
   el(p,'cPause').click();advance(p,10,11100);assert.equal(el(p,'cStatus').innerHTML,before);el(p,'cPause').click();
   p.key('g');advance(p,10,21150);assert.equal(el(p,'cStatus').innerHTML,before);el(p,'glClose').click();
   p.document.hidden=true;advance(p,10,31200);p.document.hidden=false;assert.equal(el(p,'cStatus').innerHTML,before);
   el(p,'menuBtn').click();advance(p,10,41250);el(p,'menuClose').click();assert.equal(el(p,'cStatus').innerHTML,before);
-  const mq=p.media.get('(orientation:portrait) and (pointer:coarse) and (max-width:600px)');mq.change(true);advance(p,10,51300);mq.change(false);assert.equal(el(p,'cStatus').innerHTML,before);
-  advance(p,9,61350);assert.doesNotMatch(el(p,'cStatus').innerHTML,/Card <b>1<\/b>/);assert.deepEqual(p.errors,[]);
+  const mq=p.media.get('(orientation:portrait) and (pointer:coarse) and (max-width:600px)');mq.change(true);advance(p,10,51300);mq.change(false);assert.notEqual(el(p,'cStatus').innerHTML,before);assert.deepEqual(p.errors,[]);
 });
 
 test('delayed completion also waits while paused and fires on resume',()=>{

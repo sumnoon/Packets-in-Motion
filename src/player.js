@@ -11,6 +11,7 @@ let mode='watch',inst=null,api=null,ct=0,pdown=null,quizG=null;   // quizG: the 
 let challengeToken=0;
 let renderFault=null,challengeReady=false,challengePaused=false;
 let practiceTimed=store.get('pim-practice-timed')!=='0';
+let shortcuts=store.get('pim-shortcuts')!=='0',diagramEditing=!matchMedia('(pointer:coarse)').matches;
 let cur=0,t=0,playing=false,speed=1,last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
@@ -52,7 +53,7 @@ function failRender(e){if(renderFault)return;renderFault={mode,id:quizG?QUIZ[qui
   console.error('Stage failed',renderFault,e);setPlaying(false);if(api)api.dispose();pdown=null;cv.hidden=true;
   $('renderError').hidden=false;$('renderErrorText').textContent=mode==='play'?'This challenge could not be drawn. Your saved design is available when you retry. No result was awarded.':'This animation could not be drawn. You can still read every step in the transcript.';
   if(mode==='watch')setTranscript(true);announce($('renderErrorText').textContent);}
-function blocked(){return document.hidden||portrait.matches||document.body.classList.contains('menu')||$('glossary').open||$('card').open||$('result').open;}
+function blocked(){return document.hidden||document.body.classList.contains('menu')||$('glossary').open||$('card').open||$('result').open;}
 function render(){if(renderFault)return;if(mode==='play'){renderChal(0);return;}const c=chapters[cur];
   try{g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBackground();c.draw(t);
     g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBeatTitle(c,t);}catch(e){failRender(e);}
@@ -62,6 +63,8 @@ function render(){if(renderFault)return;if(mode==='play'){renderChal(0);return;}
   const k=beatIndex(c,t);if(k!==capIdx){if(playing&&capIdx>=0)SFX.play('beat');capIdx=k;const el=$('capText');fillTerms(el,c.beats[k][2]);el.classList.remove('fade');void el.offsetWidth;el.classList.add('fade');$('capStep').textContent=`${k+1}/${c.beats.length}`;
     const b=c.beats[k],step=`Step ${k+1} of ${c.beats.length}: ${b[1]}`;cv.setAttribute('aria-label',`${c.title}. ${step}`);
     announce((annTitle?c.title+'. ':'')+step+'. '+b[2]);annTitle=false;markTranscript(k);}
+  $('scrub').setAttribute('aria-valuetext',`${fmt(t)} of ${fmt(c.dur)}. Step ${k+1} of ${c.beats.length}: ${c.beats[k][1]}`);
+  $('stepPrev').disabled=k===0;$('stepNext').disabled=k===c.beats.length-1;
 }
 function setPlaying(v){playing=v;$('playBtn').innerHTML=v?ICON_PAUSE:ICON_PLAY;$('playBtn').title=v?'Pause (Space)':'Play (Space)';$('playBtn').setAttribute('aria-label',v?'Pause':'Play');}
 // the canvas is silent, so each step is read out (debounced, so scrubbing does not flood the queue)
@@ -118,26 +121,33 @@ $('cardNext').onclick=()=>load(cur+1,true);
 $('prevBtn').onclick=()=>load(cur-1,true);
 $('nextBtn').onclick=()=>load(cur+1,true);
 $('tradeBtn').onclick=()=>{const v=!$('card').classList.contains('show');if(v)setPlaying(false);showCard(v);};
+$('stepPrev').onclick=()=>{const c=chapters[cur];seek(c.beats[Math.max(0,beatIndex(c,t)-1)][0]+.01);};
+$('stepNext').onclick=()=>{const c=chapters[cur];seek(c.beats[Math.min(c.beats.length-1,beatIndex(c,t)+1)][0]+.01);};
 $('speed').onchange=e=>{speed=+e.target.value;};
 const sc=$('scrub');
 sc.addEventListener('pointerdown',()=>{dragging=true;wasPlaying=playing;});
 sc.addEventListener('input',()=>{seek(sc.value/1000*chapters[cur].dur);});
 const endDrag=()=>{if(dragging){dragging=false;last=null;}};
-sc.addEventListener('pointerup',endDrag);sc.addEventListener('change',endDrag);window.addEventListener('pointerup',endDrag);
-cv.addEventListener('click',()=>{if(mode!=='play')$('playBtn').click();});
+sc.addEventListener('pointercancel',endDrag);sc.addEventListener('lostpointercapture',endDrag);sc.addEventListener('pointerup',endDrag);sc.addEventListener('change',endDrag);window.addEventListener('pointerup',endDrag);
+cv.addEventListener('click',()=>{cv.focus();if(mode!=='play')$('playBtn').click();});
 /* ---------------- challenge mode ---------------- */
 function renderChal(dt){if(renderFault)return;try{g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawVoid(ct);if(inst)inst.draw(ct,dt);g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;FX.step(dt);}catch(e){failRender(e);}}
 function beginChallenge(){if(renderFault||challengePaused||blocked())return false;last=null;challengeReady=true;$('cStart').hidden=true;$('cPause').hidden=false;$('cTiming').disabled=true;return true;}
 function challengeInput(){return !renderFault&&!challengePaused&&!blocked()&&(challengeReady||beginChallenge());}
 $('cStart').onclick=beginChallenge;
-$('cPause').onclick=()=>{last=null;pdown=null;challengePaused=!challengePaused;$('cPause').textContent=challengePaused?'Resume challenge':'Pause challenge';$('cPause').setAttribute('aria-pressed',String(challengePaused));};
+$('cPause').onclick=()=>{last=null;cancelPointer();challengePaused=!challengePaused;$('cPause').textContent=challengePaused?'Resume challenge':'Pause challenge';$('cPause').setAttribute('aria-pressed',String(challengePaused));};
 $('cTiming').onchange=e=>{practiceTimed=e.target.value==='timed';store.set('pim-practice-timed',practiceTimed?'1':'0');startChal(quizG);};
 $('renderRetry').onclick=()=>{if(mode==='play'){startChal(quizG);return;}clearRenderFault();resize();};
 $('renderRead').onclick=()=>{if(mode==='play')exitChal();setTranscript(true);$('trTitle').focus();};
 function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),token=challengeToken,id=quizG?QUIZ[quizG].id:chapters[cur].id;let shareBox=null;
-  let disposed=false;const active=()=>!disposed&&token===challengeToken&&mode==='play';ctl.innerHTML='';run.innerHTML='';
+  let disposed=false,metricAt=-1;const active=()=>!disposed&&token===challengeToken&&mode==='play';ctl.innerHTML='';run.innerHTML='';$('cAccessible').innerHTML='';$('cReadout').innerHTML='';$('cReadout').hidden=true;
   const field=(label,node)=>{const d=document.createElement('div');d.className='ctl';const s=document.createElement('span');s.textContent=label;d.append(s,node);ctl.appendChild(d);return d;};
-  return{now:()=>ct,timed:()=>practiceTimed,
+  return{now:()=>ct,timed:()=>practiceTimed,canInput:()=>active()&&challengeInput(),
+    targetRadius:()=>Math.max(12,22/(cv.getBoundingClientRect().width/W)),
+    surface(title){const d=document.createElement('details'),s=document.createElement('summary'),f=document.createElement('fieldset');s.textContent=title;d.append(s,f);$('cAccessible').appendChild(d);return f;},
+    metrics(rows,force=false){if(!active()||!force&&ct-metricAt<1)return;metricAt=ct;const dl=$('cReadout');dl.hidden=false;
+      if(dl.children.length!==rows.length||rows.some(([name],i)=>dl.children[i].children[0].textContent!==name)){dl.textContent='';rows.forEach(([name])=>{const d=document.createElement('div'),dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=name;d.append(dt,dd);dl.appendChild(d);});}
+      rows.forEach(([,value],i)=>{const dd=dl.children[i].children[1],text=String(value);if(dd.textContent!==text)dd.textContent=text;});},
     status(h){if(active())$('cStatus').innerHTML=h;},
     later(fn,ms){const timer={at:ct+ms/1000,fn};if(active())timers.add(timer);return timer;},
     tick(){for(const timer of [...timers]){if(!active()||blocked())break;if(ct>=timer.at){timers.delete(timer);timer.fn();}}},
@@ -153,15 +163,16 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
     toggle(label,val,fn){const b=document.createElement('button');b.type='button';b.className='tog';b.textContent=label;b.setAttribute('aria-pressed',String(val));b.onclick=()=>{const v=b.getAttribute('aria-pressed')!=='true';b.setAttribute('aria-pressed',String(v));fn(v);};ctl.appendChild(b);els.push(b);return b;},
     lock(v){if(active())els.forEach(e=>e.disabled=v);},
     win(st,title,msg){if(active())showResult(st,title,msg,id,token);}};}
-function disposeChallenge(){challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
+function disposeChallenge(){cancelPointer();challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
 function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');
+  $('diagramEdit').hidden=false;syncDiagramEditing();
   challengeReady=!!LAB_DEFS[c.id]&&!gname;challengePaused=false;$('cStart').hidden=challengeReady;$('cPause').hidden=!challengeReady;$('cPause').textContent='Pause challenge';$('cPause').setAttribute('aria-pressed','false');
   $('cTimingLabel').hidden=!d.timed;$('cTiming').value=practiceTimed?'timed':'untimed';$('cTiming').disabled=false;
   $('cTitle').textContent=d.title;$('cGoal').textContent=!practiceTimed&&d.untimedGoal?d.untimedGoal:d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();try{inst=d.make(api);}catch(e){failRender(e);}$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
   $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
-function exitChal(quiet){disposeChallenge();clearRenderFault();const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
+function exitChal(quiet){disposeChallenge();clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;if(wasQuiz){heading();markToc();}mode='watch';capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet)render();}
 function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
   $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
@@ -175,9 +186,11 @@ const firstOf=gname=>Math.max(0,chapters.findIndex(c=>c.group===gname));
 function updStars(){let n=0;document.querySelectorAll('.qz').forEach(b=>{const k=stars[QUIZ[b.dataset.q].id]||0,s=b.querySelector('.st');n+=k;if(s){s.textContent='★'.repeat(k)+'☆'.repeat(3-k);s.classList.toggle('got',k>0);}});document.querySelectorAll('.ch').forEach(b=>{const id=chapters[+b.dataset.i].id,s=b.querySelector('.st'),k=CHAL[id]?stars[id]||0:0;n+=k;if(!s)return;s.textContent='★'.repeat(k)+'☆'.repeat(3-k);s.classList.toggle('got',k>0);s.setAttribute('aria-hidden','true');tocLabel(b);});
   $('starTotal').textContent=`★ ${n} / ${allIds().length*3} stars`;}
 const toWorld=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*W,(e.clientY-r.top)/r.height*H];};
-cv.addEventListener('pointerdown',e=>{if(mode!=='play'||!inst||!challengeInput())return;const[x,y]=toWorld(e);pdown={x,y};try{cv.setPointerCapture(e.pointerId);}catch(_){}if(inst.down)inst.down(x,y,ct);});
-cv.addEventListener('pointermove',e=>{if(mode!=='play'||!inst||!challengeReady||challengePaused||blocked()||renderFault)return;const[x,y]=toWorld(e);if(inst.move)inst.move(x,y,ct);});
-cv.addEventListener('pointerup',e=>{if(mode!=='play'||!inst||!challengeInput()){pdown=null;return;}const[x,y]=toWorld(e);if(inst.up)inst.up(x,y,ct);if(pdown&&Math.hypot(x-pdown.x,y-pdown.y)<8&&inst.click)inst.click(x,y,ct);pdown=null;});
+cv.addEventListener('pointerdown',e=>{if(mode!=='play'||!inst||!diagramEditing||pdown||!challengeInput())return;cv.focus();const[x,y]=toWorld(e);pdown={x,y,id:e.pointerId};try{cv.setPointerCapture(e.pointerId);}catch(_){}if(inst.down)inst.down(x,y,ct);});
+cv.addEventListener('pointermove',e=>{if(mode!=='play'||!inst||!diagramEditing||!challengeReady||challengePaused||blocked()||renderFault||pdown&&e.pointerId!==pdown.id)return;const[x,y]=toWorld(e);if(inst.move)inst.move(x,y,ct);});
+cv.addEventListener('pointerup',e=>{if(!pdown||e.pointerId!==pdown.id)return;if(mode!=='play'||!inst||!challengeInput()){cancelPointer();return;}const[x,y]=toWorld(e);if(inst.up)inst.up(x,y,ct);if(pdown&&Math.hypot(x-pdown.x,y-pdown.y)<8&&inst.click)inst.click(x,y,ct);pdown=null;});
+function cancelPointer(){const held=pdown;pdown=null;if(inst&&inst.cancel)inst.cancel();if(held)try{cv.releasePointerCapture(held.id);}catch(_){} }
+cv.addEventListener('pointercancel',cancelPointer);cv.addEventListener('lostpointercapture',cancelPointer);
 $('chalBtn').onclick=()=>{if(mode==='play')exitChal();else startChal();};
 $('cardChal').onclick=()=>startChal();$('cRestart').onclick=()=>startChal(quizG);$('cBack').onclick=()=>exitChal();
 // a lab's hints go a level deeper with each press; other challenges show their one hint
@@ -194,7 +207,7 @@ const BASE={...C},HC={text:'#ffffff',dim:'#c6cddb',faint:'#98a2b6',edge:'#7f8fb2
 function setTheme(v){if(!['dark','light','contrast'].includes(v))v='dark';document.documentElement.setAttribute('data-theme',v);Object.assign(C,BASE,v==='contrast'?HC:{});$('theme').value=v;render();}
 $('theme').onchange=e=>{store.set('pim-theme',e.target.value);setTheme(e.target.value);};
 const narrow=window.matchMedia('(max-width:900px)');
-function setMenu(v){const open=!!v&&narrow.matches;document.body.classList.toggle('menu',open);$('menuBtn').setAttribute('aria-expanded',String(open));
+function setMenu(v){if(v)cancelPointer();const open=!!v&&narrow.matches;document.body.classList.toggle('menu',open);$('menuBtn').setAttribute('aria-expanded',String(open));
   $('side').inert=narrow.matches&&!open;$('main').inert=open;$('side').setAttribute('aria-hidden',String(narrow.matches&&!open));
   if(open)$('find').focus();else if(narrow.matches)$('menuBtn').focus();}
 $('menuBtn').onclick=()=>setMenu(!document.body.classList.contains('menu'));
@@ -202,11 +215,16 @@ $('menuClose').onclick=()=>setMenu(false);$('scrim').onclick=()=>setMenu(false);
 if(narrow.addEventListener)narrow.addEventListener('change',()=>setMenu(false));
 setMenu(false);
 window.addEventListener('keydown',e=>{if($('glossary').open||$('card').open||$('result').open)return;if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
+  if((e.ctrlKey||e.metaKey||e.altKey)&&document.body.classList.contains('menu'))return;
   if(document.body.classList.contains('menu')){if(e.key==='Escape'){e.preventDefault();setMenu(false);}else if(e.key==='Tab'){
     const items=[...$('side').querySelectorAll('button,input,select,a[href]')].filter(b=>!b.disabled&&!b.closest('[hidden]'));
     const first=items[0],end=items[items.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();end.focus();}else if(!e.shiftKey&&document.activeElement===end){e.preventDefault();first.focus();}}
     return;}
-  if(e.target.tagName==='SELECT'||e.target.tagName==='TEXTAREA'||e.target.tagName==='INPUT'&&(e.key!==' '||e.target.type!=='range'))return;const c=chapters[cur];
+  if(e.target.isContentEditable||['SELECT','TEXTAREA','INPUT'].includes(e.target.tagName))return;
+  if(e.target===$('stage')&&$('stage').classList.contains('readable')&&/^(?:Arrow(?:Left|Right|Up|Down)|PageUp|PageDown|Home|End| )$/.test(e.key))return;
+  if(!$('main').contains(e.target))return;
+  if(e.ctrlKey||e.metaKey||e.altKey){if(mode==='play'&&e.target===cv&&(e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='z'&&inst&&inst.key&&challengeInput()){e.preventDefault();inst.key(e.key,ct,e);}return;}
+  if(!shortcuts)return;const c=chapters[cur];
   if(mode!=='play'&&(e.target.tagName==='BUTTON'||e.target.tagName==='A')&&(e.key===' '||e.key==='Enter'))return;   // the focused control handles it
   if(mode==='play'){if(e.key==='Escape'){if($('result').classList.contains('show'))hideResult();else exitChal();}
     else if(e.key===']')load(cur+1,true);else if(e.key==='[')load(cur-1,true);
@@ -214,6 +232,7 @@ window.addEventListener('keydown',e=>{if($('glossary').open||$('card').open||$('
     else if(e.key==='/'){e.preventDefault();setMenu(true);$('find').focus();}
     else if(!(e.target.tagName==='BUTTON'&&(e.key===' '||e.key==='Enter'))&&inst&&inst.key&&/^(?:[a-z0-9]|Arrow(?:Left|Right|Up|Down)|Enter| |Delete|Backspace)$/i.test(e.key)&&challengeInput()){if(e.key===' ')e.preventDefault();inst.key(e.key,ct,e);}
     return;}
+  if((e.key==='f'||e.key==='F')&&fsOK){goFull();return;}
   if(e.key==='p'||e.key==='P'){startChal();return;}
   if(e.key==='/'){e.preventDefault();setMenu(true);$('find').focus();return;}
   if(e.key==='g'||e.key==='G'){openGlossary();return;}
@@ -227,25 +246,28 @@ window.addEventListener('keydown',e=>{if($('glossary').open||$('card').open||$('
   else if(e.key==='s'||e.key==='S')$('trBtn').click();
   else if(e.key==='Escape'){showCard(false);setMenu(false);}
   else if(/^[0-9]$/.test(e.key)){const k=e.key==='0'?9:+e.key-1;if(c.beats[k])seek(c.beats[k][0]+.01);}});
-document.addEventListener('visibilitychange',()=>{last=null;});
+document.addEventListener('visibilitychange',()=>{last=null;if(document.hidden)cancelPointer();});
 window.addEventListener('resize',resize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe(cv);
 const quizFor=h=>Object.keys(QUIZ).find(g=>'#'+QUIZ[g].id===h);
 window.addEventListener('hashchange',()=>{const q=quizFor(location.hash);if(q){if(q!==quizG){load(firstOf(q),false);startQuiz(q);}return;}
   const i=chapters.findIndex(c=>'#'+c.id===location.hash);if(i>=0&&(i!==cur||quizG))load(i,true);});
-// fullscreen + landscape lock (lock works on Android; iOS relies on the rotate prompt)
+// Fullscreen is optional and never locks the user's device orientation.
 const fsOK=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
 function goFull(){const el=document.documentElement,req=el.requestFullscreen||el.webkitRequestFullscreen;
-  const inFs=document.fullscreenElement||document.webkitFullscreenElement;
-  if(inFs){(document.exitFullscreen||document.webkitExitFullscreen).call(document);try{screen.orientation.unlock();}catch(e){}return;}
-  if(!req)return;Promise.resolve(req.call(el)).then(()=>{try{return screen.orientation.lock('landscape');}catch(e){}}).catch(()=>{});}
-if(!fsOK){$('fsBtn').style.display='none';$('rotateFs').style.display='none';}
-$('fsBtn').onclick=goFull;$('rotateFs').onclick=goFull;
-window.addEventListener('keydown',e=>{if((e.key==='f'||e.key==='F')&&fsOK&&e.target.tagName!=='INPUT'&&mode!=='play'&&!$('glossary').open)goFull();});
-// pause while the portrait prompt covers the stage; resume when turned back
-const portrait=window.matchMedia('(orientation:portrait) and (pointer:coarse) and (max-width:600px)');let resumeOnTurn=false;
-function onOrient(){if(portrait.matches){resumeOnTurn=playing;if(playing)setPlaying(false);}else if(resumeOnTurn){resumeOnTurn=false;last=null;setPlaying(true);}resize();}
-if(portrait.addEventListener)portrait.addEventListener('change',onOrient);else if(portrait.addListener)portrait.addListener(onOrient);
+  if(document.fullscreenElement||document.webkitFullscreenElement){(document.exitFullscreen||document.webkitExitFullscreen).call(document);return;}
+  if(req)Promise.resolve(req.call(el)).catch(()=>{});}
+if(!fsOK)$('fsBtn').hidden=true;
+$('fsBtn').onclick=goFull;
+const portrait=window.matchMedia('(orientation:portrait) and (pointer:coarse) and (max-width:600px)');
+function onOrient(){cancelPointer();resize();}
+if(portrait.addEventListener)portrait.addEventListener('change',onOrient);
+function setShortcuts(v){shortcuts=!!v;$('shortcutsBtn').textContent='Keyboard shortcuts: '+(v?'on':'off');$('shortcutsBtn').setAttribute('aria-pressed',String(v));store.set('pim-shortcuts',v?'1':'0');}
+$('shortcutsBtn').onclick=()=>setShortcuts(!shortcuts);setShortcuts(shortcuts);
+function syncDiagramEditing(){$('stage').classList.toggle('editing',diagramEditing);$('diagramEdit').setAttribute('aria-pressed',String(diagramEditing));$('diagramEdit').textContent='Drag on diagram: '+(diagramEditing?'on':'off');}
+$('diagramEdit').onclick=()=>{cancelPointer();diagramEditing=!diagramEditing;syncDiagramEditing();};
+function diagramSize(readable){cancelPointer();$('stage').classList.toggle('readable',readable);$('diagramFit').setAttribute('aria-pressed',String(!readable));$('diagramReadable').setAttribute('aria-pressed',String(readable));resize();}
+$('diagramFit').onclick=()=>diagramSize(false);$('diagramReadable').onclick=()=>diagramSize(true);
 /* ---------------- search ---------------- */
 const hay=chapters.map(c=>[c.title,c.group,...c.beats.map(b=>b[1]+' '+b[2]),...c.use,...c.cons].join(' ').toLowerCase());
 function filterToc(q){const words=q.trim().toLowerCase().split(/\s+/).filter(Boolean),hit=i=>words.every(w=>hay[i].includes(w));let n=0;
@@ -287,7 +309,7 @@ function buildGlossary(){const dl=$('glList');dl.innerHTML='';const uses=G.map((
     if(used.length){const p=document.createElement('div');p.className='in';used.forEach(ci=>{const b=document.createElement('button');b.type='button';b.textContent=chapters[ci].title;b.onclick=()=>{closeGlossary();setMenu(false);load(ci,true);};p.appendChild(b);});dd.appendChild(p);}
     dt.dataset.k=dd.dataset.k=[g.t,...g.forms,g.d].join(' ').toLowerCase();dl.append(dt,dd);});}
 function filterGloss(q){q=q.trim().toLowerCase();Array.from($('glList').children).forEach(e=>{e.hidden=!!q&&!e.dataset.k.includes(q);});}
-function openGlossary(){hideTip();if(!$('glList').children.length)buildGlossary();const d=$('glossary');if(!d.open){if(d.showModal)d.showModal();else d.setAttribute('open','');}$('glFind').value='';filterGloss('');$('glFind').focus();}
+function openGlossary(){cancelPointer();hideTip();if(!$('glList').children.length)buildGlossary();const d=$('glossary');if(!d.open){if(d.showModal)d.showModal();else d.setAttribute('open','');}$('glFind').value='';filterGloss('');$('glFind').focus();}
 function closeGlossary(){const d=$('glossary');if(d.close)d.close();else d.removeAttribute('open');}
 $('glossBtn').onclick=openGlossary;$('glClose').onclick=closeGlossary;$('glFind').addEventListener('input',e=>filterGloss(e.target.value));
 

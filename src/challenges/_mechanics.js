@@ -56,17 +56,19 @@ function sortGame(o){return api=>{
   const HOME=[W/2,o.side?205:200];let i=0,miss=0,streak=0,best=0,cx=HOME[0],cy=HOME[1],drag=null,hover=-1,shake=0,dealt=0,flying=[],over=false,deadline=0;
   const state={cards,get i(){return i;}};
   const keyList=o.bins.map((b,k)=>`<kbd>${k+1}</kbd> ${esc(b.label)}`).join(' · ');
-  function deal(now){dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer&&(!api.timed||api.timed()))deadline=now+o.timer;api.status(`Card <b>${i+1}</b> of ${cards.length}: “${esc(cards[i].t)}”. Drag it into a box, or press ${keyList}.`);}
+  function deal(now,feedback=''){dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer&&(!api.timed||api.timed()))deadline=now+o.timer;api.status(`${feedback}Card <b>${i+1}</b> of ${cards.length}: “${esc(cards[i].t)}”. Drag it into a box, or press ${keyList}.`);}
+  const actions=o.bins.map((b,k)=>api.button(`Choose ${b.label}${b.sub?' — '+b.sub:''}`,()=>place(k,api.now())));
   function place(k,now){if(over||i>=cards.length)return;const c=cards[i],b=bins[k],right=o.bins[k].id===c.b;
     const tgt=bins.find(q=>q.id===c.b);flying.push({c,from:[cx,cy],to:[tgt.x+tgt.w/2,tgt.y+40+Math.min(tgt.got.length,4)*14],t0:now,ok:right});
     if(right){streak++;best=Math.max(best,streak);FX.burst(b.x+b.w/2,b.y+30,b.c);FX.text(b.x+b.w/2,b.y-10,streak>2?`${streak} in a row!`:'Right!',C.green);}
     else{miss++;streak=0;shake=now;FX.text(b.x+b.w/2,b.y-10,'Not quite',C.red);api.status(`<span class="bad">✕</span> ${c.why||''}`);}
     tgt.got.push(c);i++;if(i>=cards.length){over=true;chalLater(api,()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
       api.win(st,r&&r.title||(miss===0?'Flawless sorting':`${cards.length-miss} of ${cards.length} right`),r&&r.msg||(miss?`You missed ${miss}. Replay the lesson if a box felt fuzzy, then try again for three stars.`:'Every card in the right box.'));},900);}
-    else{if(right)deal(now);else{dealt=now;cx=HOME[0];cy=HOME[1]-40;if(o.timer&&(!api.timed||api.timed()))deadline=now+o.timer+2;}}}
+    else{deal(now,right?'Right. ':`Not quite. ${esc(c.why||'')} Correct box: ${esc(tgt.label)}. `);if(!right&&deadline)deadline+=2;}if(over)actions.forEach(b=>b.disabled=true);}
   let started=false;
   return{
     draw(now,dt){if(!started){started=true;deal(now);}
+      if(api.metrics)api.metrics([['Card',`${Math.min(i+1,cards.length)} of ${cards.length}`],['Deadline',o.timer&&deadline&&(!api.timed||api.timed())?Math.max(0,deadline-now).toFixed(1)+' seconds':'No deadline'],['Mistakes',miss]]);
       if(o.side)o.side(state,now);
       bins.forEach((b,k)=>{const hot=hover===k;plate(b.x+b.w/2,b.y+b.h/2,b.w,b.h,{c:hot?b.c:hexA(b.c,.6),fill:hot?hexA(b.c,.12):C.panel,glow:hot?16:0,r:14});
         tx(`${k+1}`,b.x+16,b.y+18,{z:12,wt:800,c:hexA(b.c,.8),f:MONO});tx(b.label,b.x+b.w/2,b.y+22,{z:15,wt:750,c:b.c});
@@ -81,6 +83,7 @@ function sortGame(o){return api=>{
         if(streak>1)pill(`streak ×${streak}`,W-80,34,{c:C.amber,z:12});
         tx(`${i+1} / ${cards.length}`,80,34,{z:13,wt:700,c:C.dim,f:MONO});}
     },
+    cancel(){drag=null;hover=-1;cx=HOME[0];cy=HOME[1];},
     down(x,y){if(over||i>=cards.length)return;if(Math.abs(x-cx)<165&&Math.abs(y-cy)<60)drag={dx:x-cx,dy:y-cy};},
     move(x,y){if(drag){cx=x-drag.dx;cy=y-drag.dy;}hover=bins.findIndex(b=>inBox(drag?cx:x,drag?cy:y,b));if(!drag&&hover>=0&&y<b0y())hover=-1;},
     up(x,y,now){if(!drag)return;drag=null;const k=bins.findIndex(b=>inBox(cx,cy,b));hover=-1;if(k>=0)place(k,now);},
@@ -103,8 +106,11 @@ function orderGame(o){return api=>{
   const btn=api.button('Check my order',doCheck,{primary:true});
   const trayText=()=>{const left=cards.filter(c=>c.slot<0).sort((a,b)=>a.home-b.home);return left.length?'Tray: '+left.map(c=>`<kbd>${LET[c.home]}</kbd> ${esc(c.t)}`).join(' · '):'All slots filled: press <kbd>Enter</kbd> or <b>Check my order</b>.';};
   api.status(`Drag each step into the numbered slots, in the order it really happens. Or press a letter to put that card in the next slot (<kbd>Backspace</kbd> takes one back). ${trayText()}`);
+  function placeCard(c){if(check||c.slot>=0)return;const e=slots.findIndex(s=>!s.card);if(e<0)return;slots[e].card=c;c.slot=e;api.status(`Slot ${e+1}: ${esc(c.t)}. ${trayText()}`);}
+  function takeBack(){if(check)return;const c=slots.map(s=>s.card).filter(Boolean).pop();if(c){slots[c.slot].card=null;c.slot=-1;api.status(`Took “${esc(c.t)}” back. ${trayText()}`);}}
+  const choices=cards.map(c=>api.button('Place '+c.t,()=>placeCard(c)));api.button('Take last step back',takeBack);
   return{
-    draw(now,dt){tx(o.head||'What happens, in order?',W/2,150,{z:15,wt:650,c:C.dim});
+    draw(now,dt){choices.forEach((b,k)=>b.disabled=!!check||cards[k].slot>=0);tx(o.head||'What happens, in order?',W/2,150,{z:15,wt:650,c:C.dim});
       slots.forEach((s,k)=>{let c=C.line;if(check){const p=(now-check.t0)/.45;if(p>k)c=check.res[k]?C.green:C.red;}
         g.save();g.setLineDash([6,6]);rr(s.x,s.y,s.w,s.h,12);g.strokeStyle=c;g.lineWidth=2;g.stroke();g.restore();tx(`${k+1}`,s.x+s.w/2,s.y-16,{z:13,wt:800,c:C.dim,f:MONO});});
       if(check){const p=(now-check.t0)/.45;const k=Math.min(n-1,Math.floor(p));const x=lerp(slots[0].x+sw/2,slots[n-1].x+sw/2,clamp(p/(n-1)));
@@ -115,9 +121,9 @@ function orderGame(o){return api=>{
       [...cards.filter(c=>c!==drag),...(drag?[drag]:[])].forEach(c=>{plate(c.x,c.y,sw,70,{c:c===drag?C.accent:c.slot>=0?C.blue:C.edge,fill:C.panel2,glow:c===drag?16:0});
         textBlock(c.t,c.x,c.y-(c.sub?8:0),sw-16,{z:13.5,wt:700});if(c.sub)tx(c.sub,c.x,c.y+20,{z:10.5,c:C.dim});if(c.slot<0&&c!==drag)keycap(LET[c.home],c.x-sw/2+14,c.y-24);});},
     key(k){if(check)return;if(k==='Enter'){doCheck();return;}
-      if(k==='Backspace'){const s=slots.map(s=>s.card).filter(Boolean).pop();if(s){slots[s.slot].card=null;s.slot=-1;api.status(`Took “${esc(s.t)}” back. ${trayText()}`);}return;}
-      const j=LET.indexOf(String(k).toUpperCase());if(j<0||k.length!==1)return;const c=cards.find(c=>c.home===j&&c.slot<0),e=slots.findIndex(s=>!s.card);if(!c||e<0)return;
-      slots[e].card=c;c.slot=e;api.status(`Slot ${e+1}: ${esc(c.t)}. ${trayText()}`);},
+      if(k==='Backspace'){takeBack();return;}
+      const j=LET.indexOf(String(k).toUpperCase());if(j<0||k.length!==1)return;const c=cards.find(c=>c.home===j);if(c)placeCard(c);},
+    cancel(){if(drag){const [x,y]=pos(drag);drag.x=x;drag.y=y;}drag=null;},
     down(x,y){if(check)return;drag=cards.find(c=>Math.abs(x-c.x)<sw/2&&Math.abs(y-c.y)<36)||null;if(drag){drag.dx=x-drag.x;drag.dy=y-drag.y;}},
     move(x,y){if(drag){drag.x=x-drag.dx;drag.y=y-drag.dy;}},
     up(){if(!drag)return;const k=slots.findIndex(s=>Math.abs(drag.x-(s.x+sw/2))<sw/2+gap/2&&Math.abs(drag.y-(s.y+38))<70);
@@ -133,9 +139,9 @@ function quizGame(o){const make=api=>{
   let i=0,picked=-1,right=0,done=false,shown=0;const missed=[],marks=[];
   const OW=430,OH=92,ox=k=>W/2+(k%2?1:-1)*(OW/2+10),oy=k=>246+Math.floor(k/2)*(OH+18);
   const opts=()=>qs[i].opts;
-  function ask(){picked=-1;shown=api.now();const q=qs[i];
+  function ask(){picked=-1;shown=api.now();const q=qs[i];choices.forEach((b,k)=>{b.textContent=q.opts[k].t;b.disabled=false;});
     api.status(`Question <b>${i+1}</b> of ${n}: ${esc(q.q)} ${q.opts.map((p,k)=>`<kbd>${k+1}</kbd> ${esc(p.t)}`).join(' · ')}`);}
-  function pick(k){if(done||picked>=0||!opts()[k])return;picked=k;const q=qs[i],ok=q.opts[k].ok;marks.push(ok);
+  function pick(k){if(done||picked>=0||!opts()[k])return;picked=k;choices.forEach(b=>b.disabled=true);const q=qs[i],ok=q.opts[k].ok;marks.push(ok);
     const x=ox(k),y=oy(k);if(ok){right++;FX.burst(x,y,C.green,18,140);FX.text(x,y-60,'Right!',C.green,16);}else{missed.push(q);FX.text(x,y-60,'Not quite',C.red,16);}
     const ans=q.opts.find(p=>p.ok).t;
     api.status(`${ok?'<b>Right.</b>':`<span class="bad">✕</span> The answer is “${esc(ans)}”.`} ${esc(q.why)} Press <kbd>Enter</kbd> for ${i+1<n?'the next question':'your score'}.`);}
@@ -143,6 +149,7 @@ function quizGame(o){const make=api=>{
     const miss=n-right,st=miss===0?3:miss<=1?2:right>=n/2?1:0;
     const again=[...new Set(missed.map(q=>q.ch))].map(id=>chapters.find(c=>c.id===id)).filter(Boolean).map(c=>c.title);
     api.win(st,`${right} of ${n} right`,miss?`Worth a rewatch: ${again.join('; ')}.`:'Every answer right. You have this section down.');}
+  const choices=[0,1,2,3].map(k=>api.button('Answer '+(k+1),()=>pick(k)));
   api.button('Next question →',next,{primary:true});
   let started=false;
   return{
@@ -175,8 +182,9 @@ function simGame(o){return api=>{
   return{draw(now,dt){if(running){const el=(now-t0)*speed;const step=Math.min(el-last,.1);if(step>0){sim.step(step,el);last+=step;}
         if(el>=o.dur&&!done){done=true;running=false;api.lock(false);const r=sim.score();api.win(r.stars,r.title,r.msg);}}
       sim.draw(now,running);
-      const hud=sim.hud(running);hud.forEach(([l,v,c],k)=>{const x=W-20,y=26+k*22;tx(l,x-92,y,{z:11.5,c:C.dim,al:'right'});tx(v,x,y,{z:13,wt:800,c:c||C.text,al:'right',f:MONO});});
+      const hud=sim.hud(running);if(api.metrics)api.metrics(hud);hud.forEach(([l,v,c],k)=>{const x=W-20,y=26+k*22;tx(l,x-92,y,{z:11.5,c:C.dim,al:'right'});tx(v,x,y,{z:13,wt:800,c:c||C.text,al:'right',f:MONO});});
       if(running){const f=clamp(((now-t0)*speed)/o.dur);meter(20,H-14,W-40,4,f,C.accent);}},
+    cancel(){if(sim.cancel)sim.cancel();},
     down(x,y,now){sim.down&&sim.down(x,y,now,running);},move(x,y){sim.move&&sim.move(x,y);},up(x,y,now){sim.up&&sim.up(x,y,now);},
     key(k,now){sim.key&&sim.key(k,now,running);}};
 };}

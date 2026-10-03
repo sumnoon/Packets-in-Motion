@@ -5,10 +5,10 @@ chal('cdn',{title:'Place the edge caches',goal:'You can afford two edge caches. 
     const lat=(r,E)=>r.origin?15:E.has(r.id)?15+.1*r.o:r.o,avg=E=>R.reduce((a,r)=>a+r.pop*lat(r,E),0);
     let E=new Set();const PICK=R.filter(r=>!r.origin);
     return simGame({dur:7,defaults:{},intro:'Click up to two regions (or press <kbd>1</kbd> US-West, <kbd>2</kbd> S. America, <kbd>3</kbd> Europe, <kbd>4</kbd> Asia) to put an edge cache there, then press <b>Run it</b>.',
-      controls(){},
+      controls(api){PICK.forEach(r=>{const b=api.button(`${r.n}: ${Math.round(r.pop*100)}% of users, ${r.o} ms to origin`,()=>{if(E.has(r.id))E.delete(r.id);else if(E.size<2)E.add(r.id);api.status(`Edge caches: ${R.filter(q=>E.has(q.id)).map(q=>q.n).join(' and ')||'none'} (${E.size} of 2). Average wait ${avg(E).toFixed(0)} ms.`);PICK.forEach(q=>q.control.setAttribute('aria-pressed',String(E.has(q.id))));});r.control=b;b.setAttribute('aria-pressed',String(E.has(r.id)));});},
       build(p,api){let acc=0;const fl=[];let el=0;
         function toggle(r){if(!r)return;if(E.has(r.id))E.delete(r.id);else if(E.size<2){E.add(r.id);FX.burst(r.x,r.y,C.amber,14);}else FX.text(r.x,r.y-40,'Budget: 2 edges',C.red,14);
-          api.status(`Edge caches: ${E.size?R.filter(q=>E.has(q.id)).map(q=>q.n).join(' and '):'none'} (${E.size} of 2). Average wait ${avg(E).toFixed(0)} ms.`);}
+          PICK.forEach(q=>{if(q.control)q.control.setAttribute('aria-pressed',String(E.has(q.id)));});api.status(`Edge caches: ${E.size?R.filter(q=>E.has(q.id)).map(q=>q.n).join(' and '):'none'} (${E.size} of 2). Average wait ${avg(E).toFixed(0)} ms.`);}
         return{step(dt,t){el=t;acc+=dt*40;const now=api.now();while(acc>=1){acc--;let x=Math.random(),r=R[R.length-1];for(const q of R){if(x<q.pop){r=q;break;}x-=q.pop;}
             const tgt=E.has(r.id)||r.origin?r:R[1],ms=lat(r,E);fl.push({t0:now,d:.25+ms/220,pts:[[r.x+(Math.random()-.5)*50,r.y+50],[tgt.x,tgt.y]],c:ms<40?C.green:ms<100?C.amber:C.red,r:3.5});}},
           draw(now){g.save();g.globalAlpha=.5;[[190,230,150,95],[340,400,70,80],[560,190,110,70],[790,250,190,100],[870,420,60,40]].forEach(([x,y,a,b])=>{g.beginPath();g.ellipse(x,y,a,b,0,0,7);g.fillStyle='#10182a';g.fill();});g.restore();

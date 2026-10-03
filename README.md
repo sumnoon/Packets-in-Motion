@@ -44,7 +44,7 @@ Every lesson ends with a hands-on challenge played on the same stage, scored wit
 - **Stop the retry storm**: tune retries, backoff, jitter and a circuit breaker through an outage.
 - **Find the culprit**: use metrics, logs and a trace to find a slow service.
 
-**Start challenge** (or your first answer) starts the clock; **Pause challenge** freezes it, including delayed results. Reading the glossary, opening the mobile chapter drawer, hiding the tab, or showing the rotate prompt pauses automatically. Timed sorting games and load balancing also offer **Untimed** practice before starting. Untimed balancing finishes after 30 routed requests, with no request deadlines.
+**Start challenge** (or your first answer) starts the clock; **Pause challenge** freezes it, including delayed results. Reading the glossary, opening the mobile chapter drawer, or hiding the tab pauses automatically. Timed sorting games and load balancing also offer **Untimed** practice before starting. Untimed balancing finishes after 30 routed requests; each choice advances service by one second, with no request deadlines or idle progress.
 
 The rest use the same kinds of mechanics: sort cards into boxes, put steps in order, or tune a system and run it.
 
@@ -111,7 +111,9 @@ The project logo traces a **P** with a routing path and two traveling packets, u
 
 In a challenge, number keys (or letters, in the put-in-order games) do everything the mouse does; each target on the stage shows its key.
 
-On phones the course runs in landscape. Held upright, it asks you to rotate the phone and pauses until you do.
+The course works in portrait and landscape. **Readable size** enlarges the diagram in a scrollable viewport; **Fit diagram** restores the overview. Touch scrolling is the default. In challenges, **Drag on diagram** enables canvas editing; turn it off to pan. The lab's **Components and connections** editor provides text controls for adding, removing, wiring and unwiring components, with the same budget limits and undo history. Live challenge measurements expose server loads, cache contents, search postings and lab capacity readings as text.
+
+Player shortcuts work while focus is inside the lesson. Native inputs retain their keys, and Ctrl, Command and Alt combinations retain their browser behavior (Ctrl/Command+Z on the challenge canvas performs lab undo). **Keyboard shortcuts** in the sidebar turns the single-key shortcuts off. Timeline arrows use the slider's native behavior; **Previous lesson step** and **Next lesson step** jump between narrated beats, and the slider reports elapsed time and the current step to assistive technology.
 
 ## Accessibility
 
