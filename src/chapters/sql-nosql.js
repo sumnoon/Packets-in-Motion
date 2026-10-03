@@ -5,12 +5,12 @@ ch({id:'sql-nosql',group:'Data',title:'SQL vs NoSQL',dur:34,needs:['client-serve
 beats:[
 [0,'SQL: tables with fixed columns','Relational databases store data in tables. Every row has the same columns, defined up front by a schema.'],
 [5,'Relations and JOINs','Orders point to users by id. A JOIN stitches related rows together at query time, so each fact is stored exactly once.'],
-[11,'Changing the schema','Adding a column means migrating the whole table. Safe and strict, but slower to evolve.'],
+[11,'Schema changes have different costs','Cost depends on the engine and operation. PostgreSQL can add a column with a constant default without rewriting rows. Adding a volatile default such as clock_timestamp() evaluates every row and can require a table rewrite; locks also matter.'],
 [15,'NoSQL: flexible documents','A document database stores self-contained, JSON-like records. Each can have different fields, and related data is often embedded right inside.'],
-[22,'How they scale','SQL traditionally grows by buying a bigger primary server. Many NoSQL stores are built to spread data across many cheap nodes from day one.'],
-[29,'Pick by access pattern','Need transactions and complex queries across related data? SQL. Need huge scale, a flexible shape and simple lookups by key? NoSQL.']],
+[22,'Scaling depends on the database','A single-primary SQL system can scale up and add read replicas; distributed SQL can scale out. Many NoSQL stores partition by key. Neither label alone determines capacity, transaction support or consistency.'],
+[29,'Pick by access pattern','Compare the actual database guarantees and queries. Relational stores fit joins and integrity constraints; document or key-value stores fit aggregate/key access. Both families can support transactions, and flexible documents still need application validation.']],
 use:['SQL: money, inventory, bookings, anything needing ACID transactions and ad-hoc queries','NoSQL (document / key-value): user profiles, catalogs, sessions, feeds at large scale','Many systems use both: SQL for the core records, NoSQL for high-volume or flexible data'],
-cons:['SQL: scaling writes beyond one machine is hard; schema changes need migrations','NoSQL: JOINs are limited or missing, so data gets duplicated and must be kept in sync','NoSQL: often weaker consistency/transactions; design around your queries up front'],
+cons:['Migration cost and locking depend on the engine, operation and default','Denormalized documents duplicate facts and need a strategy to keep them consistent','Check each database’s transaction, consistency and distribution guarantees'],
 draw(t){
   const dim=t>22.3?1-.62*P(t,22.3,23):1;
   tx('SQL · relational',40,76,{z:14,wt:700,al:'left',c:C.blue,a:V(t,.3)});
@@ -27,7 +27,7 @@ draw(t){
   // join result
   const ra=A(t,8,11.2);
   table(270,280,'users ⋈ orders  (user 2)',['name','city','total'],[62,78,62],[['Lin','Tokyo','$30'],['Lin','Tokyo','$55']],{a:ra.a,rowA:i=>V(t,8.6+i*.4),hl:()=>C.accent,nc:C.green});
-  if(t>11)pill('ALTER TABLE users ADD phone → rewrite every row',262,432,{c:C.amber,a:V(t,11.6,21.5)*dim,z:12});
+  if(t>11){textBlock('Constant-default column: metadata only in PostgreSQL. Volatile default: evaluate rows and rewrite.',262,435,445,{c:C.amber,a:V(t,11.6,21.5)*dim,z:13});}
   // documents
   const d1=[['{ "_id": 2,'],['  "name": "Lin",'],['  "city": "Tokyo",'],['  "orders": [',C.green],['    {"total": 30},',C.green],['    {"total": 55} ] }',C.green]];
   const d2=[['{ "_id": 1,'],['  "name": "Ada",'],['  "phone": "+44…",',C.amber],['  "tags": ["vip"] }',C.amber]];
@@ -42,5 +42,5 @@ draw(t){
     each(t,24.2,28.6,.25,.9,(i,s)=>{const k=i%4;pk(t,s,.9,[[750,330],[610+k*105,432]],C.amber,{r:4.5});});
     tx('scale out →',750,382,{z:13,c:C.amber,wt:650,a:V(t,24)*(t>29?0:1)});}
   pill('ACID transactions · JOINs · strict schema',270,535,{c:C.blue,z:12.5,a:V(t,29.3)});
-  pill('flexible schema · spreads out · key lookups',768,535,{c:C.amber,z:12.5,a:V(t,30)});
+  pill('document / key access · verify engine guarantees',768,535,{c:C.amber,z:12.5,a:V(t,30)});
 }});})();

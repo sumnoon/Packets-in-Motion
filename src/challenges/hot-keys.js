@@ -10,9 +10,9 @@ chal('hot-keys',{title:'Survive the celebrity post',goal:'5,000 requests/s for o
           else{if(p.coal)q=Math.max(q,1);else{q+=RATE*dt;if(q>300)err+=RATE*dt;}if(t>=refillAt)valid=true;}   // misses; beyond 1 s of DB work they time out
           if(!p.coal)q=Math.max(0,q-300*dt);else if(valid)q=0;             // the database drains 300 queries/s
           qPeak=Math.max(qPeak,q);
-          acc+=dt*40;const now=api.now();while(acc>=1){acc--;const k=Math.floor(Math.random()*p.nodes),over=valid&&Math.random()<Math.max(0,1-2000*p.nodes/RATE);
-            if(valid)fl.push({t0:now,d:.5,pts:[[80,120+Math.random()*340],[330,290],[590,170+(k-(p.nodes-1)/2)*96]],c:over?C.red:C.blue,r:3.5,drop:over?.8:0});
-            else fl.push({t0:now,d:.7,pts:[[80,120+Math.random()*340],[330,290],p.coal?[330,330]:[830,360]],c:p.coal?C.amber:C.red,r:3.5});}},
+          acc+=dt*40;const now=api.now();while(acc>=1){acc--;const k=Math.floor(PIM_RANDOM.next()*p.nodes),over=valid&&PIM_RANDOM.next()<Math.max(0,1-2000*p.nodes/RATE);
+            if(valid)fl.push({t0:now,d:.5,pts:[[80,120+PIM_RANDOM.next()*340],[330,290],[590,170+(k-(p.nodes-1)/2)*96]],c:over?C.red:C.blue,r:3.5,drop:over?.8:0});
+            else fl.push({t0:now,d:.7,pts:[[80,120+PIM_RANDOM.next()*340],[330,290],p.coal?[330,330]:[830,360]],c:p.coal?C.amber:C.red,r:3.5});}},
         draw(now){flyers(now,fl);for(let k=0;k<8;k++)user(80,120+k*48,{r:10,c:C.blue});server(330,290,{label:'App',sub:p.coal?'coalescing':'',w:118});
           for(let k=0;k<p.nodes;k++)box(590,170+(k-(p.nodes-1)/2)*96,{label:`cache ${k+1}`,sub:valid?'post:42 ✓':'expired',c:valid?C.green:C.red,w:130,h:48});
           db(830,360,{label:'Database',sub:`${Math.round(q)} queued`,w:120,h:88,st:q>10?'fail':'ok',down:'STAMPEDE'});},

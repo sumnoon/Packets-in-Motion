@@ -16,7 +16,7 @@ beats:[
 [0,'Two writes, no single leader','In multi-leader or leaderless stores, two replicas can accept writes to the same key at the same moment, then sync with each other later.'],
 [5,'Last write wins','The simplest rule keeps the write with the later timestamp. Easy, but the other write is silently lost, and clocks on different machines drift.'],
 [12,'Vector clocks','Each replica counts its own writes, and every version carries all the counts, like [A:1, B:1]. Compare two versions count by count.'],
-[19,'Before, after, or concurrent','If every count in X is ≤ the same count in Y, X came first and can be dropped. If each is ahead somewhere, they are concurrent: a real conflict for the app to merge.'],
+[19,'Before, equal, or concurrent','X precedes Y only if every count in X is ≤ Y and at least one is strictly smaller. Equal clocks identify the same version or a duplicate in this model. If each is ahead somewhere, neither precedes the other: they are concurrent.'],
 [26,'CRDTs merge by design','Some data types merge automatically. A cart kept as an add-only set merges by union; a like counter keeps one count per replica and adds them up.'],
 [32,'Choose your merge','Last write wins for caches and settings, vector clocks plus app logic for documents, CRDTs for counters, sets and collaborative editing.']],
 use:['Multi-region writes, offline-first apps, collaborative editors','Shopping carts, likes and presence: merge instead of overwrite','Detecting real conflicts rather than guessing with timestamps'],
@@ -34,7 +34,7 @@ draw(t){
   // vector clocks: a clean "happened before"
   if(t>12&&t<13.4)pill('↺ again, with vector clocks',W/2,40,{c:C.accent,z:12.5});
   pk(t,13.4,.8,toA,C.blue,{label:'+ book'});pk(t,14.6,1,ab,C.amber,{r:5,label:'sync'});pk(t,15.8,.8,toB,C.blue,{label:'+ pen'});pk(t,16.8,.8,ba,C.amber,{r:5,label:'sync'});
-  if(t>17.6&&t<19.4)pill('[A:1, B:0] ≤ [A:1, B:1] → B\'s version is newer: keep it ✓',W/2,410,{c:C.green,z:12.5,f:MONO,a:V(t,17.6,19.2)});
+  if(t>17.6&&t<21.4){pill('[1,0] ≤ [1,1] and 0 < 1 → X precedes Y',W/2,410,{c:C.green,z:12.5,f:MONO,a:V(t,17.6,21.2)});pill('[1,1] = [1,1] → same version / duplicate',W/2,450,{c:C.accent,z:12.5,f:MONO,a:V(t,19.2,21.2)});}
   // concurrent
   pk(t,19.6,.8,toA,C.blue,{label:'+ mug'});pk(t,19.6,.8,toB,C.blue,{label:'− pen'});pk(t,21.2,1,ab,C.amber,{r:5,label:'sync'});pk(t,21.2,1,ba,C.amber,{r:5});
   if(t>22.6&&t<26){pill('A is ahead on A, B is ahead on B → concurrent',W/2,410,{c:C.amber,z:12.5,a:V(t,22.6,25.8)});pill('keep both, let the app merge them',W/2,450,{c:C.accent,z:12.5,a:V(t,23.4,25.8)});}

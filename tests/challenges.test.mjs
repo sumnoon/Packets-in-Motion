@@ -43,7 +43,9 @@ function fiddle(state, rand) {
 }
 
 function play(id, seed, seconds = 40) {
-  const def = CHAL[id];
+  const page = loadPage({seed});
+  page.context.localStorage.setItem('pim-lab-locks','false');
+  const def = page.get('CHAL')[id], FX=page.get('FX');
   const rand = rng(seed);
   const state = { now: 0, buttons: [], controls: [], wins: [], locked: false, status: '' };
   const api = fakeApi(state);
@@ -56,7 +58,7 @@ function play(id, seed, seconds = 40) {
     state.now += dt;
     page.reset();
     page.runTimers(state.now);
-    inst.draw(state.now, dt);
+    inst.update?.(state.now,dt);inst.draw(state.now, dt);
     FX.step(dt);
     const r = rand();
     // press the primary button (Run it / Check my order) now and then, when not locked
@@ -82,7 +84,7 @@ for (const id of Object.keys(CHAL)) {
 
   test(`${id}: survives random play`, () => {
     for (const seed of [1, 2, 3]) {
-      const s = play(id, seed);
+      let s;try{s=play(id,seed);}catch(e){e.message+=` (challenge ${id}, seed ${seed})`;throw e;}
       for (const w of s.wins) {
         assert.ok(Number.isInteger(w.stars) && w.stars >= 0 && w.stars <= 3, `stars ${w.stars}`);
         assert.ok(w.title && w.msg, 'a result needs a title and a message');
@@ -99,7 +101,7 @@ test('simulation challenges finish and score once they run', () => {
     const run = state.buttons.find(b => b.primary && !/check/i.test(b.label));
     if (!run) continue;
     inst.draw(0, 0); run.fn();
-    for (let f = 0; f < 120 * 30 && !state.wins.length; f++) { state.now += 1 / 30; page.reset(); page.runTimers(state.now); inst.draw(state.now, 1 / 30); }
+    for (let f = 0; f < 120 * 30 && !state.wins.length; f++) { state.now += 1 / 30; page.reset(); page.runTimers(state.now); inst.update?.(state.now,1/30);inst.draw(state.now, 1 / 30); }
     assert.equal(state.wins.length, 1, `${id}: no result after running`);
   }
 });

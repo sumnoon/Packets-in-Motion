@@ -16,7 +16,7 @@ chal('autoscaling',{title:'Tune the autoscaler',goal:'Traffic rises to a peak, w
       api.slider('Cooldown',0,6,1,p.cd,v=>`${v} s`,v=>{p.cd=v;re();});api.slider('Minimum servers',1,4,1,p.min,v=>`${v}`,v=>{p.min=v;re();});},
     build(p,api){const m=autoSim({...p});let T=0,acc=0;const fl=[],hist=[];
       return{step(dt,t){T=t;m.step(dt,t);hist.push([t,m.dem(t),m.ready*100]);acc+=dt*m.dem(t)/60;const now=api.now();
-          while(acc>=1){acc--;const over=m.cpu>1&&Math.random()<1-1/m.cpu,k=Math.floor(Math.random()*Math.max(1,m.ready));fl.push({t0:now,d:.7,pts:[[60,380],[300,380],[520+(k%4)*110,k<4?330:440]],c:over?C.red:C.blue,r:3.5,drop:over?.7:0});}},
+          while(acc>=1){acc--;const over=m.cpu>1&&PIM_RANDOM.next()<1-1/m.cpu,k=Math.floor(PIM_RANDOM.next()*Math.max(1,m.ready));fl.push({t0:now,d:.7,pts:[[60,380],[300,380],[520+(k%4)*110,k<4?330:440]],c:over?C.red:C.blue,r:3.5,drop:over?.7:0});}},
         draw(now,running){flyers(now,fl);box(300,380,{label:'Load balancer',w:130,h:48});
           for(let k=0;k<Math.min(8,m.ready+m.booting);k++){const bootK=k>=m.ready;server(520+(k%4)*110,k<4?330:440,{label:`S${k+1}`,sub:bootK?'booting':'',w:90,h:46,st:bootK?'off':m.cpu>1?'fail':m.cpu>.7?'hot':'ok',down:''});}
           // mini chart of demand vs capacity

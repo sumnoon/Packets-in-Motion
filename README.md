@@ -18,7 +18,23 @@ Or run it offline: `index.html` is a single self-contained file with no dependen
 
 ## What's inside
 
-45 chapters in 10 sections, from zero to advanced:
+<!-- course-counts:start -->
+45 chapters in 10 sections; 10 architecture labs; 9 section quizzes. Lesson animations run 28.5–62 seconds.
+
+| Section quiz | Questions |
+| --- | ---: |
+| Foundations | 7 |
+| Traffic | 9 |
+| Data | 9 |
+| Storage & Search | 6 |
+| Communication | 7 |
+| Reliability | 7 |
+| Architecture | 6 |
+| Advanced | 14 |
+| Capstone | 7 |
+<!-- course-counts:end -->
+
+From zero to advanced:
 
 | Section | Chapters |
 | --- | --- |
@@ -33,11 +49,11 @@ Or run it offline: `index.html` is a single self-contained file with no dependen
 | Advanced | Consensus & leader election (Raft) · Distributed locks, leases & fencing tokens · Conflict resolution: vector clocks & CRDTs · Two-phase commit & sagas · Snowflake IDs · Back-pressure & load shedding |
 | Capstone | Design a URL shortener · Design a chat app · Design a news feed, each end to end |
 
-Each chapter has a 28–62 s animation, play/pause/replay, a scrubber with step markers, synced captions, and a "When to use it / Trade-offs" card at the end.
+Each chapter has play/pause/replay, a scrubber with step markers, synced captions, and a "When to use it / Trade-offs" card at the end.
 
 ## Challenges
 
-Every lesson ends with a hands-on challenge played on the same stage, scored with 1–3 stars (saved in your browser and shown in the sidebar). A few examples:
+Every lesson ends with a hands-on challenge played on the same stage, scored with 0–3 stars (saved in your browser and shown in the sidebar). A few examples:
 
 - **Be the load balancer**: route requests by hand for 30 seconds without overflowing a server.
 - **Beat LRU**: choose what to evict from a tiny cache and try to match the algorithm.
@@ -65,7 +81,11 @@ Ten challenges are **architecture labs**: you design the system yourself. Drag c
 - **Build the chat app**: keep 100,000 people connected through a message storm, a gateway crash and offline members.
 - **Build the news feed**: get posts to followers fast, survive a celebrity post and a 20× spike in feed loads.
 
-After a run that falls short, the board marks the weak spots: the component that overloaded and when, or the wire where requests failed. Hint goes a level deeper with each press: a nudge, then the components you need, then a faint outline of a 3-star design to trace. Ctrl+Z (or Undo) reverses any change, and each lab remembers your cheapest 3-star design, with a lean medal where a cheaper one exists.
+After a run that falls short, the board marks the weak spots: the component that overloaded and when, or the wire where requests failed. Hint goes a level deeper with each press: a nudge, then the components you need, then a faint outline of a 3-star design to trace. Ctrl+Z (or Undo) reverses board and design-option edits, and each lab remembers your cheapest 3-star design, with a lean medal where a cheaper one exists.
+
+Undo covers board components, connections, positions and design options. Component locks and chaos mode are practice settings rather than board edits. **Replay last run** restores the last tested board, its options, incident mode and seed, including after a reload. Last-run replay records stay in the current browser; progress exports include drafts, best boards and certification seeds. Replaying a seed does not earn another distinct certification run.
+
+Expand **Model assumptions and replay** for capacity, cost and latency assumptions. Dollar values are educational model parameters, not provider quotes; latency figures are illustrative buckets. The chat lab measures modeled recipient delivery, with successful replay assumed when resume is enabled. It does not measure message timestamps or certify a one-second end-to-end delivery deadline.
 
 Lab drafts, including wires and design options, survive reloads. **Restore best design** brings back the cheapest saved three-star board; restoring it can also be undone. Older progress files retain their best-cost records, and a new successful run saves a restorable board. The shortener only earns three stars when every successful redirect's click event has been persisted, with none left pending.
 
@@ -130,7 +150,9 @@ Player shortcuts work while focus is inside the lesson. Native inputs retain the
 
 ## How it works
 
-Everything is drawn on a `<canvas>` by code. Each chapter is a pure `draw(t)` function, so `seek(t)` reproduces any moment exactly, whether you scrub, replay or jump. Simulations such as least-connections balancing, token and leaky buckets and queue backlogs are computed once when the page loads, never frame by frame.
+The diagrams are drawn on a `<canvas>` by code. Each chapter is a pure `draw(t)` function, so `seek(t)` reproduces any moment exactly. Lesson timelines are precomputed. Challenges advance through `update(now, dt)` independently of drawing; architecture labs use a seeded, headless model with fixed 1/60-second steps and an exact end time. Presentation effects use a separate random stream. See [simulation contracts](docs/simulation-contracts.md) for lifecycle, graph, events, scoring and replay.
+
+The consensus, quorum, SQL migration, saga and vector-clock lessons state their protocol assumptions and failure cases. Primary references: [Raft](https://raft.github.io/raft.pdf), [Dynamo](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf), [PostgreSQL table modification](https://www.postgresql.org/docs/18/ddl-alter.html), and [compensating transactions](https://learn.microsoft.com/en-us/azure/architecture/patterns/compensating-transaction).
 
 ## Development
 
@@ -141,13 +163,14 @@ Everything is drawn on a `<canvas>` by code. Each chapter is a pure `draw(t)` fu
 | `src/page.html` | The page skeleton. Its `<!-- include: … -->` lines set which files go in and in what order. |
 | `src/styles.css` | All styles |
 | `src/engine.js` | Drawing primitives: servers, databases, packets, easing |
+| `src/simulation.js` | JSDoc contracts, independent random streams, fixed clock and headless lab runner |
 | `src/chapters/<id>.js` | One lesson each: beats, trade-offs and `draw(t)` |
 | `src/challenges/<id>.js` | One challenge each. `_mechanics.js` holds the shared game types; `_lab.js` is the architecture-lab engine (board, wiring, load tests, hints, weak spots, chaos mode, share links). |
 | `src/quizzes/<section>.js` | One quiz per section: questions, answers (right one first) and explanations |
 | `src/glossary.js` | Glossary terms, definitions and other spellings |
 | `src/player.js` | The player: controls, sidebar, progress, challenge mode |
 
-You need [Node.js](https://nodejs.org/) 22 or newer. There are no packages to install.
+You need [Node.js](https://nodejs.org/) 22 or newer. Building and VM tests use Node alone. Browser tests use the locked development dependency on Playwright:
 
 ```bash
 npm run build
@@ -155,11 +178,14 @@ npm run build
 
 ```bash
 npm test
+npm ci
+npx playwright install chromium
+npm run test:browser
 ```
 
-`npm run build` writes `index.html` and inlines the logo and favicon from `assets/` as data URLs. Commit the rebuilt `index.html` with your change; CI fails if it is out of date (`npm run check`).
+`npm run build` writes `index.html`, inlines logo assets and generates the counts above from registered course metadata. Commit the rebuilt HTML and README; `npm run check` verifies both.
 
-`npm test` runs the page in Node with a stand-in canvas. Every lesson is drawn from start to finish and seeked back and forth to prove `draw(t)` is pure. Every challenge is played with random input, and the player is driven through every chapter by keyboard. Every lab's 3-star outline is built and load-tested, in normal and chaos mode, and the tempting shortcuts are checked to score lower. The stand-in canvas throws wherever a browser would: negative radii, bad gradient stops, unparsable colours.
+`npm test` uses a stand-in canvas to check lesson drawing, seeded challenge play, keyboard controls, lab solutions and model invariants. It checks negative radii, gradient stops and colours, but does not reproduce browser layout, HTML semantics or native focus. `npm run test:browser` checks those boundaries in Chromium at desktop and touch portrait sizes, plus delayed navigation, reload/import/share and seed replay. CI runs both suites and saves browser traces/screenshots on failure. These automated touch and semantic checks do not replace physical-device or screen-reader testing; full assistive-technology coverage has not been verified.
 
 To add a chapter, create `src/chapters/<id>.js` (and `src/challenges/<id>.js`), add an include line for each in `src/page.html`, then build and test. Give it `needs` and `related` chapter ids for the trade-offs card links. The tests check that every link points at a real chapter, every quiz question names one, and every glossary term appears somewhere in the course.
 

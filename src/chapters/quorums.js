@@ -13,9 +13,9 @@ beats:[
 [0,'N copies of every value','The key cart:7 is stored on N = 3 replicas. Reads and writes do not have to wait for all three.'],
 [5,'Write quorum: W','A write counts as done once W replicas confirm it. With W = 2, the client gets its answer after the two fastest acks. The third catches up later.'],
 [11,'Read quorum: R','A read asks R replicas and keeps the newest version it sees. With R = 2 it waits for two answers: one of them may be behind.'],
-[17,'R + W > N: always fresh','2 + 2 > 3, so every read set overlaps every write set in at least one replica. A read always reaches someone who has the latest write.'],
+[17,'R + W > N: overlapping sets','For fixed N replicas, 2 + 2 > 3 guarantees overlap. In this example, writes finish before reads begin, replicas retain acknowledged versions, and version comparison identifies the newest completed write. The inequality alone does not guarantee linearizability.'],
 [24,'R + W ≤ N: fast, but stale','With W = 1 and R = 1, a read can land on a replica the write has not reached yet, and return an old value.'],
-[30,'Lose a replica, keep going','Back to W = 2, R = 2. One replica dies, yet both reads and writes still find two live replicas. Tune W and R to your mix of reads and writes.']],
+[30,'Strict and sloppy quorums','With fixed membership, two live replicas still satisfy W = 2 and R = 2. A sloppy quorum may use fallback nodes outside that set; its read and write sets need not overlap. Concurrent or failed partial writes also require version reconciliation.']],
 use:['Leaderless stores such as Cassandra and DynamoDB-style databases','Choosing per request: W = N for safety, R = 1 for speed','Riding out a slow or dead replica without failing requests'],
 cons:['Bigger W or R means waiting for slower replicas','R + W > N still allows odd cases (concurrent writes, failed partial writes); add versioning','Small W and R are fast but may return stale data'],
 draw(t){
@@ -40,7 +40,7 @@ draw(t){
   const oa=V(t,17.4,23.6);if(oa>0){g.save();g.globalAlpha=oa;g.setLineDash([6,5]);g.lineWidth=2;
     rr(548,92,144,262,16);g.strokeStyle=C.blue;g.stroke();rr(540,244,160,268,18);g.strokeStyle=C.green;g.stroke();g.restore();
     tx('wrote here (W)',548,82,{z:12,c:C.blue,al:'left',a:oa});tx('read here (R)',540,530,{z:12,c:C.green,al:'left',a:oa});
-    pill('in both sets: has v2',R[1][0]-150,R[1][1],{c:C.accent,z:12,a:oa});}
+    pill('fixed replicas · completed write v2',R[1][0]-160,R[1][1],{c:C.accent,z:12,a:oa});}
   // W = 1, R = 1: fast and stale
   pk(t,24.4,.6,to(0),C.blue,{label:'write v3'});pk(t,24.4,4.4,to(1),C.blue,{r:5});pk(t,24.4,5,to(2),C.blue,{r:5});
   pk(t,25,.6,rev(to(0)),C.green,{r:4.5,label:'ack'});if(t>25.6&&t<30)pill('written (W = 1)',CL[0],CL[1]-56,{c:C.green,z:12.5,a:V(t,25.6,29.8)});
@@ -52,5 +52,5 @@ draw(t){
   pk(t,32,.6,rev(to(0)),C.green,{r:4.5});pk(t,32.2,.6,rev(to(2)),C.green,{r:4.5});
   if(t>32.8&&t<34)pill('written: 2 of 3',CL[0],CL[1]-56,{c:C.green,z:12.5,a:V(t,32.8,33.8)});
   pk(t,34,.6,to(0),C.blue,{label:'read'});pk(t,34,.6,to(2),C.blue,{r:5});pk(t,34.6,.6,rev(to(0)),C.green,{label:'v4'});pk(t,34.6,.6,rev(to(2)),C.green,{r:5});
-  if(t>35.2)pill('1 replica down: reads and writes still succeed ✓',W/2-60,530,{c:C.green,z:12.5,a:V(t,35.2)});
+  if(t>35.2)pill('fixed membership: overlap ≠ linearizability by itself',W/2-60,530,{c:C.amber,z:12.5,a:V(t,35.2)});
 }});})();

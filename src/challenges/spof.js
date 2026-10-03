@@ -34,7 +34,7 @@ chal('spof',{title:'Survive the chaos monkey',goal:'Build it yourself, then let 
       const ks=S.kills||(S.kills=S.chaos?labShuffle(S,KILLS.map(k=>k[0])).map((k,i)=>[k,2+i*3.5+S.rng()*1.5]):KILLS),lastKill=ks.filter(([,at])=>t>=at).pop();
       const phase=lastKill?{app:'An app server dies',lb:'A load balancer dies',db:'The database dies'}[lastKill[0]]:'Calm before the chaos';
       ks.forEach(([kind,at])=>{if(t<at||S.killed.includes(kind))return;S.killed.push(kind);const c=G.of(kind);if(!c.length)return;
-        const b=labPick(S,kind,c,c.reduce((a,x)=>((S.hits[x.id]||0)>(S.hits[a.id]||0)?x:a)));S.deadAt[b.id]=t;FX.burst(b.x,b.y,C.red,30,220);labMark(b,'killed',C.red,15);});
+        const b=labPick(S,kind,c,c.reduce((a,x)=>((S.hits[x.id]||0)>(S.hits[a.id]||0)?x:a)));S.deadAt[b.id]=t;labSignal(S,b,'killed',C.red);});
       const dead=new Set(Object.keys(S.deadAt).filter(id=>t<S.deadAt[id]+REBOOT)),live=ns=>ns.filter(n=>!dead.has(n.id));
       const flows=[],F=(a,b,r,isBad,c)=>{if(a&&b&&r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});};
       let lostNow=0;const lose=(why,r)=>{S.why[why]+=r*dt;lostNow+=r;};

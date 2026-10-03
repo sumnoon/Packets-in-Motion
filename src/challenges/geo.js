@@ -1,12 +1,12 @@
 /* ---------------- S3. GEO: find the nearest driver ---------------- */
 chal('geo',{title:'Find the nearest driver',goal:'Walk down the quadtree to the rider\'s cell, then pick which of the nine cells around the rider holds the nearest driver.',
   hint:'At each level pick the quarter the rider is in. At the end, the nearest driver may be just across an edge: look at all nine cells.',
-  make:api=>{const MX=240,MY=70,MW=520,MH=440,X=u=>MX+u*MW,Y=v=>MY+v*MH,R=()=>.18+Math.random()*.64;
+  make:api=>{const MX=240,MY=70,MW=520,MH=440,X=u=>MX+u*MW,Y=v=>MY+v*MH,R=()=>.18+PIM_RANDOM.next()*.64;
     let rider,drivers,ans,box=[0,0,1],lvl=0,mistakes=0,stage='down',done=false,flash=null;
     const cellOf=([u,v])=>[Math.floor(u*8),Math.floor(v*8)];
     (function gen(){for(;;){rider=[R(),R()];const[cx,cy]=cellOf(rider);
-        drivers=[];for(let i=0;i<6;i++)drivers.push([(cx-1+Math.random()*3)/8,(cy-1+Math.random()*3)/8]);
-        for(let i=0;i<34;i++){const p=[Math.random(),Math.random()],[px,py]=cellOf(p);if(Math.abs(px-cx)>2||Math.abs(py-cy)>2)drivers.push(p);}
+        drivers=[];for(let i=0;i<6;i++)drivers.push([(cx-1+PIM_RANDOM.next()*3)/8,(cy-1+PIM_RANDOM.next()*3)/8]);
+        for(let i=0;i<34;i++){const p=[PIM_RANDOM.next(),PIM_RANDOM.next()],[px,py]=cellOf(p);if(Math.abs(px-cx)>2||Math.abs(py-cy)>2)drivers.push(p);}
         const near=drivers.reduce((b,p)=>Math.hypot(p[0]-rider[0],p[1]-rider[1])<Math.hypot(b[0]-rider[0],b[1]-rider[1])?p:b);const[nx,ny]=cellOf(near);
         if(Math.abs(nx-cx)<=1&&Math.abs(ny-cy)<=1&&Math.hypot(near[0]-rider[0],near[1]-rider[1])>.02){ans=(ny-cy+1)*3+(nx-cx+1);return;}}})();
     const quad=k=>{const h=box[2]/2;return[box[0]+(k%2)*h,box[1]+Math.floor(k/2)*h,h];};

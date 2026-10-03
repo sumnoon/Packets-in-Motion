@@ -1,17 +1,17 @@
 const reduceMQ=matchMedia('(prefers-reduced-motion: reduce)');
 /* ============================================================
    CHALLENGES: one hands-on problem per lesson.
-   Lessons are pure draw(t). Challenges are live: they run on real
-   time, react to the pointer and keyboard, and end in 1–3 stars.
+   Lessons are pure draw(t). Challenges advance on active play
+   time, react to the pointer and keyboard, and end in 0–3 stars.
    Each definition gets an `api` from the player (controls, status,
-   win) and returns {draw(now,dt), down/move/up(x,y), key(k)}.
+   win) and returns {update(now,dt), draw(now,dt), down/move/up(x,y), key(k)}.
    ============================================================ */
 const CHAL={};
 function chal(id,def){CHAL[id]=def;}
 const chalLater=(api,fn,ms)=>api.later?api.later(fn,ms):setTimeout(fn,ms);
 
 // ---------- small helpers ----------
-const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(PIM_RANDOM.next()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const inBox=(x,y,b)=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;
 function wrapLines(s,maxW,z=14,wt=600){const out=[];let cur='';for(const w of s.split(' ')){const t=cur?cur+' '+w:w;if(tw(t,z,wt)>maxW&&cur){out.push(cur);cur=w;}else cur=t;}if(cur)out.push(cur);return out;}
 function textBlock(s,x,y,maxW,o={}){const{z=14,wt=600,c=C.text,lh=z*1.3,al='center',a=1}=o;const L=wrapLines(s,maxW,z,wt);const y0=y-(L.length-1)*lh/2;L.forEach((l,i)=>tx(l,x,y0+i*lh,{z,wt,c,al,a}));return L.length;}
@@ -41,7 +41,7 @@ const SFX={on:false,ctx:null,last:0,
       else if(kind==='win'){[523,659,784,1047].slice(0,n+1).forEach((f,i)=>this.tone(f,.22,{at:i*.11}));}}catch(e){}}};
 
 const FX={p:[],
-  burst(x,y,c,n=18,sp=170){if(reduceMQ.matches)n=Math.min(n,4),sp*=.3;for(let i=0;i<n;i++){const a=Math.random()*6.283,v=sp*(.35+Math.random()*.65);this.p.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:.6+Math.random()*.5,age:0,c,r:1.8+Math.random()*2.4});}},
+  burst(x,y,c,n=18,sp=170){if(reduceMQ.matches)n=Math.min(n,4),sp*=.3;for(let i=0;i<n;i++){const a=PIM_EFFECTS.next()*6.283,v=sp*(.35+PIM_EFFECTS.next()*.65);this.p.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:.6+PIM_EFFECTS.next()*.5,age:0,c,r:1.8+PIM_EFFECTS.next()*2.4});}},
   text(x,y,s,c=C.green,z=17){if(c===C.green)SFX.play('good');else if(c===C.red)SFX.play('bad');this.p.push({x,y,vx:0,vy:reduceMQ.matches?0:-36,life:1.15,age:0,c,s,z});},
   step(dt){for(let i=this.p.length-1;i>=0;i--){const q=this.p[i];q.age+=dt;if(q.age>=q.life){this.p.splice(i,1);continue;}q.x+=q.vx*dt;q.y+=q.vy*dt;const a=1-q.age/q.life;
     if(q.s){tx(q.s,q.x,q.y,{z:q.z,wt:800,c:q.c,a});}else{q.vy+=260*dt;q.vx*=.985;g.save();g.globalAlpha=a;glowOn(q.c,8);g.fillStyle=q.c;g.beginPath();g.arc(q.x,q.y,q.r*a+.4,0,7);g.fill();glowOff();g.restore();}}},
@@ -65,9 +65,10 @@ function sortGame(o){return api=>{
     tgt.got.push(c);i++;if(i>=cards.length){over=true;chalLater(api,()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
       api.win(st,r&&r.title||(miss===0?'Flawless sorting':`${cards.length-miss} of ${cards.length} right`),r&&r.msg||(miss?`You missed ${miss}. Replay the lesson if a box felt fuzzy, then try again for three stars.`:'Every card in the right box.'));},900);}
     else{deal(now,right?'Right. ':`Not quite. ${esc(c.why||'')} Correct box: ${esc(tgt.label)}. `);if(!right&&deadline)deadline+=2;}if(over)actions.forEach(b=>b.disabled=true);}
-  let started=false;
+  deal(api.now());
   return{
-    draw(now,dt){if(!started){started=true;deal(now);}
+    update(now,dt){if(!over&&i<cards.length&&o.timer&&deadline&&(!api.timed||api.timed())&&now>deadline){deadline=0;place((bins.findIndex(b=>b.id!==cards[i].b)+n)%n,now);}},
+    draw(now,dt){
       if(api.metrics)api.metrics([['Card',`${Math.min(i+1,cards.length)} of ${cards.length}`],['Deadline',o.timer&&deadline&&(!api.timed||api.timed())?Math.max(0,deadline-now).toFixed(1)+' seconds':'No deadline'],['Mistakes',miss]]);
       if(o.side)o.side(state,now);
       bins.forEach((b,k)=>{const hot=hover===k;plate(b.x+b.w/2,b.y+b.h/2,b.w,b.h,{c:hot?b.c:hexA(b.c,.6),fill:hot?hexA(b.c,.12):C.panel,glow:hot?16:0,r:14});
@@ -79,7 +80,7 @@ function sortGame(o){return api=>{
         const sh=now-shake<.35?Math.sin((now-shake)*60)*6*(1-(now-shake)/.35):0,lines=wrapLines(c.t,270,16,650),h=Math.max(70,lines.length*21+34);
         plate(cx+sh,cy,320,h,{c:drag?C.accent:C.edge,fill:C.panel2,glow:drag?20:0,r:14});
         textBlock(c.t,cx+sh,cy,270,{z:16,wt:650});
-        if(o.timer&&deadline&&(!api.timed||api.timed())){const left=clamp((deadline-now)/o.timer);meter(cx-150,cy+h/2+10,300,5,left,left>.35?C.accent:C.red);if(now>deadline){deadline=0;place((bins.findIndex(b=>b.id!==c.b)+n)%n,now);}}
+        if(o.timer&&deadline&&(!api.timed||api.timed())){const left=clamp((deadline-now)/o.timer);meter(cx-150,cy+h/2+10,300,5,left,left>.35?C.accent:C.red);}
         if(streak>1)pill(`streak ×${streak}`,W-80,34,{c:C.amber,z:12});
         tx(`${i+1} / ${cards.length}`,80,34,{z:13,wt:700,c:C.dim,f:MONO});}
     },
@@ -151,9 +152,9 @@ function quizGame(o){const make=api=>{
     api.win(st,`${right} of ${n} right`,miss?`Worth a rewatch: ${again.join('; ')}.`:'Every answer right. You have this section down.');}
   const choices=[0,1,2,3].map(k=>api.button('Answer '+(k+1),()=>pick(k)));
   api.button('Next question →',next,{primary:true});
-  let started=false;
+  ask();
   return{
-    draw(now){if(!started){started=true;ask();}const q=qs[i];
+    draw(now){const q=qs[i];
       tx(`${o.title||'Section quiz'} · ${i+1} / ${n}`,W/2,44,{z:13,wt:700,c:C.dim});
       textBlock(q.q,W/2,118,860,{z:21,wt:700,lh:29});
       q.opts.forEach((p,k)=>{const x=ox(k),y=oy(k),me=k===picked,after=picked>=0;
@@ -174,16 +175,15 @@ function quiz(group,def){QUIZ[group]={...def,group,id:'quiz-'+group.toLowerCase(
 // o.controls(api,p): builds controls that write into p. o.build(p,api): returns a sim with
 // step(dt,now), draw(now,running), hud():[[label,value,colour]], score():{stars,title,msg}. o.dur: seconds.
 function simGame(o){return api=>{
-  const p=Object.assign({},o.defaults);let sim=o.build(p,api),running=false,t0=0,last=0,speed=o.speed||1,done=false;
+  const p=Object.assign({},o.defaults);let sim=o.build(p,api),running=false,clock=null,speed=o.speed||1,done=false;
   const rebuild=()=>{if(!running){sim=o.build(p,api);}};
   o.controls(api,p,rebuild);
-  const run=api.button(o.runLabel||'Run it',()=>{if(running)return;sim=o.build(p,api);running=true;done=false;api.lock(true);t0=api.now();last=0;api.status(o.runStatus||'Running…');},{primary:true});
+  const run=api.button(o.runLabel||'Run it',()=>{if(running)return;sim=o.build(p,api);clock=pimClock((dt,t)=>sim.step(dt,t),o.dur);running=true;done=false;api.lock(true);api.status(o.runStatus||'Running…');},{primary:true});
   api.status(o.intro||'Set it up, then press <b>Run it</b>.');
-  return{draw(now,dt){if(running){const el=(now-t0)*speed;const step=Math.min(el-last,.1);if(step>0){sim.step(step,el);last+=step;}
-        if(el>=o.dur&&!done){done=true;running=false;api.lock(false);const r=sim.score();api.win(r.stars,r.title,r.msg);}}
-      sim.draw(now,running);
+  return{update(now,dt){if(running){clock.advance(dt*speed);if(clock.time>=o.dur&&!done){done=true;running=false;api.lock(false);const r=sim.score();api.win(r.stars,r.title,r.msg);}}},
+    draw(now,dt){sim.draw(now,running);
       const hud=sim.hud(running);if(api.metrics)api.metrics(hud);hud.forEach(([l,v,c],k)=>{const x=W-20,y=26+k*22;tx(l,x-92,y,{z:11.5,c:C.dim,al:'right'});tx(v,x,y,{z:13,wt:800,c:c||C.text,al:'right',f:MONO});});
-      if(running){const f=clamp(((now-t0)*speed)/o.dur);meter(20,H-14,W-40,4,f,C.accent);}},
+      if(running){const f=clamp(clock.time/o.dur);meter(20,H-14,W-40,4,f,C.accent);}},
     cancel(){if(sim.cancel)sim.cancel();},
     down(x,y,now){sim.down&&sim.down(x,y,now,running);},move(x,y){sim.move&&sim.move(x,y);},up(x,y,now){sim.up&&sim.up(x,y,now);},
     key(k,now){sim.key&&sim.key(k,now,running);}};

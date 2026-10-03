@@ -534,6 +534,47 @@ const pimSeen=v=>pimFilter(v,(k,x)=>chapters.some(c=>c.id===k)&&(x===1||x===true
 const pimStars=v=>pimFilter(v,(k,x)=>(Object.hasOwn(CHAL,k)||Object.values(QUIZ).some(q=>q.id===k))&&Number.isInteger(x)&&x>=0&&x<=3);
 const pimSpeed=v=>[.5,1,1.5,2].includes(Number(v))?Number(v):1;
 function pimResume(v){if(!pimRecord(v)||v.version!==1||typeof v.chapter!=='string'||!Number.isFinite(v.time)||v.time<0)return null;const c=chapters.find(c=>c.id===v.chapter);return c&&v.time<=c.dur&&[.5,1,1.5,2].includes(v.speed)?{version:1,chapter:c.id,time:v.time,speed:v.speed}:null;}
+/* Deterministic model utilities. No canvas, DOM, storage or wall clock access. */
+/** @typedef {{id:string,kind:string,x:number,y:number,fixed?:boolean}} LabNode */
+/** @typedef {{nodes:LabNode[],edges:{a:string,b:string}[],opts:Object<string,boolean>}} LabDesign */
+/** @typedef {LabDesign & {of:(kind:string)=>LabNode[],out:(node:LabNode,kinds?:string[])=>LabNode[],inn:(node:LabNode,kinds?:string[])=>LabNode[]}} LabGraph */
+/** @typedef {{type:'incident',id:string,text:string,color:string,time:number}} LabEvent */
+/** @typedef {{name:string,observed:number,target:number,passed:boolean}} LabRequirement */
+/** @typedef {{requirements?:LabRequirement[],readings?:{name:string,value:string|number}[],sent?:number,delivered?:number,accepted?:number,persisted?:number,pending?:number}} LabMetrics */
+/** @typedef {{stars:number,title:string,msg:string,metrics?:LabMetrics,seed?:number,elapsed?:number,cost?:number}} ChallengeResult */
+/** @typedef {{update?:(now:number,dt:number)=>void,draw:(now:number,dt:number)=>void,cancel?:()=>void,dispose?:()=>void}} ChallengeInstance */
+/** @typedef {{now:()=>number,status:(html:string)=>void,lock:(locked:boolean)=>void,win:(stars:number,title:string,msg:string)=>void,button:(label:string,onClick:()=>void,options?:Object)=>Object,metrics?:(rows:Array)=>void,later?:(callback:()=>void,ms:number)=>void}} ChallengeAPI */
+/** @typedef {{flows:{a:string,b:string,rate:number,bad?:boolean}[],load:Object<string,number>,dead?:Set<string>,badEdges?:Set<string>,phase:string}} LabView */
+/** @typedef {{dur:number,init:(graph:LabGraph)=>Object,step:(state:Object,graph:LabGraph,dt:number,time:number)=>LabView,hud:(state:Object,graph:LabGraph)=>Array,measure?:(state:Object,graph:LabGraph,cost:number)=>LabMetrics,score:(state:Object,graph:LabGraph,cost:number,metrics:LabMetrics)=>ChallengeResult}} LabScenario */
+
+function pimRng(seed){return()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const PIM_RANDOM={seed:0,reset(seed){this.seed=seed>>>0;this.next=pimRng(this.seed);}};
+// Tests inject a seed before startup; the shipped course chooses a fresh one.
+PIM_RANDOM.reset(Number.isInteger(globalThis.PIM_TEST_SEED)?globalThis.PIM_TEST_SEED:typeof crypto!=='undefined'?crypto.getRandomValues(new Uint32Array(1))[0]:Math.floor(Math.random()*4294967296));
+const PIM_EFFECTS={next:pimRng(PIM_RANDOM.seed^0x9e3779b9)};
+
+/** Advance at a stable interval, retaining fractional time and stopping exactly at duration. */
+function pimClock(step,duration=Infinity,interval=1/60){if(!(duration>=0)||duration!==Infinity&&!Number.isFinite(duration)||!Number.isFinite(interval)||interval<=0)throw new Error('Invalid simulation clock');let time=0,pending=0;
+  return{get time(){return time;},advance(dt){if(!Number.isFinite(dt)||dt<0)throw new Error('Invalid simulation delta');pending+=dt;
+    while(time<duration&&pending+1e-9>=Math.min(interval,duration-time)){const d=Math.min(interval,duration-time);pending=Math.max(0,pending-d);time=Math.min(duration,time+d);step(d,time);}return time;}};}
+/** @param {LabDesign} data @returns {LabGraph} */
+function pimGraph(data){const G={nodes:data.nodes.map(n=>({...n})),edges:data.edges.map(e=>({...e})),opts:{...data.opts}};
+  G.of=k=>G.nodes.filter(n=>n.kind===k);
+  G.out=(n,kinds)=>G.edges.filter(e=>e.a===n.id).map(e=>G.nodes.find(m=>m.id===e.b)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));
+  G.inn=(n,kinds)=>G.edges.filter(e=>e.b===n.id).map(e=>G.nodes.find(m=>m.id===e.a)).filter(m=>m&&(!kinds||kinds.includes(m.kind)));return G;}
+function labSignal(S,n,text,color){if(n)(S.events||(S.events=[])).push({type:'incident',id:n.id,text,color,time:S.time||0});}
+/** A headless lab run owns its graph, seeded incident RNG, fixed clock and measured state.
+ * @param {LabScenario} scenario @param {LabDesign} graph
+ * @param {{seed?:number,chaos?:boolean}} options
+ */
+function pimLabRun(scenario,graph,{seed=0,chaos=false}={}){const G=pimGraph(graph),S=scenario.init(G);Object.assign(S,{seed:seed>>>0,chaos,rng:pimRng(seed),events:[],time:0});
+  const clock=pimClock((dt,t)=>{S.time=t;S.view=scenario.step(S,G,dt,t);const T=S.track||(S.track={peak:{},bad:{}});
+    for(const id in S.view.load||{}){const u=S.view.load[id];if(u>(T.peak[id]?.u||0))T.peak[id]={u,t};}
+    for(const id of S.view.badEdges||[]){const b=T.bad[id]||(T.bad[id]={d:0,t});b.d+=dt;}
+  },scenario.dur);
+  return{state:S,graph:G,get time(){return clock.time;},advance:dt=>clock.advance(dt),events(){return S.events.splice(0);},
+    result(cost){const metrics=scenario.measure?scenario.measure(S,G,cost):{readings:scenario.hud(S,G).map(([name,value])=>({name,value}))};return Object.freeze({...scenario.score(S,G,cost,metrics),metrics,seed:S.seed,elapsed:clock.time,cost});},
+    snapshot(){return JSON.stringify(S,(_,v)=>v instanceof Set?[...v]:typeof v==='function'?undefined:v);}};}
 </script>
 <script>
 /* ---------------- 0. START HERE: PACKETS, IP ADDRESSES & PORTS ---------------- */
@@ -1257,12 +1298,12 @@ ch({id:'sql-nosql',group:'Data',title:'SQL vs NoSQL',dur:34,needs:['client-serve
 beats:[
 [0,'SQL: tables with fixed columns','Relational databases store data in tables. Every row has the same columns, defined up front by a schema.'],
 [5,'Relations and JOINs','Orders point to users by id. A JOIN stitches related rows together at query time, so each fact is stored exactly once.'],
-[11,'Changing the schema','Adding a column means migrating the whole table. Safe and strict, but slower to evolve.'],
+[11,'Schema changes have different costs','Cost depends on the engine and operation. PostgreSQL can add a column with a constant default without rewriting rows. Adding a volatile default such as clock_timestamp() evaluates every row and can require a table rewrite; locks also matter.'],
 [15,'NoSQL: flexible documents','A document database stores self-contained, JSON-like records. Each can have different fields, and related data is often embedded right inside.'],
-[22,'How they scale','SQL traditionally grows by buying a bigger primary server. Many NoSQL stores are built to spread data across many cheap nodes from day one.'],
-[29,'Pick by access pattern','Need transactions and complex queries across related data? SQL. Need huge scale, a flexible shape and simple lookups by key? NoSQL.']],
+[22,'Scaling depends on the database','A single-primary SQL system can scale up and add read replicas; distributed SQL can scale out. Many NoSQL stores partition by key. Neither label alone determines capacity, transaction support or consistency.'],
+[29,'Pick by access pattern','Compare the actual database guarantees and queries. Relational stores fit joins and integrity constraints; document or key-value stores fit aggregate/key access. Both families can support transactions, and flexible documents still need application validation.']],
 use:['SQL: money, inventory, bookings, anything needing ACID transactions and ad-hoc queries','NoSQL (document / key-value): user profiles, catalogs, sessions, feeds at large scale','Many systems use both: SQL for the core records, NoSQL for high-volume or flexible data'],
-cons:['SQL: scaling writes beyond one machine is hard; schema changes need migrations','NoSQL: JOINs are limited or missing, so data gets duplicated and must be kept in sync','NoSQL: often weaker consistency/transactions; design around your queries up front'],
+cons:['Migration cost and locking depend on the engine, operation and default','Denormalized documents duplicate facts and need a strategy to keep them consistent','Check each database’s transaction, consistency and distribution guarantees'],
 draw(t){
   const dim=t>22.3?1-.62*P(t,22.3,23):1;
   tx('SQL · relational',40,76,{z:14,wt:700,al:'left',c:C.blue,a:V(t,.3)});
@@ -1279,7 +1320,7 @@ draw(t){
   // join result
   const ra=A(t,8,11.2);
   table(270,280,'users ⋈ orders  (user 2)',['name','city','total'],[62,78,62],[['Lin','Tokyo','$30'],['Lin','Tokyo','$55']],{a:ra.a,rowA:i=>V(t,8.6+i*.4),hl:()=>C.accent,nc:C.green});
-  if(t>11)pill('ALTER TABLE users ADD phone → rewrite every row',262,432,{c:C.amber,a:V(t,11.6,21.5)*dim,z:12});
+  if(t>11){textBlock('Constant-default column: metadata only in PostgreSQL. Volatile default: evaluate rows and rewrite.',262,435,445,{c:C.amber,a:V(t,11.6,21.5)*dim,z:13});}
   // documents
   const d1=[['{ "_id": 2,'],['  "name": "Lin",'],['  "city": "Tokyo",'],['  "orders": [',C.green],['    {"total": 30},',C.green],['    {"total": 55} ] }',C.green]];
   const d2=[['{ "_id": 1,'],['  "name": "Ada",'],['  "phone": "+44…",',C.amber],['  "tags": ["vip"] }',C.amber]];
@@ -1294,7 +1335,7 @@ draw(t){
     each(t,24.2,28.6,.25,.9,(i,s)=>{const k=i%4;pk(t,s,.9,[[750,330],[610+k*105,432]],C.amber,{r:4.5});});
     tx('scale out →',750,382,{z:13,c:C.amber,wt:650,a:V(t,24)*(t>29?0:1)});}
   pill('ACID transactions · JOINs · strict schema',270,535,{c:C.blue,z:12.5,a:V(t,29.3)});
-  pill('flexible schema · spreads out · key lookups',768,535,{c:C.amber,z:12.5,a:V(t,30)});
+  pill('document / key access · verify engine guarantees',768,535,{c:C.amber,z:12.5,a:V(t,30)});
 }});})();
 
 /* ---------------- 8. INDEXING ---------------- */
@@ -1436,9 +1477,9 @@ beats:[
 [0,'N copies of every value','The key cart:7 is stored on N = 3 replicas. Reads and writes do not have to wait for all three.'],
 [5,'Write quorum: W','A write counts as done once W replicas confirm it. With W = 2, the client gets its answer after the two fastest acks. The third catches up later.'],
 [11,'Read quorum: R','A read asks R replicas and keeps the newest version it sees. With R = 2 it waits for two answers: one of them may be behind.'],
-[17,'R + W > N: always fresh','2 + 2 > 3, so every read set overlaps every write set in at least one replica. A read always reaches someone who has the latest write.'],
+[17,'R + W > N: overlapping sets','For fixed N replicas, 2 + 2 > 3 guarantees overlap. In this example, writes finish before reads begin, replicas retain acknowledged versions, and version comparison identifies the newest completed write. The inequality alone does not guarantee linearizability.'],
 [24,'R + W ≤ N: fast, but stale','With W = 1 and R = 1, a read can land on a replica the write has not reached yet, and return an old value.'],
-[30,'Lose a replica, keep going','Back to W = 2, R = 2. One replica dies, yet both reads and writes still find two live replicas. Tune W and R to your mix of reads and writes.']],
+[30,'Strict and sloppy quorums','With fixed membership, two live replicas still satisfy W = 2 and R = 2. A sloppy quorum may use fallback nodes outside that set; its read and write sets need not overlap. Concurrent or failed partial writes also require version reconciliation.']],
 use:['Leaderless stores such as Cassandra and DynamoDB-style databases','Choosing per request: W = N for safety, R = 1 for speed','Riding out a slow or dead replica without failing requests'],
 cons:['Bigger W or R means waiting for slower replicas','R + W > N still allows odd cases (concurrent writes, failed partial writes); add versioning','Small W and R are fast but may return stale data'],
 draw(t){
@@ -1463,7 +1504,7 @@ draw(t){
   const oa=V(t,17.4,23.6);if(oa>0){g.save();g.globalAlpha=oa;g.setLineDash([6,5]);g.lineWidth=2;
     rr(548,92,144,262,16);g.strokeStyle=C.blue;g.stroke();rr(540,244,160,268,18);g.strokeStyle=C.green;g.stroke();g.restore();
     tx('wrote here (W)',548,82,{z:12,c:C.blue,al:'left',a:oa});tx('read here (R)',540,530,{z:12,c:C.green,al:'left',a:oa});
-    pill('in both sets: has v2',R[1][0]-150,R[1][1],{c:C.accent,z:12,a:oa});}
+    pill('fixed replicas · completed write v2',R[1][0]-160,R[1][1],{c:C.accent,z:12,a:oa});}
   // W = 1, R = 1: fast and stale
   pk(t,24.4,.6,to(0),C.blue,{label:'write v3'});pk(t,24.4,4.4,to(1),C.blue,{r:5});pk(t,24.4,5,to(2),C.blue,{r:5});
   pk(t,25,.6,rev(to(0)),C.green,{r:4.5,label:'ack'});if(t>25.6&&t<30)pill('written (W = 1)',CL[0],CL[1]-56,{c:C.green,z:12.5,a:V(t,25.6,29.8)});
@@ -1475,7 +1516,7 @@ draw(t){
   pk(t,32,.6,rev(to(0)),C.green,{r:4.5});pk(t,32.2,.6,rev(to(2)),C.green,{r:4.5});
   if(t>32.8&&t<34)pill('written: 2 of 3',CL[0],CL[1]-56,{c:C.green,z:12.5,a:V(t,32.8,33.8)});
   pk(t,34,.6,to(0),C.blue,{label:'read'});pk(t,34,.6,to(2),C.blue,{r:5});pk(t,34.6,.6,rev(to(0)),C.green,{label:'v4'});pk(t,34.6,.6,rev(to(2)),C.green,{r:5});
-  if(t>35.2)pill('1 replica down: reads and writes still succeed ✓',W/2-60,530,{c:C.green,z:12.5,a:V(t,35.2)});
+  if(t>35.2)pill('fixed membership: overlap ≠ linearizability by itself',W/2-60,530,{c:C.amber,z:12.5,a:V(t,35.2)});
 }});})();
 
 /* ---------------- 10. SHARDING ---------------- */
@@ -2642,23 +2683,25 @@ const POS=N.map((n,k)=>{const a=(-90+k*72)*Math.PI/180;return[CX+RAD*Math.cos(a)
 const TO={B:5.2,C:4.0,D:4.8,E:5.6};             // randomized election timeouts (s)
 const HB1=[5.5,6.5,7.5,8.5,9.5], HB2=[20.6,21.6,22.6,23.6,24.6,25.6,26.6,27.6,28.6,29.6,30.6];
 const seg=(a,b)=>{const[x0,y0]=POS[a],[x1,y1]=POS[b],d=Math.hypot(x1-x0,y1-y0),u=[(x1-x0)/d,(y1-y0)/d];return[[x0+u[0]*52,y0+u[1]*34],[x1-u[0]*52,y1-u[1]*34]];};
-ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:38,needs:['replication'],related:['locks','cap','spof','transactions'],
+ch({id:'consensus',group:'Advanced',title:'Consensus: Leader Election with Raft',dur:48,needs:['replication'],related:['locks','cap','spof','transactions'],
 beats:[
 [0,'Five nodes must agree','A replicated database needs exactly one leader to order the writes. With five nodes, how do they agree who leads, even when some crash?'],
 [5,'The leader sends heartbeats','Leader A pings every follower a few times a second: "still alive". Each ping resets that follower\'s election timer.'],
-[10,'The leader crashes','The heartbeats stop and the timers run down. Each timer has a random length, so one node almost always runs out first.'],
+[10,'The leader becomes isolated','A loses contact with the other nodes but still believes it leads term 1. Its heartbeats no longer arrive, and the followers’ randomized election timers run down.'],
 [14.2,'A candidate asks for votes','C\'s timer ran out first. It starts term 2, votes for itself and asks everyone: "vote for me?" Each node votes once per term.'],
-[19.5,'A majority wins','C has 3 of 5 votes, a majority, so it becomes leader of term 2. Two majorities always overlap, so there can never be two leaders.'],
-[25,'Writes need a majority too','A write only counts once a majority has stored it. After that it survives any minority of crashes.'],
-[31,'No majority, no writes','With B and E also gone, only 2 of 5 nodes are left. They cannot form a majority, so they refuse writes rather than risk disagreeing.']],
-use:['Coordination services that store config and locks (etcd, ZooKeeper, Consul)','Choosing the leader of a database or queue cluster (CockroachDB, Kafka KRaft)','Anywhere two leaders at once would corrupt data'],
+[19.5,'One leader per term','C has a majority of votes and leads term 2. Each node votes at most once per term, so overlapping majorities prevent two elected leaders in the same term. An isolated older leader can still believe it leads.'],
+[25,'Commit a current-term entry','C commits an entry from its current term once a majority durably stores it under Raft log-matching rules. Earlier entries in its log become committed indirectly; counting replicas of an older-term entry alone is insufficient.'],
+[31,'No majority, no writes','With B and E also gone, only 2 of 5 nodes are left. They cannot commit new writes without a majority.'],
+[36,'Reject a stale leader','A reconnects believing it leads term 1. C and D are in term 2 and reject its old-term requests. Once A learns the higher term, it steps down.'],
+[42,'Votes protect the committed log','A voter requires the candidate log to be at least as up-to-date as its own: compare last-entry term first, then index. Together with log matching and the current-term commit rule, this protects committed entries.']],
+use:['Coordination services that store config and locks (etcd, ZooKeeper, Consul)','Choosing the leader of a database or queue cluster (CockroachDB, Kafka KRaft)','A replicated log that preserves committed entries under Raft protocol rules'],
 cons:['Needs a majority: 5 nodes survive 2 failures, 3 nodes survive 1','Every write waits for a majority round trip','Elections briefly pause writes, and it is subtle to operate'],
 draw(t){
-  const dead=k=>(k===0&&t>=10)||((k===1||k===4)&&t>=31);
+  const dead=k=>(k===0&&t>=10&&t<36)||((k===1||k===4)&&t>=31);
   const lead=t<10?0:t>=19.5?2:-1,cand=t>=14.2&&t<19.5?2:-1,term=t<14.2?1:2;
   for(let i=0;i<5;i++)for(let j=i+1;j<5;j++)ln(seg(i,j),{a:V(t,.4)*.25});
   POS.forEach(([x,y],k)=>{const st=dead(k)?'fail':k===lead?'acc':k===cand?'hot':'ok';
-    server(x,y,{label:`Node ${N[k]}`,sub:dead(k)?'':k===lead?`leader · term ${term}`:k===cand?`candidate · term 2`:'follower',w:108,h:56,st,down:'DOWN',...A(t,.2+k*.1)});
+    server(x,y,{label:`Node ${N[k]}`,sub:dead(k)?'':k===0&&t>=36&&t<40?'old leader · term 1':k===lead?`leader · term ${term}`:k===cand?`candidate · term 2`:`follower · term ${term}`,w:108,h:56,st,down:k===0?'ISOLATED':'DOWN',...A(t,.2+k*.1)});
     if(k===lead&&!dead(k)&&t>1){g.save();g.globalAlpha=.35+.25*Math.sin(t*4);g.strokeStyle=C.accent;g.lineWidth=2;rr(x-62,y-36,124,72,14);g.stroke();g.restore();}});
   // heartbeats from the current leader
   HB1.forEach(h=>[1,2,3,4].forEach(k=>pk(t,h,.5,seg(0,k),C.accent,{r:3.5})));
@@ -2677,11 +2720,14 @@ draw(t){
   // a committed write
   const CL=[CX,CY];pk(t,25.3,.8,[[CX-120,CY+10],[POS[2][0]-40,POS[2][1]-26]],C.blue,{label:'SET x = 5'});
   [1,3,4].forEach((k,i)=>pk(t,26.3+i*.05,.8,seg(2,k),C.blue,{r:4}));[[1,27.3],[3,27.4]].forEach(([k,s])=>pk(t,s,.8,seg(k,2),C.green,{r:4}));
-  if(t>28.2&&t<31)pill('stored on 3 of 5 → committed ✓',CX,CY,{c:C.green,z:12.5,a:V(t,28.2,30.8)});
+  if(t>28.2&&t<31)pill('term 2 entry on 3 of 5 → committed ✓',CX,CY,{c:C.green,z:12.5,a:V(t,28.2,30.8)});
   // losing the majority
   pk(t,32.2,.8,[[CX-120,CY+10],[POS[2][0]-40,POS[2][1]-26]],C.blue,{label:'SET y = 7'});
   [1,4].forEach(k=>pk(t,33.1,.9,seg(2,k),C.blue,{r:4}));
-  if(t>34.1)pill('only 2 of 5 reachable → write refused (safe)',CX,CY,{c:C.red,z:12.5,a:V(t,34.1)});
+  if(t>34.1&&t<36)pill('only 2 of 5 reachable → cannot commit',CX,CY,{c:C.red,z:12.5,a:V(t,34.1,36)});
+  pk(t,36.6,.8,seg(0,2),C.red,{label:'term 1 request'});pk(t,37.5,.8,seg(2,0),C.amber,{label:'reject: term 2'});
+  if(t>38.3&&t<42)pill(t<40?'old term rejected':'A learns term 2 → follower',CX,CY,{c:C.amber,z:13,a:V(t,38.3,41.8)});
+  if(t>42)textBlock('Vote restriction: last log term, then index. Current-term majority commit + log matching protect earlier entries.',CX,CY,330,{z:14,a:V(t,42)});
 }});})();
 
 /* ---------------- A1b. DISTRIBUTED LOCKS, LEASES & FENCING TOKENS ---------------- */
@@ -2757,7 +2803,7 @@ beats:[
 [0,'Two writes, no single leader','In multi-leader or leaderless stores, two replicas can accept writes to the same key at the same moment, then sync with each other later.'],
 [5,'Last write wins','The simplest rule keeps the write with the later timestamp. Easy, but the other write is silently lost, and clocks on different machines drift.'],
 [12,'Vector clocks','Each replica counts its own writes, and every version carries all the counts, like [A:1, B:1]. Compare two versions count by count.'],
-[19,'Before, after, or concurrent','If every count in X is ≤ the same count in Y, X came first and can be dropped. If each is ahead somewhere, they are concurrent: a real conflict for the app to merge.'],
+[19,'Before, equal, or concurrent','X precedes Y only if every count in X is ≤ Y and at least one is strictly smaller. Equal clocks identify the same version or a duplicate in this model. If each is ahead somewhere, neither precedes the other: they are concurrent.'],
 [26,'CRDTs merge by design','Some data types merge automatically. A cart kept as an add-only set merges by union; a like counter keeps one count per replica and adds them up.'],
 [32,'Choose your merge','Last write wins for caches and settings, vector clocks plus app logic for documents, CRDTs for counters, sets and collaborative editing.']],
 use:['Multi-region writes, offline-first apps, collaborative editors','Shopping carts, likes and presence: merge instead of overwrite','Detecting real conflicts rather than guessing with timestamps'],
@@ -2775,7 +2821,7 @@ draw(t){
   // vector clocks: a clean "happened before"
   if(t>12&&t<13.4)pill('↺ again, with vector clocks',W/2,40,{c:C.accent,z:12.5});
   pk(t,13.4,.8,toA,C.blue,{label:'+ book'});pk(t,14.6,1,ab,C.amber,{r:5,label:'sync'});pk(t,15.8,.8,toB,C.blue,{label:'+ pen'});pk(t,16.8,.8,ba,C.amber,{r:5,label:'sync'});
-  if(t>17.6&&t<19.4)pill('[A:1, B:0] ≤ [A:1, B:1] → B\'s version is newer: keep it ✓',W/2,410,{c:C.green,z:12.5,f:MONO,a:V(t,17.6,19.2)});
+  if(t>17.6&&t<21.4){pill('[1,0] ≤ [1,1] and 0 < 1 → X precedes Y',W/2,410,{c:C.green,z:12.5,f:MONO,a:V(t,17.6,21.2)});pill('[1,1] = [1,1] → same version / duplicate',W/2,450,{c:C.accent,z:12.5,f:MONO,a:V(t,19.2,21.2)});}
   // concurrent
   pk(t,19.6,.8,toA,C.blue,{label:'+ mug'});pk(t,19.6,.8,toB,C.blue,{label:'− pen'});pk(t,21.2,1,ab,C.amber,{r:5,label:'sync'});pk(t,21.2,1,ba,C.amber,{r:5});
   if(t>22.6&&t<26){pill('A is ahead on A, B is ahead on B → concurrent',W/2,410,{c:C.amber,z:12.5,a:V(t,22.6,25.8)});pill('keep both, let the app merge them',W/2,450,{c:C.accent,z:12.5,a:V(t,23.4,25.8)});}
@@ -2801,9 +2847,9 @@ beats:[
 [16,'If the coordinator dies mid-way','The services voted yes and are now stuck waiting with their locks held, unsure whether to commit or abort. 2PC can block.'],
 [21,'A saga: a chain of local steps','Instead, each service commits its own step at once and then triggers the next one. There are no global locks.'],
 [27,'A step fails → compensate','The car booking fails. The saga runs compensating steps in reverse: cancel the hotel, then refund the flight.'],
-[34,'Consistent in the end, never stuck','For a moment the flight really was booked. When the saga finishes, everything is undone cleanly and nobody is left holding a lock.']],
+[34,'Compensation can fail too','Persist saga progress and retry idempotent compensations after a crash. A refund may fail repeatedly and need manual intervention; an email or another irreversible effect cannot simply be undone. A saga avoids global locks, but does not guarantee automatic recovery.']],
 use:['2PC: a few databases that must commit atomically, close together','Sagas: long business flows across microservices (orders, trips, payments)','Sagas whenever services must stay available and independent'],
-cons:['2PC holds locks across the network and blocks if the coordinator fails','Sagas expose in-between states and need a compensating action for every step','Compensations must be retried safely, so they have to be idempotent'],
+cons:['2PC holds locks across the network and blocks if the coordinator fails','Sagas expose intermediate states; some external effects are irreversible','Persist progress; compensations need idempotent retries and a manual recovery path'],
 draw(t){
   const co=A(t,.5,20.6);box(CO[0],CO[1],{label:'Coordinator',sub:'2-phase commit',w:150,h:58,st:t>=18&&t<20.6?'fail':undefined,...co});
   user(140,295,{label:'traveller',...A(t,.2)});
@@ -2829,7 +2875,8 @@ draw(t){
   pk(t,31.6,1.3,[[SV[0][1][0]-72,SV[0][1][1]],[180,295]],C.amber,{label:'sorry: trip cancelled'});
   // timeline of states
   const ta=V(t,34);if(ta>0){const st=[['flight booked',C.green],['hotel booked',C.green],['car failed',C.red],['hotel cancelled',C.amber],['flight refunded',C.amber]];
-    st.forEach(([s,c],k)=>{pill(s,130+k*185,522,{c,z:12,a:ta*V(t,34+k*.25)});if(k)tx('→',130+k*185-94,522,{z:14,c:C.dim,a:ta});});}
+    st.forEach(([s,c],k)=>{pill(s,130+k*185,522,{c,z:12,a:ta*V(t,34+k*.25)});if(k)tx('→',130+k*185-94,522,{z:14,c:C.dim,a:ta});});
+    textBlock('Alternative: refund fails → persist retry → manual recovery. Irreversible effects need a business remedy.',380,410,540,{z:15,c:C.amber,a:V(t,35)});}
 }});})();
 
 /* ---------------- A3. UNIQUE IDS AT SCALE: SNOWFLAKE ---------------- */
@@ -3012,7 +3059,7 @@ const c2pu=[[CH[0]+62,CH[1]+20],[PU[0]-60,PU[1]-8]],pu2cy=[[PU[0]+60,PU[1]+10],[
 const G2DEAD=43.6,BEN_ON=t=>t<G2DEAD?G2:t>=45.6?G1:null;
 ch({id:'capstone-chat',group:'Capstone',title:'Capstone: Design a Chat App',dur:58,needs:['rest-grpc-ws','queues-pubsub','sharding'],related:['capstone','capstone-feed','idempotency'],
 beats:[
-[0,'The goal: fast, ordered, never lost','Messages should arrive within a second, in order, and never get lost, whether the other person is online or not.'],
+[0,'Delivery, order and durability goals','A product may target delivery within a second, ordering per conversation and durable replay for offline recipients. Real guarantees require measured end-to-end latency and explicit failure semantics. The capacity lab does not certify that delivery deadline.'],
 [5,'Assemble the building blocks','WebSocket gateways keep a connection open to each online user. Behind them: a chat service, a sharded message store, pub/sub, a presence store and push notifications.'],
 [11,'Connect and stay connected','Ana and Ben each open a WebSocket. The load balancer spreads them across gateways, and presence records which gateway holds whom.'],
 [17,'Send: store it first','Ana sends "lunch?". The chat service gives it the next sequence number in the conversation and writes it to the message store, sharded by a hash of the conversation id.'],
@@ -3028,7 +3075,7 @@ draw(t){
   if(t<5.2){const a=V(t,.3,4.8);draw(500,280,{a},()=>{rr(-170,-150,340,300,22);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.edge;g.lineWidth=2;g.stroke();});
     tx('Lunch crew · 3 people',500,155,{z:13,wt:700,c:C.dim,a});
     pill('Ana: lunch?',430,205,{c:C.blue,z:14,a:a*V(t,.8)});pill('Ben: yes! 12:30',560,255,{c:C.green,z:14,a:a*V(t,1.8)});pill('Cy is offline…',470,305,{c:C.dim,z:13,a:a*V(t,2.8)});
-    pill('within a second · in order · never lost',500,375,{c:C.accent,z:13,a:a*V(t,3.4)});return;}
+    pill('targets: fast delivery · conversation order · durable replay',500,375,{c:C.accent,z:12,a:a*V(t,3.4)});return;}
   const L=(pts,t0,o={})=>ln(pts,{a:V(t,t0)*.4,...o});
   // links
   L([[ANA[0]+16,ANA[1]],[LB[0]-46,LB[1]]],5.6);L([[BEN[0]+16,BEN[1]],[LB[0]-46,LB[1]]],5.6);L([[LB[0]+46,LB[1]],[G1[0]-58,G1[1]]],5.9);L([[LB[0]+46,LB[1]],[G2[0]-58,G2[1]]],5.9,t>=G2DEAD?{dash:[4,6]}:{});
@@ -3155,17 +3202,17 @@ draw(t){
 const reduceMQ=matchMedia('(prefers-reduced-motion: reduce)');
 /* ============================================================
    CHALLENGES: one hands-on problem per lesson.
-   Lessons are pure draw(t). Challenges are live: they run on real
-   time, react to the pointer and keyboard, and end in 1–3 stars.
+   Lessons are pure draw(t). Challenges advance on active play
+   time, react to the pointer and keyboard, and end in 0–3 stars.
    Each definition gets an `api` from the player (controls, status,
-   win) and returns {draw(now,dt), down/move/up(x,y), key(k)}.
+   win) and returns {update(now,dt), draw(now,dt), down/move/up(x,y), key(k)}.
    ============================================================ */
 const CHAL={};
 function chal(id,def){CHAL[id]=def;}
 const chalLater=(api,fn,ms)=>api.later?api.later(fn,ms):setTimeout(fn,ms);
 
 // ---------- small helpers ----------
-const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(PIM_RANDOM.next()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
 const inBox=(x,y,b)=>x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h;
 function wrapLines(s,maxW,z=14,wt=600){const out=[];let cur='';for(const w of s.split(' ')){const t=cur?cur+' '+w:w;if(tw(t,z,wt)>maxW&&cur){out.push(cur);cur=w;}else cur=t;}if(cur)out.push(cur);return out;}
 function textBlock(s,x,y,maxW,o={}){const{z=14,wt=600,c=C.text,lh=z*1.3,al='center',a=1}=o;const L=wrapLines(s,maxW,z,wt);const y0=y-(L.length-1)*lh/2;L.forEach((l,i)=>tx(l,x,y0+i*lh,{z,wt,c,al,a}));return L.length;}
@@ -3195,7 +3242,7 @@ const SFX={on:false,ctx:null,last:0,
       else if(kind==='win'){[523,659,784,1047].slice(0,n+1).forEach((f,i)=>this.tone(f,.22,{at:i*.11}));}}catch(e){}}};
 
 const FX={p:[],
-  burst(x,y,c,n=18,sp=170){if(reduceMQ.matches)n=Math.min(n,4),sp*=.3;for(let i=0;i<n;i++){const a=Math.random()*6.283,v=sp*(.35+Math.random()*.65);this.p.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:.6+Math.random()*.5,age:0,c,r:1.8+Math.random()*2.4});}},
+  burst(x,y,c,n=18,sp=170){if(reduceMQ.matches)n=Math.min(n,4),sp*=.3;for(let i=0;i<n;i++){const a=PIM_EFFECTS.next()*6.283,v=sp*(.35+PIM_EFFECTS.next()*.65);this.p.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-50,life:.6+PIM_EFFECTS.next()*.5,age:0,c,r:1.8+PIM_EFFECTS.next()*2.4});}},
   text(x,y,s,c=C.green,z=17){if(c===C.green)SFX.play('good');else if(c===C.red)SFX.play('bad');this.p.push({x,y,vx:0,vy:reduceMQ.matches?0:-36,life:1.15,age:0,c,s,z});},
   step(dt){for(let i=this.p.length-1;i>=0;i--){const q=this.p[i];q.age+=dt;if(q.age>=q.life){this.p.splice(i,1);continue;}q.x+=q.vx*dt;q.y+=q.vy*dt;const a=1-q.age/q.life;
     if(q.s){tx(q.s,q.x,q.y,{z:q.z,wt:800,c:q.c,a});}else{q.vy+=260*dt;q.vx*=.985;g.save();g.globalAlpha=a;glowOn(q.c,8);g.fillStyle=q.c;g.beginPath();g.arc(q.x,q.y,q.r*a+.4,0,7);g.fill();glowOff();g.restore();}}},
@@ -3219,9 +3266,10 @@ function sortGame(o){return api=>{
     tgt.got.push(c);i++;if(i>=cards.length){over=true;chalLater(api,()=>{const r=o.done?o.done(miss,cards.length,best):null;const st=r?r.stars:(miss===0?3:miss<=Math.max(1,Math.round(cards.length*.2))?2:1);
       api.win(st,r&&r.title||(miss===0?'Flawless sorting':`${cards.length-miss} of ${cards.length} right`),r&&r.msg||(miss?`You missed ${miss}. Replay the lesson if a box felt fuzzy, then try again for three stars.`:'Every card in the right box.'));},900);}
     else{deal(now,right?'Right. ':`Not quite. ${esc(c.why||'')} Correct box: ${esc(tgt.label)}. `);if(!right&&deadline)deadline+=2;}if(over)actions.forEach(b=>b.disabled=true);}
-  let started=false;
+  deal(api.now());
   return{
-    draw(now,dt){if(!started){started=true;deal(now);}
+    update(now,dt){if(!over&&i<cards.length&&o.timer&&deadline&&(!api.timed||api.timed())&&now>deadline){deadline=0;place((bins.findIndex(b=>b.id!==cards[i].b)+n)%n,now);}},
+    draw(now,dt){
       if(api.metrics)api.metrics([['Card',`${Math.min(i+1,cards.length)} of ${cards.length}`],['Deadline',o.timer&&deadline&&(!api.timed||api.timed())?Math.max(0,deadline-now).toFixed(1)+' seconds':'No deadline'],['Mistakes',miss]]);
       if(o.side)o.side(state,now);
       bins.forEach((b,k)=>{const hot=hover===k;plate(b.x+b.w/2,b.y+b.h/2,b.w,b.h,{c:hot?b.c:hexA(b.c,.6),fill:hot?hexA(b.c,.12):C.panel,glow:hot?16:0,r:14});
@@ -3233,7 +3281,7 @@ function sortGame(o){return api=>{
         const sh=now-shake<.35?Math.sin((now-shake)*60)*6*(1-(now-shake)/.35):0,lines=wrapLines(c.t,270,16,650),h=Math.max(70,lines.length*21+34);
         plate(cx+sh,cy,320,h,{c:drag?C.accent:C.edge,fill:C.panel2,glow:drag?20:0,r:14});
         textBlock(c.t,cx+sh,cy,270,{z:16,wt:650});
-        if(o.timer&&deadline&&(!api.timed||api.timed())){const left=clamp((deadline-now)/o.timer);meter(cx-150,cy+h/2+10,300,5,left,left>.35?C.accent:C.red);if(now>deadline){deadline=0;place((bins.findIndex(b=>b.id!==c.b)+n)%n,now);}}
+        if(o.timer&&deadline&&(!api.timed||api.timed())){const left=clamp((deadline-now)/o.timer);meter(cx-150,cy+h/2+10,300,5,left,left>.35?C.accent:C.red);}
         if(streak>1)pill(`streak ×${streak}`,W-80,34,{c:C.amber,z:12});
         tx(`${i+1} / ${cards.length}`,80,34,{z:13,wt:700,c:C.dim,f:MONO});}
     },
@@ -3305,9 +3353,9 @@ function quizGame(o){const make=api=>{
     api.win(st,`${right} of ${n} right`,miss?`Worth a rewatch: ${again.join('; ')}.`:'Every answer right. You have this section down.');}
   const choices=[0,1,2,3].map(k=>api.button('Answer '+(k+1),()=>pick(k)));
   api.button('Next question →',next,{primary:true});
-  let started=false;
+  ask();
   return{
-    draw(now){if(!started){started=true;ask();}const q=qs[i];
+    draw(now){const q=qs[i];
       tx(`${o.title||'Section quiz'} · ${i+1} / ${n}`,W/2,44,{z:13,wt:700,c:C.dim});
       textBlock(q.q,W/2,118,860,{z:21,wt:700,lh:29});
       q.opts.forEach((p,k)=>{const x=ox(k),y=oy(k),me=k===picked,after=picked>=0;
@@ -3328,16 +3376,15 @@ function quiz(group,def){QUIZ[group]={...def,group,id:'quiz-'+group.toLowerCase(
 // o.controls(api,p): builds controls that write into p. o.build(p,api): returns a sim with
 // step(dt,now), draw(now,running), hud():[[label,value,colour]], score():{stars,title,msg}. o.dur: seconds.
 function simGame(o){return api=>{
-  const p=Object.assign({},o.defaults);let sim=o.build(p,api),running=false,t0=0,last=0,speed=o.speed||1,done=false;
+  const p=Object.assign({},o.defaults);let sim=o.build(p,api),running=false,clock=null,speed=o.speed||1,done=false;
   const rebuild=()=>{if(!running){sim=o.build(p,api);}};
   o.controls(api,p,rebuild);
-  const run=api.button(o.runLabel||'Run it',()=>{if(running)return;sim=o.build(p,api);running=true;done=false;api.lock(true);t0=api.now();last=0;api.status(o.runStatus||'Running…');},{primary:true});
+  const run=api.button(o.runLabel||'Run it',()=>{if(running)return;sim=o.build(p,api);clock=pimClock((dt,t)=>sim.step(dt,t),o.dur);running=true;done=false;api.lock(true);api.status(o.runStatus||'Running…');},{primary:true});
   api.status(o.intro||'Set it up, then press <b>Run it</b>.');
-  return{draw(now,dt){if(running){const el=(now-t0)*speed;const step=Math.min(el-last,.1);if(step>0){sim.step(step,el);last+=step;}
-        if(el>=o.dur&&!done){done=true;running=false;api.lock(false);const r=sim.score();api.win(r.stars,r.title,r.msg);}}
-      sim.draw(now,running);
+  return{update(now,dt){if(running){clock.advance(dt*speed);if(clock.time>=o.dur&&!done){done=true;running=false;api.lock(false);const r=sim.score();api.win(r.stars,r.title,r.msg);}}},
+    draw(now,dt){sim.draw(now,running);
       const hud=sim.hud(running);if(api.metrics)api.metrics(hud);hud.forEach(([l,v,c],k)=>{const x=W-20,y=26+k*22;tx(l,x-92,y,{z:11.5,c:C.dim,al:'right'});tx(v,x,y,{z:13,wt:800,c:c||C.text,al:'right',f:MONO});});
-      if(running){const f=clamp(((now-t0)*speed)/o.dur);meter(20,H-14,W-40,4,f,C.accent);}},
+      if(running){const f=clamp(clock.time/o.dur);meter(20,H-14,W-40,4,f,C.accent);}},
     cancel(){if(sim.cancel)sim.cancel();},
     down(x,y,now){sim.down&&sim.down(x,y,now,running);},move(x,y){sim.move&&sim.move(x,y);},up(x,y,now){sim.up&&sim.up(x,y,now);},
     key(k,now){sim.key&&sim.key(k,now,running);}};
@@ -3374,7 +3421,7 @@ const LAB_POST={},LAB_HINT={},LAB_UNDO={},LAB_FAILS={};
 const LAB_DEFS={};   // every lab's scenario, by id (the tests build each solution from it)
 // the cheapest 3-star cost per lab, kept in the browser
 const labStore=(k,def)=>PIM_STORE.json(k,def),labPut=(k,v)=>PIM_STORE.put(k,v);
-const LAB_BEST={},LAB_BEST_DESIGNS={};
+const LAB_BEST={},LAB_BEST_DESIGNS={},LAB_RUNS={};
 function labSaveBest(){labPut('pim-lab-best',LAB_BEST);}
 // chaos mode: each run's incidents strike at random times and hit a random component.
 // Three 3-star runs in a row earn the lab's chaos-proof badge.
@@ -3382,7 +3429,7 @@ const LAB_CHAOS={},LAB_CHAOS_ON={},LAB_STREAK={},LAB_STREAK_KEYS={},LAB_STREAK_S
 // Layout is cosmetic; certification follows the components, wires and options.
 function labDesignKey(G){const ids=G.nodes.map(n=>n.id);return JSON.stringify([G.nodes.map(n=>n.kind),G.edges.map(e=>[ids.indexOf(e.a),ids.indexOf(e.b)]).sort((a,b)=>a[0]-b[0]||a[1]-b[1]),Object.entries(G.opts||{}).sort(([a],[b])=>a.localeCompare(b))]);}
 function labCertificate(id,b){return pimRecord(b)&&labDecode(id,b.design)&&Array.isArray(b.seeds)&&b.seeds.length===3&&new Set(b.seeds).size===3&&b.seeds.every(s=>Number.isSafeInteger(s)&&s>=0&&s<2147483647);}
-function labRng(seed){return()=>{seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const labRng=pimRng;
 // an incident's time: the scripted one, or in chaos mode a random time between lo and hi (fixed for the run)
 function labAt(S,key,def,lo,hi){if(!S.chaos)return def;const m=S._at||(S._at={});if(!(key in m))m[key]=lo+(hi-lo)*S.rng();return m[key];}
 // an incident's victim: the busiest one, or in chaos mode a random one
@@ -3417,7 +3464,8 @@ let LAB_RESTORED=false;
 function labRestore(){if(LAB_RESTORED)return;LAB_RESTORED=true;
   Object.assign(LAB_BEST,pimFilter(labStore('pim-lab-best',{}),(k,v)=>Object.hasOwn(LAB_DEFS,k)&&Number.isSafeInteger(v)&&v>0&&v<=10000));
   Object.assign(LAB_CHAOS,pimFilter(labStore('pim-lab-chaos',{}),(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true));
-  labMergeDesigns(labStore('pim-lab-designs',null));}
+  labMergeDesigns(labStore('pim-lab-designs',null));
+  const runs=labStore('pim-lab-runs',null);if(pimRecord(runs)&&runs.version===1)Object.entries(pimRecord(runs.runs)?runs.runs:{}).forEach(([id,r])=>{if(pimRecord(r)&&labDecode(id,r.design)&&Number.isSafeInteger(r.seed)&&r.seed>=0&&r.seed<2147483647&&typeof r.chaos==='boolean')LAB_RUNS[id]={design:r.design,seed:r.seed,chaos:r.chaos};});}
 function labDesignCost(id,G){return G.nodes.reduce((sum,n)=>sum+(n.fixed?0:LAB_DEFS[id].kinds[n.kind].cost),0);}
 function labMergeDesigns(data){if(!pimRecord(data)||data.version!==1)return 0;let added=0;
   if(pimRecord(data.drafts))Object.entries(data.drafts).forEach(([id,code])=>{const G=labDecode(id,code);if(G&&!LAB_SAVE[id]){LAB_SAVE[id]=G;added++;}});
@@ -3440,7 +3488,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   // undo history: a snapshot of the graph before each change
   const undoStack=LAB_UNDO[id]||(LAB_UNDO[id]=[]),snapshot=()=>JSON.stringify({nodes:G.nodes,edges:G.edges,seq:G.seq,opts:G.opts});
   const remember=s=>{undoStack.push(s||snapshot());if(undoStack.length>60)undoStack.shift();};
-  function applyDesign(u){G.nodes=u.nodes;G.edges=u.edges;G.seq=u.seq;G.opts=u.opts||{};syncOptions();sel=null;save();}
+  function applyDesign(u){G.nodes=u.nodes;G.edges=u.edges;G.seq=u.seq;G.opts=u.opts||{};syncOptions();sel=null;save();if(api.summary)api.summary(describe());}
   function undo(){if(running)return;const s=undoStack.pop();if(!s){say('Nothing to undo.');return;}applyDesign(JSON.parse(s));say('Undone.');}
   const LET='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const node=nid=>G.nodes.find(n=>n.id===nid);
@@ -3496,9 +3544,9 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     return`<p>Budget <b>$${cost()} of $${o.budget}</b>.${best}</p><h3>Your components and connections</h3><ul>${lines}</ul>${weak?'<p>'+weak+'</p>':''}${opts?'<p>Options: '+esc(opts)+'.</p>':''}${probs.length?'<p><b>Next step:</b> '+esc(probs[0])+'</p>':''}<details><summary>Keyboard shortcuts and component costs</summary><p>Add with ${pal}.</p><p>Press two component letters to connect or disconnect them. Delete removes a selection. Enter runs the test; Ctrl/Command+Z on the diagram undoes an edit.</p></details>`;}
   function say(msg){const s=sel&&sel.n?`Selected ${letterOf(sel.n)}: ${nameOf(sel.n)}.`:'';if(api.summary)api.summary(describe());api.status(esc(msg||s||'Design ready. Add components, connect them, then run the load test.'));refreshEditor();}
   // ---------- run ----------
-  let running=false,S=null,t0=0,last=0,done=false,res=null;const fl=[];
-  // simT: the run's clock (slowed for a moment when something crashes); vnow: the clock packets move on
-  let simT=0,vnow=0,lastNow=null,slowUntil=-1,shakeUntil=-1,badSfx=-9,celebrate=null;
+  let running=false,S=null,simulation=null,done=false,res=null;const fl=[];
+  // simT advances the model; vnow slows only the presentation after a crash.
+  let simT=0,vnow=0,slowUntil=-1,shakeUntil=-1,badSfx=-9,celebrate=null,seenDead=new Set(),wasBad=false;
   const optionControls=(o.toggles||[]).map(tg=>({key:tg.key,el:api.toggle(tg.label,G.opts[tg.key],v=>{if(running)return;remember();G.opts[tg.key]=v;save();say(tg.label+': '+(v?'on':'off')+'.');})}));
   function syncOptions(){optionControls.forEach(({key,el})=>{if(el&&el.setAttribute)el.setAttribute('aria-pressed',String(!!G.opts[key]));});}
   const run=api.button(o.runLabel||'Run load test',()=>start(),{primary:true,toolbar:true});
@@ -3507,6 +3555,11 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   const bestBtn=api.button('Restore best design',()=>{if(running||!LAB_BEST_DESIGNS[id])return;const best=labDecode(id,LAB_BEST_DESIGNS[id].design);if(best){remember();applyDesign(best);say('Best saved design restored.');}});
   bestBtn.hidden=!LAB_BEST_DESIGNS[id];
   const shareBtn=api.button('Copy share link',()=>share());
+  const replayBtn=api.button('Replay last run',()=>{const previous=LAB_RUNS[id];if(running||!previous)return;const board=labDecode(id,previous.design);if(!board)return;remember();applyDesign(board);start(previous.seed,previous.chaos);});
+  replayBtn.hidden=!LAB_RUNS[id];
+  let modelNote=null;if(api.surface){const field=api.surface('Model assumptions and replay'),p=document.createElement('p');p.className='lab-guide';p.textContent=o.assumptions||'Educational capacity model: offered rates are split across connected components; each physical node has one shared capacity. Costs are model units expressed as $/h, not provider quotes. Latencies, where shown, are scenario buckets rather than measured network timings.';field.appendChild(p);modelNote=document.createElement('p');modelNote.className='lab-guide';field.appendChild(modelNote);}
+  function showRun(){if(modelNote)modelNote.textContent=LAB_RUNS[id]?`Last run seed: ${LAB_RUNS[id].seed}. ${LAB_RUNS[id].chaos?'Random incidents':'Scripted incidents'}. Replay last run restores that board, its options and seed; the test uses a fixed 1/60-second model step.`:'Run the load test to save its board and seed for replay. The model advances in fixed 1/60-second steps.';}
+  showRun();
   async function share(){if(running)return;const code=labEncode(id,G),here=String((typeof location!=='undefined'&&location.href)||''),base=/^https?:\/\//.test(here)?here.split(/[?#]/)[0]:'https://sumnoon.github.io/Packets-in-Motion/',url=`${base}?lab=${id}&d=${code}#${id}`;
     if(api.shareLink)api.shareLink(url);
     let copied=false;try{if(typeof navigator!=='undefined'&&navigator.clipboard){await navigator.clipboard.writeText(url);copied=true;}}catch(e){}
@@ -3519,12 +3572,9 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
   api.toggle('Chaos mode: incidents strike at random times and places',chaosOn,v=>{chaosOn=v;LAB_CHAOS_ON[id]=v;LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];say(v?'Chaos mode on: each run, the incidents strike at a random time and hit a random component. Survive three runs in a row for the chaos-proof badge.':'Chaos mode off.');});
   // what the run did to each component and wire, for the weak spots afterwards
   // a crash shakes the board, slows time for a moment and sounds; failing traffic sounds once
-  function react(out,now){const seen=S._dead||(S._dead=new Set());let crash=false;(out.dead||[]).forEach(d=>{if(!seen.has(d)){seen.add(d);crash=true;}});
+  function react(out,now){let crash=false;(out.dead||[]).forEach(d=>{if(!seenDead.has(d)){seenDead.add(d);crash=true;}});
     if(crash){SFX.play('bad');if(!reduceMQ.matches){slowUntil=now+.5;shakeUntil=now+.35;}}
-    const nb=out.badEdges?out.badEdges.size:0;if(nb&&!S._bad&&now-badSfx>1.5){SFX.play('beat');badSfx=now;}S._bad=nb>0;}
-  function track(out,t,dt){const T=S.track||(S.track={peak:{},bad:{}});
-    for(const nid in out.load||{}){const u=out.load[nid];if(u>(T.peak[nid]?T.peak[nid].u:0))T.peak[nid]={u,t};}
-    (out.badEdges||[]).forEach(k=>{const b=T.bad[k]||(T.bad[k]={d:0,t});b.d+=dt;});}
+    const nb=out.badEdges?out.badEdges.size:0;if(nb&&!wasBad&&now-badSfx>1.5){SFX.play('beat');badSfx=now;}wasBad=nb>0;}
   function weakSpots(){const T=S.track||{peak:{},bad:{}},gen=[];
     G.nodes.forEach(n=>{const p=T.peak[n.id];if(!p||p.u<=1.02)return;const ln_=o.loadNote&&o.loadNote(n,p.u,G);if(ln_===false)return;gen.push({id:n.id,note:`${ln_||Math.round(p.u*100)+'% of capacity'} ${p.t<.2?'from the start':'at '+p.t.toFixed(1)+' s'}`,w:p.u});});
     gen.sort((a,b)=>b.w-a.w);gen.splice(2);
@@ -3535,14 +3585,14 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     if(prev==null||c<prev){LAB_BEST[id]=c;labSaveBest();if(prev!=null)m+=` New best: $${c}/h, down from $${prev}/h.`;}
     if(o.lean!=null)m+=c<=o.lean?` Lean medal: no 3-star design we know of costs less than $${o.lean}/h.`:` A 3-star design exists for $${o.lean}/h. Can you find it?`;
     return m;}
-  function chaosNote(stars){if(!chaosOn)return stars===3&&!LAB_CHAOS[id]?' Ready for more? Turn on chaos mode: the incidents strike at random.':'';
+  function chaosNote(stars){if(!S.chaos)return stars===3&&!LAB_CHAOS[id]?' Ready for more? Turn on chaos mode: the incidents strike at random.':'';
     const key=labDesignKey(G);if(LAB_STREAK_KEYS[id]!==key){LAB_STREAK_KEYS[id]=key;LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];}
     if(stars<3){LAB_STREAK[id]=0;LAB_STREAK_SEEDS[id]=[];return' Chaos streak reset.';}
     const seeds=LAB_STREAK_SEEDS[id]||(LAB_STREAK_SEEDS[id]=[]);if(!seeds.includes(S.seed))seeds.push(S.seed);if(seeds.length>3)seeds.shift();
     const n=LAB_STREAK[id]=seeds.length;
     if(n>=3){LAB_CERTIFIED[id]={design:labEncode(id,G),seeds:seeds.slice(-3)};LAB_CHAOS[id]=true;labPut('pim-lab-chaos',LAB_CHAOS);labSaveDesigns();return' Chaos-proof badge earned: this design survived three distinct random seeds in a row.';}
     return` Chaos streak: ${n} of 3 for this design.`;}
-  function finish(now){const c=cost();res=o.score(S,G,c);let msg=res.msg;
+  function finish(now){const c=cost();res=simulation.result(c);let msg=res.msg+` Run seed: ${S.seed}.`;
     post=res.stars<3?weakSpots():[];LAB_POST[id]=post;
     if(post.length)msg+=' Press Try again to see where it broke on the board.';
     if(res.stars<3){LAB_FAILS[id]=(LAB_FAILS[id]||0)+1;if(LAB_FAILS[id]>=2&&hintLvl<3)msg+=' Stuck? Press Hint for a nudge.';}
@@ -3569,7 +3619,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     hintLvl=Math.min(3,hintLvl+1);LAB_HINT[id]=hintLvl;ghostOn=true;
     const text=hintLvl<3&&h[hintLvl-1]?h[hintLvl-1]:outlineText(full);
     return{text:`Hint ${hintLvl} of 3: ${text}`,label:hintLabel()};}
-  function start(){if(running)return;cancelDrag();sel=null;post=null;LAB_POST[id]=null;S=o.init(G);S.chaos=chaosOn;S.seed=Math.floor(Math.random()*2147483647);S.rng=labRng(S.seed);celebrate=null;running=true;done=false;res=null;api.lock(true);refreshEditor();lastPhase='';t0=api.now();simT=0;last=0;fl.length=0;api.status('Load test running… watch where traffic piles up.');}
+  function start(seed=Math.floor(PIM_RANDOM.next()*2147483647),chaos=chaosOn){if(running)return;cancelDrag();sel=null;post=null;LAB_POST[id]=null;simulation=pimLabRun(o,G,{seed,chaos});S=simulation.state;LAB_RUNS[id]={design:labEncode(id,G),seed:S.seed,chaos};labPut('pim-lab-runs',{version:1,runs:LAB_RUNS});replayBtn.hidden=false;showRun();celebrate=null;running=true;done=false;res=null;api.lock(true);refreshEditor();lastPhase='';seenDead=new Set();wasBad=false;simT=0;fl.length=0;api.status(`Load test running. Seed ${S.seed}.`);}
   // ---------- pointer ----------
   let sel=null,drag=null,hover=null,pal=-1,kb=false;   // kb: shortcut keycaps show once the player uses the keyboard
   function cancelDrag(){if(drag&&drag.type==='move'){drag.n.x=drag.ox;drag.n.y=drag.oy;}drag=null;hover=null;pal=-1;}
@@ -3602,15 +3652,15 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
     (lines.length?lines:['No connections yet.']).forEach(text=>{const li=document.createElement('li');li.textContent=text;e.wires.appendChild(li);});}
   if(LAB_SHARED[id]){LAB_SHARED[id]=false;say(`Someone shared this design with you: $${cost()}/h. Press Enter or Run to test it, then try to beat it.`);}else say();
   return{hint,hintLabel,
-    draw(now,dt){
-      // run loop
-      const fdt=lastNow==null?0:clamp(now-lastNow,0,.1),slowF=running&&now<slowUntil?.45:1;lastNow=now;vnow+=fdt*slowF;
-      if(running){simT+=fdt*slowF;const el=simT,step=el-last;if(step>0){const out=o.step(S,G,step,el);S.view=out;last=el;spawn(out,vnow,step);track(out,el,step);react(out,now);}
-        if(el>=o.dur&&!done){done=true;running=false;api.lock(false);refreshEditor();finish(now);}}
+    update(now,dt){const slowF=running&&now<slowUntil?.45:1;vnow+=dt*slowF;
+      if(running){simulation.advance(dt);simT=simulation.time;const out=S.view;if(out){spawn(out,vnow,dt);react(out,now);}for(const event of simulation.events()){const n=node(event.id);if(n){FX.burst(n.x,n.y,event.color,24,180);labMark(n,event.text,event.color);}}
+        if(simT>=o.dur&&!done){done=true;running=false;api.lock(false);refreshEditor();finish(now);}}
       if(celebrate&&now-celebrate.at>=.8){const m=celebrate.msg;celebrate=null;api.win(res.stars,res.title,m);chalLater(api,()=>say(),50);}
-      const shake=now<shakeUntil?(shakeUntil-now)/.35*5:0;g.save();if(shake)g.translate((Math.random()-.5)*2*shake,(Math.random()-.5)*2*shake);
+    },
+    draw(now,dt){
+      const shake=now<shakeUntil?(shakeUntil-now)/.35*5:0;g.save();if(shake)g.translate((PIM_EFFECTS.next()-.5)*2*shake,(PIM_EFFECTS.next()-.5)*2*shake);
       const V_=S&&S.view;
-      if(S&&V_){if(api.metrics)api.metrics([['Phase',V_.phase||'Load test'],['Elapsed',simT.toFixed(1)+' of '+o.dur+' seconds'],...o.hud(S,G),...G.nodes.map(n=>[`${letterOf(n)}: ${nameOf(n)}`,V_.dead&&V_.dead.has(n.id)?'Unavailable':V_.load&&V_.load[n.id]!=null?Math.round(V_.load[n.id]*100)+'% of capacity':'Available'])]);if(running&&V_.phase&&lastPhase!==V_.phase){lastPhase=V_.phase;api.status(esc(V_.phase)+'.');}}
+      if(S&&V_){if(api.metrics)api.metrics([['Phase',V_.phase||'Load test'],['Elapsed',simT.toFixed(1)+' of '+o.dur+' seconds'],...o.hud(S,G),...(res?.metrics?.requirements||[]).map(r=>[r.name,`${r.passed?'Met':'Missed'}: ${r.observed.toFixed(3)}; target ${r.target}`]),...G.nodes.map(n=>[`${letterOf(n)}: ${nameOf(n)}`,V_.dead&&V_.dead.has(n.id)?'Unavailable':V_.load&&V_.load[n.id]!=null?Math.round(V_.load[n.id]*100)+'% of capacity':'Available'])]);if(running&&V_.phase&&lastPhase!==V_.phase){lastPhase=V_.phase;api.status(esc(V_.phase)+'.');}}
       // board
       g.save();rr(LAB_BOARD.x-6,LAB_BOARD.y-6,LAB_BOARD.w+12,LAB_BOARD.h+12,14);g.fillStyle=hexA(C.panel,.35);g.fill();g.strokeStyle=hexA(C.line,.8);g.setLineDash([3,6]);g.lineWidth=1;g.stroke();g.restore();
       for(let x=LAB_BOARD.x+10;x<LAB_BOARD.x+LAB_BOARD.w;x+=40)for(let y=LAB_BOARD.y+10;y<LAB_BOARD.y+LAB_BOARD.h;y+=40){g.fillStyle='rgba(255,255,255,.035)';g.fillRect(x-1,y-1,2,2);}
@@ -3683,7 +3733,7 @@ function labGame(o){LAB_DEFS[o.id]=o;return api=>{
         sel=sel&&sel.n===n?null:{n};say();}}};
   // packets along the wires the user drew
   function spawn(out,now,dt){(out.flows||[]).forEach(f=>{if(!(f.rate>0))return;const e={a:f.a,b:f.b};if(!node(f.a)||!node(f.b))return;const pps=Math.min(10,f.rate/(o.scale||100));
-      if(Math.random()<pps*dt)fl.push({t0:now,d:.55,pts:seg(e),c:f.bad?C.red:f.c||C.blue,r:3.6,drop:f.bad?.85:0});});}
+      if(PIM_EFFECTS.next()<pps*dt)fl.push({t0:now,d:.55,pts:seg(e),c:f.bad?C.red:f.c||C.blue,r:3.6,drop:f.bad?.85:0});});}
 };}
 // a short label over a component, or under it when the component sits against the top of the board
 function labMark(n,text,c,z){FX.text(n.x,n.y<LAB_BOARD.y+90?n.y+54:n.y-50,text,c,z||15);}
@@ -3745,8 +3795,8 @@ chal('scaling',{title:'Survive launch day',goal:'Build it yourself: traffic clim
     init(){return{rate:0,total:0,drop:0,dead:new Set(),killed:null,lastIn:{},why:{dead:0,full:0,nowhere:0}};},
     step(S,G,dt,t){const tc=labAt(S,'crash',11,7,13.5),rate=traffic(t),phase=t<6?'Doors open':t<tc?'Traffic climbing':t<tc+4?'A server dies':'Peak traffic';
       const servers=G.nodes.filter(n=>CAP[n.kind]);
-      if(t>=tc&&!S.killed&&servers.length){const b=labPick(S,'victim',servers,servers.reduce((a,c)=>((S.lastIn[c.id]||0)>(S.lastIn[a.id]||0)?c:a)));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}
-      if(t>=tc+4&&S.dead.size){const b=servers.find(n=>n.id===S.killed);S.dead.clear();if(b)labMark(b,'rebooted',C.green,14);}
+      if(t>=tc&&!S.killed&&servers.length){const b=labPick(S,'victim',servers,servers.reduce((a,c)=>((S.lastIn[c.id]||0)>(S.lastIn[a.id]||0)?c:a)));S.killed=b.id;S.dead.add(b.id);labSignal(S,b,'crashed',C.red);}
+      if(t>=tc+4&&S.dead.size){const b=servers.find(n=>n.id===S.killed);S.dead.clear();if(b)labSignal(S,b,'rebooted',C.green);}
       const flows=[],load={},inn={},F=(a,b,r,isBad)=>{if(r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad});};
       // users split evenly over what they are wired to; a load balancer skips dead servers and weights by size
       const send=(n,r)=>{if(CAP[n.kind]){inn[n.id]=(inn[n.id]||0)+r;return;}
@@ -3791,7 +3841,7 @@ chal('autoscaling',{title:'Tune the autoscaler',goal:'Traffic rises to a peak, w
       api.slider('Cooldown',0,6,1,p.cd,v=>`${v} s`,v=>{p.cd=v;re();});api.slider('Minimum servers',1,4,1,p.min,v=>`${v}`,v=>{p.min=v;re();});},
     build(p,api){const m=autoSim({...p});let T=0,acc=0;const fl=[],hist=[];
       return{step(dt,t){T=t;m.step(dt,t);hist.push([t,m.dem(t),m.ready*100]);acc+=dt*m.dem(t)/60;const now=api.now();
-          while(acc>=1){acc--;const over=m.cpu>1&&Math.random()<1-1/m.cpu,k=Math.floor(Math.random()*Math.max(1,m.ready));fl.push({t0:now,d:.7,pts:[[60,380],[300,380],[520+(k%4)*110,k<4?330:440]],c:over?C.red:C.blue,r:3.5,drop:over?.7:0});}},
+          while(acc>=1){acc--;const over=m.cpu>1&&PIM_RANDOM.next()<1-1/m.cpu,k=Math.floor(PIM_RANDOM.next()*Math.max(1,m.ready));fl.push({t0:now,d:.7,pts:[[60,380],[300,380],[520+(k%4)*110,k<4?330:440]],c:over?C.red:C.blue,r:3.5,drop:over?.7:0});}},
         draw(now,running){flyers(now,fl);box(300,380,{label:'Load balancer',w:130,h:48});
           for(let k=0;k<Math.min(8,m.ready+m.booting);k++){const bootK=k>=m.ready;server(520+(k%4)*110,k<4?330:440,{label:`S${k+1}`,sub:bootK?'booting':'',w:90,h:46,st:bootK?'off':m.cpu>1?'fail':m.cpu>.7?'hot':'ok',down:''});}
           // mini chart of demand vs capacity
@@ -3829,7 +3879,7 @@ chal('load-balancers',{timed:true,title:'Be the load balancer',goal:'For 30 seco
   hint:'Big requests (4) to the emptiest server. C drains slowly, so only give it small jobs. This is least connections, done by hand.',
   make:api=>{const S=[{n:'A',y:150,rate:2.3},{n:'B',y:280,rate:2.3},{n:'C',y:410,rate:1.2}].map(s=>({...s,load:0,flash:0}));const CAP=10,DUR=30,LB=[430,280];
     const timed=()=>!api.timed||api.timed();
-    let t0=null,next=0,queue=[],strikes=0,fl=[],done=false,served=0,routed=0;const gen=()=>{const r=Math.random();return r<.4?1:r<.7?2:r<.9?3:4;};for(let i=0;i<4;i++)queue.push({sz:gen(),born:0});
+    let t0=api.now(),next=0,queue=[],strikes=0,fl=[],done=false,served=0,routed=0;const gen=()=>{const r=PIM_RANDOM.next();return r<.4?1:r<.7?2:r<.9?3:4;};for(let i=0;i<4;i++)queue.push({sz:gen(),born:t0});
     api.status('Click a server (or press <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd>) to send it the glowing request.');
     function readout(now,force=false){if(api.metrics)api.metrics([['Next request',`size ${queue[0].sz} load units`],...S.map(s=>[`Server ${s.n}`,`${s.load.toFixed(1)} of ${CAP}; drains ${s.rate}/s`]),['Requests served',served],['Strikes',`${strikes} of 6`],['Deadline',timed()?`${Math.max(0,3.2-(now-queue[0].born)).toFixed(1)} seconds for this request`:'No deadline; service advances on each choice'],['Progress',timed()?`${Math.max(0,Math.ceil(DUR-(now-(t0||0))))} seconds left`:`${routed} of 30 routed`]],force);}
     function received(s,q,now){if(s.load+q.sz>CAP){strikes++;s.flash=now;FX.burst(760,s.y,C.red,22);api.status(`Server ${s.n} overflowed. ${strikes} strikes. Next request: size ${queue[0].sz}.`);}else{s.load+=q.sz;served++;FX.burst(700,s.y,C.green,8,90);api.status(`Request size ${q.sz} sent to Server ${s.n}. Next request: size ${queue[0].sz}.`);}readout(now,true);}
@@ -3837,13 +3887,14 @@ chal('load-balancers',{timed:true,title:'Be the load balancer',goal:'For 30 seco
     function send(k,now){if(done||!queue.length||t0===null||!timed()&&routed>=30)return;routed++;const q=queue.shift();queue.push({sz:gen(),born:now});queue[0].born=now;const s=S[k];
       if(!timed()){S.forEach(s=>s.load=Math.max(0,s.load-s.rate));received(s,q,now);return;}
       readout(now,true);fl.push({t0:now,d:.5,pts:[LB,[760-60,s.y]],c:C.blue,r:4+q.sz*1.6,label:`${q.sz}`,onArrive:()=>received(s,q,now),arrive:now+.5});}
-    return{draw(now,dt){if(t0===null){t0=now;queue[0].born=now;}const el=now-t0;
+    return{update(now,dt){if(t0===null){t0=now;queue[0].born=now;}const el=now-t0;
         if(!done){if(timed())S.forEach(s=>s.load=Math.max(0,s.load-s.rate*dt));
           fl.forEach(f=>{if(!f.hit&&now>=f.arrive){f.hit=true;f.onArrive();}});
           if(timed()&&now-queue[0].born>3.2){strikes++;FX.text(LB[0],LB[1]-70,'Too slow: timed out',C.red,15);queue.shift();queue.push({sz:gen(),born:now});queue[0].born=now;api.status(`Request timed out. ${strikes} strikes. Next request: size ${queue[0].sz}.`);}
           if((timed()?el>=DUR:routed>=30&&fl.every(f=>f.hit))||strikes>=6){done=true;const st=strikes>=6?0:strikes===0?3:strikes<=2?2:1;
             api.win(st,st===3?'Perfectly balanced':st?`${strikes} overflow${strikes>1?'s':''}`:'The servers melted',st===3?`${served} requests, zero overflows. You did least connections by eye: watch the load, feed the emptiest server.`:`Watch each server's fill level and send big requests to the emptiest one. C drains at half speed.`);}}
-        readout(now);flyers(now,fl);fl=fl.filter(f=>!f.hit);
+        readout(now);fl=fl.filter(f=>!f.hit);},
+      draw(now,dt){const el=now-t0;readout(now);flyers(now,fl.slice());
         for(let i=0;i<3;i++)user(90,170+i*110,{c:C.blue,r:13});box(LB[0],LB[1],{label:'You',sub:'the balancer',w:120,h:58,glow:true});
         S.forEach((s,k)=>{const f=s.load/CAP,hot=now-s.flash<.4;server(760,s.y,{label:`Server ${s.n}`,sub:s.rate<2?'slow · old':'fast',w:120,h:58,st:hot?'fail':f>.75?'hot':'ok',down:''});
           meter(830,s.y-6,120,12,f,f>.75?C.red:f>.5?C.amber:C.green);tx(`${s.load.toFixed(1)} / ${CAP}`,890,s.y+20,{z:11.5,c:C.dim,f:MONO});tx(`${k+1}`,690,s.y-40,{z:12,wt:800,c:C.dim,f:MONO});});
@@ -3895,10 +3946,10 @@ chal('sessions',{title:'Keep everyone logged in',goal:'Build it yourself: 30 use
       users:Array.from({length:N},()=>({seen:false,mem:new Set(),last:null,pin:null}))};},
     step(S,G,dt,t){const ts=labAt(S,'server',5,3,7),tm=labAt(S,'store',9,ts+2,11),phase=t<ts?'Users clicking around':t<tm?'A server dies':'The store\'s machine dies';
       const U=G.of('users')[0],lb=G.out(U,['lb'])[0],direct=G.out(U,['app']),store=G.of('store')[0];
-      if(t>=ts&&!S.killed){S.killed=true;const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.hits[c.id]||0)>(S.hits[a.id]||0)?c:a)));S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
-      if(t>=tm&&!S.storeHit&&store){S.storeHit=true;const rep=G.out(store,['replica'])[0];FX.burst(store.x,store.y,C.red,30,220);
-        if(rep)labMark(rep,'replica took over',C.green,14);
-        else{const lost=S.users.filter(u=>u.seen&&u.inStore).length;S.relog+=lost;S.why.store+=lost;labMark(store,'all sessions lost',C.red,15);}}
+      if(t>=ts&&!S.killed){S.killed=true;const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.hits[c.id]||0)>(S.hits[a.id]||0)?c:a)));S.dead.add(b.id);labSignal(S,b,'crashed',C.red);}}
+      if(t>=tm&&!S.storeHit&&store){S.storeHit=true;const rep=G.out(store,['replica'])[0];labSignal(S,store,'store machine failed',C.red);
+        if(rep)labSignal(S,rep,'replica took over',C.green);
+        else{const lost=S.users.filter(u=>u.seen&&u.inStore).length;S.relog+=lost;S.why.store+=lost;labSignal(S,store,'all sessions lost',C.red);}}
       const edges={},E=(a,b,isBad)=>{const key=a.id+'>'+b.id,e=edges[key]||(edges[key]={a:a.id,b:b.id,n:0,bad:false});e.n++;e.bad=e.bad||isBad;};
       const kick=why=>{S.relog++;S.why[why]++;};
       S.acc+=RATE*dt;
@@ -3969,8 +4020,8 @@ chal('cdn',{title:'Place the edge caches',goal:'You can afford two edge caches. 
       build(p,api){let acc=0;const fl=[];let el=0;
         function toggle(r){if(!r)return;if(E.has(r.id))E.delete(r.id);else if(E.size<2){E.add(r.id);FX.burst(r.x,r.y,C.amber,14);}else FX.text(r.x,r.y-40,'Budget: 2 edges',C.red,14);
           PICK.forEach(q=>{if(q.control)q.control.setAttribute('aria-pressed',String(E.has(q.id)));});api.status(`Edge caches: ${E.size?R.filter(q=>E.has(q.id)).map(q=>q.n).join(' and '):'none'} (${E.size} of 2). Average wait ${avg(E).toFixed(0)} ms.`);}
-        return{step(dt,t){el=t;acc+=dt*40;const now=api.now();while(acc>=1){acc--;let x=Math.random(),r=R[R.length-1];for(const q of R){if(x<q.pop){r=q;break;}x-=q.pop;}
-            const tgt=E.has(r.id)||r.origin?r:R[1],ms=lat(r,E);fl.push({t0:now,d:.25+ms/220,pts:[[r.x+(Math.random()-.5)*50,r.y+50],[tgt.x,tgt.y]],c:ms<40?C.green:ms<100?C.amber:C.red,r:3.5});}},
+        return{step(dt,t){el=t;acc+=dt*40;const now=api.now();while(acc>=1){acc--;let x=PIM_RANDOM.next(),r=R[R.length-1];for(const q of R){if(x<q.pop){r=q;break;}x-=q.pop;}
+            const tgt=E.has(r.id)||r.origin?r:R[1],ms=lat(r,E);fl.push({t0:now,d:.25+ms/220,pts:[[r.x+(PIM_RANDOM.next()-.5)*50,r.y+50],[tgt.x,tgt.y]],c:ms<40?C.green:ms<100?C.amber:C.red,r:3.5});}},
           draw(now){g.save();g.globalAlpha=.5;[[190,230,150,95],[340,400,70,80],[560,190,110,70],[790,250,190,100],[870,420,60,40]].forEach(([x,y,a,b])=>{g.beginPath();g.ellipse(x,y,a,b,0,0,7);g.fillStyle='#10182a';g.fill();});g.restore();
             flyers(now,fl);R.forEach(r=>{const on=E.has(r.id);for(let i=0;i<Math.round(r.pop*20);i++)dot(r.x-40+(i%7)*13,r.y+44+Math.floor(i/7)*12,C.blue,2.4,.7);
               if(r.origin)server(r.x,r.y,{label:'Origin',sub:'US-East',w:104,h:52,col:C.accent,st:'acc'});else box(r.x,r.y,{label:on?'Edge cache':r.n,sub:on?r.n:`${r.o} ms to origin`,c:on?C.amber:C.edge,w:118,h:50,glow:on});
@@ -4005,11 +4056,11 @@ chal('rate-limiting',{title:'Tune the token bucket',goal:'Let a real user throug
           return{stars:1,title:uo<.85?'Real users are being blocked':'The bot walked right in',msg:'Capacity sets the burst size. Refill sets the long-run rate. Tune one at a time.'};}};}})});
 
 /* ---------------- 7. SQL vs NoSQL: sort the workloads ---------------- */
-chal('sql-nosql',{title:'Pick the database',goal:'Sort each workload into the kind of database that fits it best.',
-  hint:'Money, bookings and reports that join tables → SQL. Huge volume, flexible shapes, lookups by one key → NoSQL.',
+chal('sql-nosql',{title:'Pick the database',goal:'Choose a typical starting point for each access pattern. Verify the actual engine’s transaction, consistency and scale guarantees before selecting it.',
+  hint:'Relational joins and integrity constraints often favour SQL; document/key access often favours document or key-value stores. Both families can transact and scale: these are starting points, not exclusive guarantees.',
   make:sortGame({bins:[{id:'sql',label:'SQL',sub:'tables · joins · transactions',c:C.blue},{id:'no',label:'NoSQL',sub:'documents · key-value · wide rows',c:C.green}],
-    cards:[{t:'Bank transfers between two accounts',b:'sql',why:'Money needs transactions: both sides change, or neither does.'},{t:'Product catalog where every item has different attributes',b:'no',why:'Documents let every product keep its own shape.'},
-      {t:'Monthly report joining orders, customers and products',b:'sql',why:'JOINs across related tables are what SQL is built for.'},{t:'Chat messages: millions per minute, read by conversation',b:'no',why:'Enormous write volume, always read by one key. That is NoSQL territory.'},
+    cards:[{t:'Bank transfers between two accounts',b:'sql',why:'A relational transactional engine is a typical fit for atomic debit/credit and integrity constraints. Some NoSQL engines also support transactions: verify their scope.'},{t:'Product catalog where every item has different attributes',b:'no',why:'Documents let every product keep its own shape; application validation still matters.'},
+      {t:'Monthly report joining orders, customers and products',b:'sql',why:'JOINs across related tables are what relational engines support well.'},{t:'Chat messages: millions per minute, read by conversation',b:'no',why:'Partitioned key access fits many wide-column/key-value stores. Distributed SQL can also scale out; compare the engine and workload.'},
       {t:'Shopping carts and login sessions by user id',b:'no',why:'A simple key → value lookup, at huge scale.'},{t:'Hotel booking: never double-book a room',b:'sql',why:'Constraints and transactions prevent double-booking.'},
       {t:'Readings from a million IoT sensors',b:'no',why:'A firehose of time-stamped writes suits wide-column or time-series stores.'},{t:'Employee records with a strict schema',b:'sql',why:'Fixed columns and relationships favour SQL.'}]})});
 
@@ -4017,7 +4068,7 @@ chal('sql-nosql',{title:'Pick the database',goal:'Sort each workload into the ki
 chal('indexing',{title:'Find the row',goal:'Walk down the index to one user id in as few page reads as possible. A full table scan would read up to 10,000 rows.',
   hint:'At each level, pick the range that contains the id. Four reads is perfect.',
   make:api=>{let target,lvl,lo,hi,reads,path,done,flash,pageRows;
-    function reset(){target=1+Math.floor(Math.random()*9999);lvl=0;lo=1;hi=10000;reads=0;path=[];done=false;flash=null;pageRows=null;say();}
+    function reset(){target=1+Math.floor(PIM_RANDOM.next()*9999);lvl=0;lo=1;hi=10000;reads=0;path=[];done=false;flash=null;pageRows=null;say();}
     function say(){if(pageRows)api.status(`Leaf page. Click the row for <b>#${target}</b>, or press its number: ${pageRows.map((r,j)=>`<kbd>${j+1}</kbd> #${r}`).join(' · ')}`);
       else api.status(`Find user <b>#${target}</b>. Click the range that contains it, or press its number: ${kids().map((k,j)=>`<kbd>${j+1}</kbd> ${k.a.toLocaleString()}–${k.b.toLocaleString()}`).join(' · ')}`);}
     const kids=()=>{const n=4,step=Math.ceil((hi-lo+1)/n);return Array.from({length:n},(_,k)=>({a:lo+k*step,b:Math.min(hi,lo+(k+1)*step-1),x:130+k*247,y:300,w:210,h:80}));};
@@ -4035,7 +4086,7 @@ chal('indexing',{title:'Find the row',goal:'Walk down the index to one user id i
         const K=kids(),j=K.findIndex(k=>inBox(x,y,{x:k.x,y:k.y-k.h/2,w:k.w,h:k.h}));if(j<0)return;reads++;const k=K[j];
         if(target<k.a||target>k.b){flash={j,t:now};FX.text(k.x+k.w/2,k.y-60,'not in this range',C.red,13);return;}
         path.push(`${k.a}–${k.b}`);lo=k.a;hi=k.b;lvl++;FX.burst(k.x+k.w/2,k.y,C.green,12,120);
-        if(hi-lo<200){const s=new Set([target]);while(s.size<6)s.add(lo+Math.floor(Math.random()*(hi-lo+1)));pageRows=[...s].sort((a,b)=>a-b);}say();},
+        if(hi-lo<200){const s=new Set([target]);while(s.size<6)s.add(lo+Math.floor(PIM_RANDOM.next()*(hi-lo+1)));pageRows=[...s].sort((a,b)=>a-b);}say();},
       key(k,now){const j=+k-1;if(!(j>=0))return;if(pageRows){if(j<pageRows.length)this.click(150+j*140,300,now);}else if(j<4){const K=kids()[j];this.click(K.x+K.w/2,K.y,now);}}};}});
 
 /* ---------------- 9. REPLICATION: build it, then survive the crash ---------------- */
@@ -4073,10 +4124,10 @@ chal('replication',{title:'Keep it serving',goal:'Build it yourself: 150 request
     init(G){const L=G.of('leader')[0];return{lead:L?L.id:null,crashAt:null,dead:new Set(),total:0,fail:0,why:{nolead:0,reads:0,stale:0,leader:0}};},
     step(S,G,dt,t){const tc=labAt(S,'crash',6,3,9),phase=t<tc?'Steady traffic':t<tc+PROMOTE?'The leader dies':S.lead&&!S.dead.has(S.lead)?'Running on the new leader':'No leader';
       const app=G.of('app')[0],L0=G.of('leader')[0],fm=G.of('failover')[0];
-      if(t>=tc&&S.crashAt==null){S.crashAt=t;if(L0){S.dead.add(L0.id);FX.burst(L0.x,L0.y,C.red,30,220);labMark(L0,'crashed',C.red);}}
+      if(t>=tc&&S.crashAt==null){S.crashAt=t;if(L0){S.dead.add(L0.id);labSignal(S,L0,'crashed',C.red);}}
       // the failover manager promotes a follower that was copying the leader
       if(S.crashAt!=null&&t>=S.crashAt+PROMOTE&&S.lead===(L0&&L0.id)){const cand=fm&&L0&&G.out(fm,['leader']).includes(L0)?G.out(fm,['follower']).find(f=>G.inn(f,['leader']).includes(L0)):null;
-        if(cand){S.lead=cand.id;FX.burst(cand.x,cand.y,C.green,30,220);labMark(cand,'promoted',C.green);}else S.lead=null;}
+        if(cand){S.lead=cand.id;labSignal(S,cand,'promoted',C.green);}else S.lead=null;}
       const lead=S.lead&&!S.dead.has(S.lead)?G.nodes.find(n=>n.id===S.lead):null;
       const flows=[],load={},used={},F=(a,b,r,isBad,c)=>{if(a&&b&&r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});};
       const fail=(why,r)=>{S.why[why]+=r*dt;S.fail+=r*dt;};
@@ -4117,9 +4168,9 @@ function quorumNums(p){const live=QLAT.slice(0,p.n),after=live.slice(1);
   const lat=(q,l)=>q<=l.length?l[q-1]:null,ok=p.w<=after.length&&p.r<=after.length;
   const ms=[lat(p.w,live),lat(p.r,live),lat(p.w,after),lat(p.r,after)].filter(v=>v!=null);
   return{stale:p.r+p.w<=p.n,fails:!ok,avg:ms.length?ms.reduce((a,b)=>a+b,0)/ms.length:999};}
-chal('quorums',{title:'Tune the quorum',goal:'Half reads, half writes. Halfway through, one replica dies. Get zero stale reads, zero failed requests and an average wait of 15 ms or less.',
-  hint:'R + W must be more than N for fresh reads. Both W and R must still fit in the replicas left after one dies. Every extra replica you wait for is slower.',
-  make:simGame({dur:10,defaults:{n:3,w:1,r:1},intro:'Pick N, W and R, then press <b>Run it</b>.',
+chal('quorums',{title:'Tune the quorum',goal:'In a fixed-replica model with completed sequential writes and comparable retained versions, get overlapping reads, no failed requests after one replica dies, and average modeled wait ≤15 ms. This does not simulate concurrent writes or certify linearizability.',
+  hint:'R + W > N ensures fixed-set overlap. Both W and R must fit in surviving replicas. Sloppy membership and concurrent/partial writes need additional rules.',
+  make:simGame({dur:10,defaults:{n:3,w:1,r:1},intro:'Fixed replica membership; sequential completed writes and comparable versions. Reply times are illustrative model buckets, not measured network latency. Pick N, W and R, then press <b>Run it</b>.',
     controls(api,p,re){api.slider('Replicas (N)',3,5,1,p.n,v=>`${v}`,v=>{p.n=v;re();});api.slider('Write quorum (W)',1,5,1,p.w,v=>`${v}`,v=>{p.w=v;re();});api.slider('Read quorum (R)',1,5,1,p.r,v=>`${v}`,v=>{p.r=v;re();});},
     build(p,api){const N=quorumNums(p),CL=[150,300],RY=k=>300+(k-(p.n-1)/2)*92;let acc=0,i=0,dead=false;const fl=[];
       return{step(dt,t){if(!dead&&t>=5){dead=true;FX.burst(640,RY(0),C.red,24);FX.text(640,RY(0)-50,'replica down',C.red,14);}
@@ -4129,11 +4180,11 @@ chal('quorums',{title:'Tune the quorum',goal:'Half reads, half writes. Halfway t
         draw(now){flyers(now,fl);user(CL[0],CL[1],{label:'client',r:20});
           for(let k=0;k<p.n;k++)db(640,RY(k),{label:`Replica ${k+1}`,sub:`${QLAT[k]} ms`,w:104,h:76,st:dead&&k===0?'fail':'ok'});
           tx(`R + W = ${p.r+p.w} ${p.r+p.w>p.n?'>':'≤'} N = ${p.n}`,860,250,{z:16,wt:800,f:MONO,c:p.r+p.w>p.n?C.green:C.red});
-          tx(p.r+p.w>p.n?'reads overlap the latest write':'reads can miss the latest write',860,278,{z:12,c:C.dim});
+          tx(p.r+p.w>p.n?'fixed sets overlap completed writes':'sets can miss completed writes',860,278,{z:12,c:C.dim});
           if(p.w>p.n||p.r>p.n)tx('a quorum bigger than N can never be met',860,320,{z:12,c:C.red});},
         hud(){return[['stale reads',N.stale?'yes':'none',N.stale?C.red:C.green],['failures',N.fails?'yes':'none',N.fails?C.red:C.green],['avg wait',`${N.avg.toFixed(0)} ms`,N.avg<=15?C.green:C.red]];},
         score(){const a=!N.stale,b=!N.fails,c=N.avg<=15,n=[a,b,c].filter(Boolean).length;
-          if(n===3)return{stars:3,title:'Fresh, available and fast',msg:`N=${p.n}, W=${p.w}, R=${p.r}: every read overlaps the latest write, one dead replica changes nothing, and the average wait is ${N.avg.toFixed(0)} ms.`};
+          if(n===3)return{stars:3,title:'Model goals met',msg:`N=${p.n}, W=${p.w}, R=${p.r}: fixed read sets overlap completed sequential writes with retained comparable versions, both quorums remain possible after one replica dies, and modeled average wait is ${N.avg.toFixed(0)} ms. This does not certify linearizability or sloppy quorums.`};
           const why=[!a&&'R + W is not more than N, so some reads miss the latest write',!b&&'after one replica died there were not enough left to meet W or R',!c&&'waiting for that many replicas is too slow'].filter(Boolean).join('; ');
           return{stars:n===2?2:1,title:`${n} of 3 goals`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
 
@@ -4145,7 +4196,7 @@ chal('sharding',{title:'Pick the shard key',goal:'Split the users table so no sh
     return simGame({dur:6,defaults:{key:'country',n:3},intro:'Choose a shard key and the number of shards, then press <b>Run it</b> to send traffic.',
       controls(api,p,re){api.seg('Shard key',[['country','country'],['month','signup month'],['hash','hash(user_id)']],p.key,v=>{p.key=v;re();});api.slider('Shards',2,6,1,p.n,v=>`${v}`,v=>{p.n=v;re();});},
       build(p,api){const d=dist(p.key,p.n),sx=k=>p.n===1?500:170+k*(660/(p.n-1));let acc=0;const fl=[];const RT=[500,150];
-        return{step(dt){acc+=dt*50;const now=api.now();while(acc>=1){acc--;let x=Math.random(),k=0;for(;k<p.n-1;k++){if(x<d[k])break;x-=d[k];}fl.push({t0:now,d:.55,pts:[RT,[sx(k),350]],c:d[k]>.3?C.red:C.blue,r:3.5});}},
+        return{step(dt){acc+=dt*50;const now=api.now();while(acc>=1){acc--;let x=PIM_RANDOM.next(),k=0;for(;k<p.n-1;k++){if(x<d[k])break;x-=d[k];}fl.push({t0:now,d:.55,pts:[RT,[sx(k),350]],c:d[k]>.3?C.red:C.blue,r:3.5});}},
           draw(now){flyers(now,fl);box(RT[0],RT[1],{label:'Router',sub:`shard by ${p.key==='hash'?'hash(user_id)':p.key}`,w:200,h:54});
             d.forEach((v,k)=>{db(sx(k),380,{label:`Shard ${k+1}`,w:88,h:76,st:v>.3?'hot':'ok'});meter(sx(k)-44,432,88,8,v/.6,v>.3?C.red:v>.2?C.amber:C.green);tx(`${(v*100).toFixed(0)}%`,sx(k),456,{z:13,wt:800,c:v>.3?C.red:C.text,f:MONO});});},
           hud(){const m=Math.max(...d);return[['busiest shard',`${(m*100).toFixed(0)}%`,m<=.3?C.green:C.red],['shards',`${p.n}`,p.n<=4?C.text:C.amber]];},
@@ -4157,7 +4208,7 @@ chal('sharding',{title:'Pick the shard key',goal:'Split the users table so no sh
 chal('caching',{title:'Beat LRU',goal:'The cache holds 4 items. When it is full and a new item arrives, you choose what to evict. Match or beat LRU\'s hit count.',
   hint:'Things used recently tend to be used again soon. Evict the item that has gone longest without being asked for.',
   make:api=>{const N=26,SL=4;let stream=[],slots,i,hits,lru,waiting,t0,last,done,cur,curT;
-    function gen(){const s=[];let hot=['A','B','C'];for(let k=0;k<N;k++){if(k===13)hot=['D','E','B'];const r=Math.random();s.push(r<.72?hot[Math.floor(Math.random()*3)]:'FGHK'[Math.floor(Math.random()*4)]);}return s;}
+    function gen(){const s=[];let hot=['A','B','C'];for(let k=0;k<N;k++){if(k===13)hot=['D','E','B'];const r=PIM_RANDOM.next();s.push(r<.72?hot[Math.floor(PIM_RANDOM.next()*3)]:'FGHK'[Math.floor(PIM_RANDOM.next()*4)]);}return s;}
     function lruHits(s){const c=[];let h=0;s.forEach(x=>{const j=c.indexOf(x);if(j>=0){h++;c.splice(j,1);}else if(c.length>=SL)c.shift();c.push(x);});return h;}
     function reset(){stream=gen();lru=lruHits(stream);slots=[];i=0;hits=0;waiting=false;done=false;t0=null;cur=null;api.status(`Requests arrive one by one. LRU would score <b>${lru}</b> hits on this exact stream.`);}
     reset();const SX=k=>320+k*120,SY=270;
@@ -4168,8 +4219,8 @@ chal('caching',{title:'Beat LRU',goal:'The cache holds 4 items. When it is full 
       else if(slots.length<SL){slots.push({k:cur,used:now});FX.text(SX(slots.length-1),SY-58,'miss',C.amber,14);next(now);}
       else{waiting=true;api.status(`<b>${cur}</b> is not cached and the cache is full. Click an item to evict, or press its slot number: ${slots.map((s,k)=>`<kbd>${k+1}</kbd> ${s.k} (used ${(now-s.used).toFixed(1)} s ago)`).join(' · ')}.`);}}
     function next(now){i++;last=now;cur=null;if(i>=N){done=true;chalLater(api,()=>api.win(hits>=lru?3:hits>=lru-2?2:1,`${hits} hits · LRU got ${lru}`,hits>=lru?'You matched the machine. Evicting what was least recently used is hard to beat when popularity shifts over time.':'Evict the item that has waited longest since its last request. That is exactly what LRU does.'),500);}}
-    return{draw(now){if(t0===null){t0=now;last=now-.4;}if(!waiting&&!done&&!cur&&now-last>.75)arrive(now);
-        choices.forEach((b,k)=>{b.disabled=!waiting||done;b.textContent=`Evict slot ${k+1}${slots[k]?' — '+slots[k].k:''}`;});
+    return{update(now){if(t0===null){t0=now;last=now-.4;}if(!waiting&&!done&&!cur&&now-last>.75)arrive(now);},
+      draw(now){choices.forEach((b,k)=>{b.disabled=!waiting||done;b.textContent=`Evict slot ${k+1}${slots[k]?' — '+slots[k].k:''}`;});
         if(api.metrics)api.metrics([['Incoming request',stream[i]||'Complete'],['Hits',hits+'; LRU target '+lru],['Progress',i+' of '+N],...Array.from({length:SL},(_,k)=>['Slot '+(k+1),slots[k]?`${slots[k].k}; used ${(now-slots[k].used).toFixed(1)} seconds ago`:'Empty'])]);
         tx('incoming',120,150,{z:12,c:C.dim});stream.slice(i,i+6).forEach((k,j)=>{const x=120-j*0+0,y=190+j*44;plate(120+(j?0:0),200+j*44,j?50:66,j?34:44,{c:j?C.edge:C.blue,a:j?.5:1,fill:C.panel2});tx(k,120,201+j*44,{z:j?15:22,wt:800,a:j?.5:1});});
         tx('cache (4 slots)',SX(0)+180,180,{z:13,c:C.dim});
@@ -4187,9 +4238,9 @@ chal('cache-invalidation',{title:'Fresh and cheap',goal:'1,000 products, 500 rea
   make:simGame({dur:8,defaults:{ttl:30,del:false},intro:'Pick a TTL and whether writes delete the cached copy, then press <b>Run it</b>.',
     controls(api,p,re){api.slider('TTL',1,61,1,p.ttl,v=>v>60?'∞ (never)':`${v} s`,v=>{p.ttl=v;re();});api.toggle('Delete cache on write',p.del,v=>{p.del=v;re();});},
     build(p,api){const N=cacheNums(p);let acc=0,T=0;const fl=[];
-      return{step(dt,t){T=t;acc+=dt*30;const now=api.now();while(acc>=1){acc--;const miss=Math.random()<N.db/500,stale=!miss&&Math.random()<N.stale*6;
+      return{step(dt,t){T=t;acc+=dt*30;const now=api.now();while(acc>=1){acc--;const miss=PIM_RANDOM.next()<N.db/500,stale=!miss&&PIM_RANDOM.next()<N.stale*6;
           fl.push({t0:now,d:.5,pts:[[150,300],[480,200]],c:C.blue,r:3.5});fl.push({t0:now+.5,d:miss?1:.5,pts:miss?[[480,200],[820,330],[150,300]]:[[480,200],[150,300]],c:stale?C.red:miss?C.amber:C.green,r:3.5});}
-          if(Math.random()<dt*2&&p.del)fl.push({t0:api.now(),d:.6,pts:[[820,110],[480,200]],c:C.red,r:3.5,label:'delete'});},
+          if(PIM_RANDOM.next()<dt*2&&p.del)fl.push({t0:api.now(),d:.6,pts:[[820,110],[480,200]],c:C.red,r:3.5,label:'delete'});},
         draw(now){flyers(now,fl);server(150,300,{label:'App',w:110});box(480,200,{label:'Cache',sub:p.ttl>60?'no TTL':`TTL ${p.ttl} s`,c:C.amber,w:150,h:56});db(820,330,{label:'Database',sub:'200 reads/s max',w:130,h:90,st:N.db>200?'fail':'ok',down:'OVERLOADED'});
           box(820,110,{label:'Writers',sub:'5 changes/s',c:C.accent,w:130,h:48});},
         hud(){return[['stale reads',`${(N.stale*100).toFixed(2)}%`,N.stale<=.01?C.green:C.red],['DB reads',`${Math.round(N.db)}/s`,N.db<=200?C.green:C.red]];},
@@ -4209,9 +4260,9 @@ chal('hot-keys',{title:'Survive the celebrity post',goal:'5,000 requests/s for o
           else{if(p.coal)q=Math.max(q,1);else{q+=RATE*dt;if(q>300)err+=RATE*dt;}if(t>=refillAt)valid=true;}   // misses; beyond 1 s of DB work they time out
           if(!p.coal)q=Math.max(0,q-300*dt);else if(valid)q=0;             // the database drains 300 queries/s
           qPeak=Math.max(qPeak,q);
-          acc+=dt*40;const now=api.now();while(acc>=1){acc--;const k=Math.floor(Math.random()*p.nodes),over=valid&&Math.random()<Math.max(0,1-2000*p.nodes/RATE);
-            if(valid)fl.push({t0:now,d:.5,pts:[[80,120+Math.random()*340],[330,290],[590,170+(k-(p.nodes-1)/2)*96]],c:over?C.red:C.blue,r:3.5,drop:over?.8:0});
-            else fl.push({t0:now,d:.7,pts:[[80,120+Math.random()*340],[330,290],p.coal?[330,330]:[830,360]],c:p.coal?C.amber:C.red,r:3.5});}},
+          acc+=dt*40;const now=api.now();while(acc>=1){acc--;const k=Math.floor(PIM_RANDOM.next()*p.nodes),over=valid&&PIM_RANDOM.next()<Math.max(0,1-2000*p.nodes/RATE);
+            if(valid)fl.push({t0:now,d:.5,pts:[[80,120+PIM_RANDOM.next()*340],[330,290],[590,170+(k-(p.nodes-1)/2)*96]],c:over?C.red:C.blue,r:3.5,drop:over?.8:0});
+            else fl.push({t0:now,d:.7,pts:[[80,120+PIM_RANDOM.next()*340],[330,290],p.coal?[330,330]:[830,360]],c:p.coal?C.amber:C.red,r:3.5});}},
         draw(now){flyers(now,fl);for(let k=0;k<8;k++)user(80,120+k*48,{r:10,c:C.blue});server(330,290,{label:'App',sub:p.coal?'coalescing':'',w:118});
           for(let k=0;k<p.nodes;k++)box(590,170+(k-(p.nodes-1)/2)*96,{label:`cache ${k+1}`,sub:valid?'post:42 ✓':'expired',c:valid?C.green:C.red,w:130,h:48});
           db(830,360,{label:'Database',sub:`${Math.round(q)} queued`,w:120,h:88,st:q>10?'fail':'ok',down:'STAMPEDE'});},
@@ -4276,8 +4327,8 @@ chal('search',{title:'Be the search engine',goal:'Answer three queries using onl
     function submit(){if(done||shown)return;const want=Q[r][1],ok=want.length===sel.size&&want.every(d=>sel.has(d));if(ok)right++;
       shown=api.now();choices.forEach(b=>b.disabled=true);FX.text(W/2,108,ok?'Right!':'Not quite',ok?C.green:C.red,18);api.status(`${ok?'<b>Right.</b>':'<span class="bad">✕</span>'} ${Q[r][0]} → ${want.map(d=>'D'+d).join(', ')}.`);}
     api.button('Check my answer',submit,{primary:true});say();
-    return{draw(now){if(shown&&now-shown>2){shown=0;sel=new Set();r++;if(r>=3){done=true;r=2;api.win(right,`${right} of 3 queries right`,right===3?'Postings lists in, set operations out: that is every search engine\'s inner loop.':'Look up each term\'s list, then intersect (AND), unite (OR) or subtract (AND NOT).');}else say();}
-        if(api.metrics)api.metrics(IDX.map(([term,ds])=>[term,ds.map(d=>'D'+d).join(', ')]));
+    return{update(now){if(shown&&now-shown>2){shown=0;sel=new Set();r++;if(r>=3){done=true;r=2;api.win(right,`${right} of 3 queries right`,right===3?'Postings lists in, set operations out: that is every search engine\'s inner loop.':'Look up each term\'s list, then intersect (AND), unite (OR) or subtract (AND NOT).');}else say();}},
+      draw(now){if(api.metrics)api.metrics(IDX.map(([term,ds])=>[term,ds.map(d=>'D'+d).join(', ')]));
         const q=Q[r];pill(`query: ${q[0]}`,W/2,70,{c:C.accent,z:16,f:MONO});
         DOCS.forEach((t,k)=>{const d=k+1,on=sel.has(d),want=shown&&q[1].includes(d),y=DY(k);plate(250,y,360,48,{c:shown?(want?C.green:on?C.red:C.edge):on?C.accent:C.edge,fill:on?hexA(C.accent,.12):C.panel2,r:10});
           keycap(String(d),88,y);tx(`D${d}`,112,y,{z:13,wt:800,f:MONO,c:C.dim,al:'left'});tx(t,150,y,{z:14,al:'left'});});
@@ -4290,12 +4341,12 @@ chal('search',{title:'Be the search engine',goal:'Answer three queries using onl
 /* ---------------- S3. GEO: find the nearest driver ---------------- */
 chal('geo',{title:'Find the nearest driver',goal:'Walk down the quadtree to the rider\'s cell, then pick which of the nine cells around the rider holds the nearest driver.',
   hint:'At each level pick the quarter the rider is in. At the end, the nearest driver may be just across an edge: look at all nine cells.',
-  make:api=>{const MX=240,MY=70,MW=520,MH=440,X=u=>MX+u*MW,Y=v=>MY+v*MH,R=()=>.18+Math.random()*.64;
+  make:api=>{const MX=240,MY=70,MW=520,MH=440,X=u=>MX+u*MW,Y=v=>MY+v*MH,R=()=>.18+PIM_RANDOM.next()*.64;
     let rider,drivers,ans,box=[0,0,1],lvl=0,mistakes=0,stage='down',done=false,flash=null;
     const cellOf=([u,v])=>[Math.floor(u*8),Math.floor(v*8)];
     (function gen(){for(;;){rider=[R(),R()];const[cx,cy]=cellOf(rider);
-        drivers=[];for(let i=0;i<6;i++)drivers.push([(cx-1+Math.random()*3)/8,(cy-1+Math.random()*3)/8]);
-        for(let i=0;i<34;i++){const p=[Math.random(),Math.random()],[px,py]=cellOf(p);if(Math.abs(px-cx)>2||Math.abs(py-cy)>2)drivers.push(p);}
+        drivers=[];for(let i=0;i<6;i++)drivers.push([(cx-1+PIM_RANDOM.next()*3)/8,(cy-1+PIM_RANDOM.next()*3)/8]);
+        for(let i=0;i<34;i++){const p=[PIM_RANDOM.next(),PIM_RANDOM.next()],[px,py]=cellOf(p);if(Math.abs(px-cx)>2||Math.abs(py-cy)>2)drivers.push(p);}
         const near=drivers.reduce((b,p)=>Math.hypot(p[0]-rider[0],p[1]-rider[1])<Math.hypot(b[0]-rider[0],b[1]-rider[1])?p:b);const[nx,ny]=cellOf(near);
         if(Math.abs(nx-cx)<=1&&Math.abs(ny-cy)<=1&&Math.hypot(near[0]-rider[0],near[1]-rider[1])>.02){ans=(ny-cy+1)*3+(nx-cx+1);return;}}})();
     const quad=k=>{const h=box[2]/2;return[box[0]+(k%2)*h,box[1]+Math.floor(k/2)*h,h];};
@@ -4513,7 +4564,7 @@ chal('spof',{title:'Survive the chaos monkey',goal:'Build it yourself, then let 
       const ks=S.kills||(S.kills=S.chaos?labShuffle(S,KILLS.map(k=>k[0])).map((k,i)=>[k,2+i*3.5+S.rng()*1.5]):KILLS),lastKill=ks.filter(([,at])=>t>=at).pop();
       const phase=lastKill?{app:'An app server dies',lb:'A load balancer dies',db:'The database dies'}[lastKill[0]]:'Calm before the chaos';
       ks.forEach(([kind,at])=>{if(t<at||S.killed.includes(kind))return;S.killed.push(kind);const c=G.of(kind);if(!c.length)return;
-        const b=labPick(S,kind,c,c.reduce((a,x)=>((S.hits[x.id]||0)>(S.hits[a.id]||0)?x:a)));S.deadAt[b.id]=t;FX.burst(b.x,b.y,C.red,30,220);labMark(b,'killed',C.red,15);});
+        const b=labPick(S,kind,c,c.reduce((a,x)=>((S.hits[x.id]||0)>(S.hits[a.id]||0)?x:a)));S.deadAt[b.id]=t;labSignal(S,b,'killed',C.red);});
       const dead=new Set(Object.keys(S.deadAt).filter(id=>t<S.deadAt[id]+REBOOT)),live=ns=>ns.filter(n=>!dead.has(n.id));
       const flows=[],F=(a,b,r,isBad,c)=>{if(a&&b&&r>0)flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});};
       let lostNow=0;const lose=(why,r)=>{S.why[why]+=r*dt;lostNow+=r;};
@@ -4596,16 +4647,17 @@ quiz('Traffic',{title:'Traffic recap',goal:'Nine questions on load balancing, se
     {q:'What binds an authorization code exchange to the app that initiated it?',a:['PKCE: a challenge followed by the original verifier','Sending an ID token to every API','Making the code predictable','Ignoring redirect state'],why:'PKCE prevents redeeming an intercepted code without the verifier. Redirect and state validation are also needed.',ch:'auth'}]})});
 
 /* ---------------- QUIZ: DATA ---------------- */
-quiz('Data',{title:'Data recap',goal:'Eight questions on quorums, indexes, replicas, shards, caches and CAP. Answer with a click or keys 1–4.',
+quiz('Data',{title:'Data recap',goal:'Nine questions on database schemas, quorums, indexes, replicas, shards, caches and CAP. Answer with a click or keys 1–4.',
   hint:'Ask what is actually overloaded: reads, writes, one key, or the network between replicas.',
   make:quizGame({title:'Data',questions:[
+    {q:'Does adding a column with a constant default always rewrite every row?',a:['No: PostgreSQL can use a metadata fast path; engine and operation matter','Yes: every SQL schema change rewrites the table','No SQL engine takes locks for schema changes','Only NoSQL databases can avoid rewrites'],why:'PostgreSQL can add a constant-default column without rewriting every row. A volatile default such as clock_timestamp() requires per-row evaluation and a rewrite; consider lock requirements too.',ch:'sql-nosql'},
     {q:'A query looks up one email among 10 million rows and takes seconds. What should you try first?',a:['Add an index on the email column','Put a cache in front','Shard the table','Switch to a NoSQL database'],why:'Without an index the database reads every row. An index finds the row in a handful of page reads.',ch:'indexing'},
     {q:'90% of traffic is reads and the database is overloaded. Which structural fix fits best?',a:['Add followers and send reads to them','Shard by user id','Drop some indexes','Use two-phase commit'],why:'Followers copy the leader and can serve reads. Sharding is for when writes or data size are the problem.',ch:'replication'},
     {q:'You shard users by the first letter of their name. What goes wrong?',a:['Shards fill unevenly, because some letters are far more common','Nothing, it spreads evenly','Joins get faster','You can never add another shard'],why:'A good shard key spreads load evenly, such as a hash of the user id.',ch:'sharding'},
     {q:'A price changes in the database, but users see the old price for up to an hour. What is the likely cause?',a:['A long TTL and no invalidation when the price is written','A missing index','Synchronous replication','A cache that is too small'],why:'The cached copy lives until its TTL runs out. Delete or update it when the price changes.',ch:'cache-invalidation'},
     {q:'A celebrity post gets 50,000 reads a second and its cache key expires. What stops the database being stampeded?',a:['Request coalescing: one fetch, everyone else waits for it','A shorter TTL','More database indexes','Sticky sessions'],why:'Coalescing turns thousands of identical misses into a single database query. Refreshing before expiry helps too.',ch:'hot-keys'},
     {q:'During a network partition, a balance service refuses writes rather than risk two different balances. Which side of CAP did it pick?',a:['Consistency (CP)','Availability (AP)','Both at once','Neither: CAP does not apply'],why:'Refusing to answer rather than risk a wrong answer is the consistent choice. An AP system would answer and reconcile later.',ch:'cap'},
-    {q:'With N = 3 replicas, which setting guarantees reads see the latest write?',a:['W = 2, R = 2','W = 1, R = 1','W = 1, R = 2','W = 2, R = 1'],why:'R + W must be greater than N, so read and write sets always overlap. 2 + 2 > 3.',ch:'quorums'},
+    {q:'With fixed N = 3 replicas, completed sequential writes and retained comparable versions, which setting guarantees read/write set overlap?',a:['W = 2, R = 2','W = 1, R = 1','W = 1, R = 2','W = 2, R = 1'],why:'2 + 2 > 3 gives fixed-set overlap. Sloppy quorums or concurrent/partial writes need additional rules; this inequality alone does not establish linearizability.',ch:'quorums'},
     {q:'A Bloom filter says a key is "maybe" present. What do you know?',a:['It might be there; check the real store','It is definitely there','It is definitely not there','The filter is broken'],why:'Bloom filters can give false positives but never false negatives. A "no" is certain; a "maybe" needs a lookup.',ch:'bloom-filters'}]})});
 
 /* ---------------- QUIZ: STORAGE & SEARCH ---------------- */
@@ -4655,19 +4707,23 @@ quiz('Architecture',{title:'Architecture recap',goal:'Six questions on service b
     {q:'What is the main cost of splitting a monolith into microservices?',a:['In-process calls become network calls that can be slow or fail','The code becomes impossible to test','You can no longer use a database','You must rewrite it in a new language'],why:'You trade simple function calls for timeouts, retries, partial failures and distributed tracing.',ch:'microservices'}]})});
 
 /* ---------------- QUIZ: ADVANCED ---------------- */
-quiz('Advanced',{title:'Advanced recap',goal:'Ten questions on consensus, locks, conflicts, distributed transactions, IDs and overload. Answer with a click or keys 1–4.',
+quiz('Advanced',{title:'Advanced recap',goal:'Fourteen questions on consensus, locks, conflicts, distributed transactions, IDs and overload. Answer with a click or keys 1–4.',
   hint:'Count majorities. Prefer undoing steps to locking everything. Shed load before it sheds you.',
   make:quizGame({title:'Advanced',questions:[
     {q:'A five-node Raft cluster loses two nodes. Can it still accept writes?',a:['Yes: three of five is still a majority','No: any lost node stops writes','Only reads, no writes','Only if the leader survived'],why:'Raft needs a majority. With three of five alive, it elects a leader if needed and carries on.',ch:'consensus'},
     {q:'A four-node cluster splits into two halves of two. What happens?',a:['Neither half has a majority, so writes stop','Both halves elect a leader','The half with the old leader carries on','The cluster grows to eight nodes'],why:'Two of four is not a majority. This is why clusters use odd sizes like 3 or 5.',ch:'consensus'},
-    {q:'An order spans Payments, Stock and Shipping, each with its own database, and shipping fails. How does a saga recover?',a:['It runs compensating steps: release the stock, refund the payment','It rolls all three databases back at once','It retries forever','It ignores the failure'],why:'Each saga step has an undo. On failure, the steps already done are compensated in reverse order.',ch:'transactions'},
+    {q:'An order spans Payments, Stock and Shipping, and shipping fails. What recovery does a saga attempt?',a:['Compensate completed steps, retry safely and escalate persistent failures','Roll all three databases back at once','Promise automatic recovery in every case','Ignore the failure'],why:'Persist progress and retry idempotent compensation. Recovery can need manual intervention, and irreversible effects cannot simply be undone.',ch:'transactions'},
     {q:'What is the main weakness of two-phase commit?',a:['If the coordinator dies mid-commit, participants can be stuck holding locks','It is never consistent','It needs no coordinator','It only works with NoSQL'],why:'Participants that voted yes must wait for the coordinator\'s decision, holding their locks until it returns.',ch:'transactions'},
     {q:'You need ids across 100 machines, roughly timestamp-ordered and 64 bits long. Which scheme fits with unique machine numbers and guarded clocks?',a:['Snowflake IDs','Auto-increment from one database','UUIDv4','Usernames'],why:'Snowflake packs time, machine and sequence into 64 bits. Clock skew limits cross-server ordering; it does not guarantee causal order.',ch:'unique-ids'},
     {q:'Can an ordinary database sequence guarantee gapless invoice numbers?',a:['No: use a serialized transactional allocator and an audit trail','Yes: every rollback returns its number','Yes: UUIDv4 fixes the gaps','Yes: a Snowflake timestamp is gapless'],why:'Sequence values may be consumed even when a transaction aborts. Business numbering needs explicit allocation and cancellation records.',ch:'unique-ids'},
     {q:'Which UUID version puts a millisecond timestamp first for approximate time ordering?',a:['UUIDv7','UUIDv4','All UUID versions are random','No UUID can contain a timestamp'],why:'UUIDv7 has a timestamp prefix; UUIDv4 is random. Neither establishes global causal order across unsynchronized clocks.',ch:'unique-ids'},
     {q:'A service is overloaded. What is load shedding?',a:['Rejecting some requests early so the rest still succeed','Adding servers automatically','Retrying faster','Caching the errors'],why:'Serving 80% well beats serving 100% so slowly that everything times out.',ch:'backpressure'},
     {q:'A worker pauses, its lock lease expires and another worker takes over. What stops the paused worker\'s stale write?',a:['Storage rejects writes with an older fencing token','A longer timeout on the paused worker','Retrying the write','A bigger server'],why:'The paused worker cannot know it lost the lease. The storage can, by comparing tokens.',ch:'locks'},
-    {q:'Version X has clock [A:2, B:0] and version Y has [A:1, B:1]. What are they?',a:['Concurrent: a real conflict','X happened first','Y happened first','The same version'],why:'X is ahead on A and Y is ahead on B, so neither saw the other.',ch:'conflicts'}]})});
+    {q:'Version X has clock [A:2, B:0] and version Y has [A:1, B:1]. What are they?',a:['Concurrent: a real conflict','X happened first','Y happened first','The same version'],why:'X is ahead on A and Y is ahead on B, so neither saw the other.',ch:'conflicts'},
+    {q:'Can an isolated Raft leader in term 1 believe it leads while another leader exists in term 2?',a:['Yes; higher-term peers reject its stale requests','No; only one node can ever believe it leads','Yes; both can commit without a majority','Yes; terms do not affect requests'],why:'The election guarantee is one elected leader per term. A node steps down when it learns a higher term.',ch:'consensus'},
+    {q:'Which Raft entry may a leader commit directly by counting majority replication?',a:['An entry from its current term, under the log-matching rules','Any old-term entry regardless of later log entries','An entry stored only on the leader','Any entry without the voting log restriction'],why:'Current-term majority commitment indirectly commits earlier entries. Candidates must also satisfy the up-to-date-log vote restriction.',ch:'consensus'},
+    {q:'X and Y both have vector clock [A:2, B:1]. What is their relationship in this model?',a:['Equal clocks: same version or duplicate','X strictly precedes Y','Y strictly precedes X','Concurrent: each is ahead somewhere'],why:'Causal precedence needs at least one strictly smaller component in addition to componentwise ≤.',ch:'conflicts'},
+    {q:'A saga refund keeps failing after safe retries. What should happen?',a:['Retain durable progress, alert and support manual recovery','Declare all effects automatically undone','Forget the failed compensation','Replay the charge without an idempotency key'],why:'Compensation is a business operation that can fail. Persist progress and provide an escalation path for persistent or irreversible effects.',ch:'transactions'}]})});
 
 /* ---------------- QUIZ: CAPSTONE ---------------- */
 quiz('Capstone',{title:'Capstone recap',goal:'Seven design questions across the URL shortener, the chat app and the news feed. Answer with a click or keys 1–4.',
@@ -4735,8 +4791,8 @@ chal('deployments',{title:'Ship v2 without hurting users',goal:'v2 has a bug tha
     build(p,api){const plan=deployPlan(p),total=deployErrors(p);let shown=0,acc=0,T=0,rolled=false;const fl=[];const LB=[330,300];
       return{step(dt,t){T=t;if(!rolled&&t>=plan.undo){rolled=true;FX.text(LB[0],LB[1]-60,'rolled back',C.green,15);}
           shown=Math.round(total*clamp(plan.segs.reduce((a,[s,e])=>a+clamp((t-s)/(e-s))*(e-s),0)/Math.max(.001,plan.segs.reduce((a,[s,e])=>a+e-s,0))));
-          acc+=dt*16;const now=api.now();while(acc>=1){acc--;const sh=v2share(p,t),toV2=Math.random()<sh,bad=toV2&&Math.random()<.4,y=toV2?420:180;
-            fl.push({t0:now,d:.45,pts:[[110,300],[LB[0]-62,LB[1]]],c:C.blue,r:3.5});fl.push({t0:now+.45,d:.45,pts:[[LB[0]+62,LB[1]],[700,y+(Math.random()-.5)*60]],c:bad?C.red:toV2?C.amber:C.blue,r:3.5,drop:bad?.85:0});}},
+          acc+=dt*16;const now=api.now();while(acc>=1){acc--;const sh=v2share(p,t),toV2=PIM_RANDOM.next()<sh,bad=toV2&&PIM_RANDOM.next()<.4,y=toV2?420:180;
+            fl.push({t0:now,d:.45,pts:[[110,300],[LB[0]-62,LB[1]]],c:C.blue,r:3.5});fl.push({t0:now+.45,d:.45,pts:[[LB[0]+62,LB[1]],[700,y+(PIM_RANDOM.next()-.5)*60]],c:bad?C.red:toV2?C.amber:C.blue,r:3.5,drop:bad?.85:0});}},
         draw(now,running){flyers(now,fl);for(let k=0;k<4;k++)user(110,210+k*60,{r:12});box(LB[0],LB[1],{label:'Load balancer',w:124,h:54});
           const sh=running?v2share(p,T):0;
           server(760,180,{label:'v1 fleet',sub:`${Math.round((1-sh)*100)}% of traffic`,w:150,h:60,col:C.blue,st:'blue'});
@@ -4877,7 +4933,7 @@ chal('consensus',{title:'Majority or not?',goal:'For each cluster, decide: can t
   make:sortGame({bins:[{id:'ok',label:'Keeps working',sub:'a majority is reachable',c:C.green},{id:'no',label:'Stops writes',sub:'no majority',c:C.red}],
     cards:[{t:'5 nodes, 2 have crashed',b:'ok',why:'3 of 5 is a majority.'},{t:'5 nodes, 3 have crashed',b:'no',why:'2 of 5 is not more than half.'},{t:'3 nodes, the leader crashed',b:'ok',why:'2 of 3 can elect a new leader.'},
       {t:'4 nodes, 2 have crashed',b:'no',why:'2 of 4 is exactly half, not a majority. That is why clusters use odd sizes.'},{t:'6 nodes split 3 | 3 by a network cut',b:'no',why:'Neither side has more than half, so both sides stop.'},
-      {t:'7 nodes split 4 | 3: the side with 4',b:'ok',why:'4 of 7 is a majority, so that side carries on.'},{t:'5 nodes split 3 | 2: the side with 2',b:'no',why:'The small side must stop, or there could be two leaders.'},{t:'1 node on its own (no replicas)',b:'ok',why:'1 of 1 is a majority, but one crash stops everything.'}]})});
+      {t:'7 nodes split 4 | 3: the side with 4',b:'ok',why:'4 of 7 can elect an eligible leader whose log passes the vote restriction.'},{t:'5 nodes split 3 | 2: the side with 2',b:'no',why:'An old leader may still believe it leads, but this side cannot commit. Higher-term peers reject its stale requests.'},{t:'1 node on its own (no replicas)',b:'ok',why:'1 of 1 is a majority, but one crash stops everything. In replicated clusters, current-term commitment and log restrictions also apply.'}]})});
 
 /* ---------------- A1b. LOCKS: tune the lease ---------------- */
 // A renews every 2 s; one renewal is delayed to 3.5 s by a network blip; at 4.2 s A freezes for 12 s.
@@ -4909,21 +4965,22 @@ chal('locks',{title:'Tune the lease',goal:'Worker A holds the lock and renews it
           return{stars:n===2?2:1,title:`${n} of 3 goals`,msg:why.charAt(0).toUpperCase()+why.slice(1)+'.'};}};}})});
 
 /* ---------------- A1c. CONFLICTS: read the vector clocks ---------------- */
-chal('conflicts',{title:'Read the vector clocks',goal:'For each pair of versions, decide: did X happen before Y, Y before X, or are they concurrent?',
-  hint:'X came first if every count in X is less than or equal to Y\'s. If each one is ahead somewhere, they are concurrent.',
-  make:sortGame({bins:[{id:'xy',label:'X came first',sub:'keep Y',c:C.blue},{id:'yx',label:'Y came first',sub:'keep X',c:C.accent},{id:'c',label:'Concurrent',sub:'a real conflict',c:C.amber}],
+chal('conflicts',{title:'Read the vector clocks',goal:'Decide whether X precedes Y, Y precedes X, the clocks are equal, or the versions are concurrent.',
+  hint:'Precedence requires all counts ≤ and at least one strictly smaller. Equal clocks are the same version/duplicate in this model; concurrent clocks are each ahead somewhere.',
+  make:sortGame({bins:[{id:'xy',label:'X came first',sub:'keep Y',c:C.blue},{id:'yx',label:'Y came first',sub:'keep X',c:C.accent},{id:'c',label:'Concurrent',sub:'a real conflict',c:C.amber},{id:'eq',label:'Equal clocks',sub:'same version / duplicate',c:C.green}],
     cards:[{t:'X [A:1, B:0]   ·   Y [A:1, B:1]',b:'xy',why:'Y has every count of X and one more on B, so X came first.'},
       {t:'X [A:2, B:1]   ·   Y [A:1, B:1]',b:'yx',why:'X is ahead on A and equal on B, so Y came first.'},
       {t:'X [A:2, B:0]   ·   Y [A:1, B:1]',b:'c',why:'X is ahead on A, Y is ahead on B: neither saw the other.'},
       {t:'X [A:1, B:2, C:0]   ·   Y [A:1, B:2, C:1]',b:'xy',why:'Y matches X and is one ahead on C.'},
       {t:'X [A:0, B:3]   ·   Y [A:1, B:2]',b:'c',why:'X is ahead on B, Y is ahead on A: concurrent.'},
       {t:'X [A:4, B:4]   ·   Y [A:2, B:3]',b:'yx',why:'X is ahead on both, so Y came first.'},
-      {t:'X [A:1, B:1, C:1]   ·   Y [A:2, B:1, C:0]',b:'c',why:'X is ahead on C, Y is ahead on A: concurrent.'}]})});
+      {t:'X [A:1, B:1, C:1]   ·   Y [A:2, B:1, C:0]',b:'c',why:'X is ahead on C, Y is ahead on A: concurrent.'},
+      {t:'X [A:2, B:1]   ·   Y [A:2, B:1]',b:'eq',why:'Every component is equal. Neither clock strictly precedes the other; this represents the same version or a duplicate in the model.'}]})});
 
 /* ---------------- A2. TRANSACTIONS: unwind the saga ---------------- */
 chal('transactions',{title:'Unwind the saga',goal:'Booking the car fails. Put the saga\'s steps in order, including the compensations that undo the earlier steps.',
-  hint:'Compensate in reverse: undo the most recent successful step first, and tell the customer last.',
-  make:orderGame({head:'Flight → hotel → car, and the car fails. What happens, in order?',msg:'Each step commits on its own. When one fails, compensations undo the others in reverse order. No locks, nothing stuck.',
+  hint:'For this successful recovery, compensate in reverse and tell the customer last. Persist progress and retry idempotently; repeated failure may need manual recovery.',
+  make:orderGame({head:'Flight → hotel → car fails; both compensations succeed. What is the order?',msg:'This recovery succeeded. Persist saga state and retry idempotent compensations safely. Repeated failures can need manual intervention, and irreversible effects require a business remedy.',
     steps:[{t:'Book flight',sub:'✓ committed'},{t:'Book hotel',sub:'✓ committed'},{t:'Book car',sub:'✕ no cars left'},{t:'Cancel hotel',sub:'compensation'},{t:'Refund flight',sub:'compensation'},{t:'Tell the customer',sub:'trip cancelled'}]})});
 
 /* ---------------- A3. UNIQUE IDS: pick the scheme ---------------- */
@@ -4950,8 +5007,8 @@ chal('backpressure',{title:'Keep checkout alive',goal:'Traffic is 300 req/s and 
             if(!crashed){q+=enter;if(p.bound&&q>100){refused=q-100;q=100;}q-=Math.min(q,200*dt);if(!p.bound&&q>400){crashed=true;FX.burst(470,290,C.red,40,240);}
               const f=enter>0?Math.max(0,1-refused/enter):1;MIX.forEach(([k,r])=>{if(!drop.has(k)&&!crashed)ok[k]+=r*dt*Math.min(1,share)*f;});}
             wait=(q+up)/200;waitMax=Math.max(waitMax,wait);
-            acc+=dt*20;const now=api.now();while(acc>=1){acc--;const r=Math.random()*300;let k='checkout',c=0;for(const[m,w]of MIX){c+=w;if(r<c){k=m;break;}}
-              const dr=drop.has(k),bad=crashed||dr||(p.bound&&q>=99&&Math.random()<.33);fl.push({t0:now,d:.7,pts:[[150,290],[470,290],[800,290]],c:bad?C.red:k==='checkout'?C.green:C.blue,r:k==='checkout'?5:3.5,drop:bad?(dr?.25:.55):0});}},
+            acc+=dt*20;const now=api.now();while(acc>=1){acc--;const r=PIM_RANDOM.next()*300;let k='checkout',c=0;for(const[m,w]of MIX){c+=w;if(r<c){k=m;break;}}
+              const dr=drop.has(k),bad=crashed||dr||(p.bound&&q>=99&&PIM_RANDOM.next()<.33);fl.push({t0:now,d:.7,pts:[[150,290],[470,290],[800,290]],c:bad?C.red:k==='checkout'?C.green:C.blue,r:k==='checkout'?5:3.5,drop:bad?(dr?.25:.55):0});}},
           draw(now){flyers(now,fl);server(150,290,{label:'API',sub:'300 req/s',w:120,st:'hot'});
             if(drop.size)box(290,170,{label:'Shedder',sub:[...drop].join(' + '),c:C.amber,w:170,h:50});
             box(470,290,{label:crashed?'OUT OF MEMORY':'Queue',sub:crashed?'':`${Math.round(q)} waiting${p.bound?' / 100':''}`,c:crashed?C.red:q>90?C.amber:C.edge,w:170,h:60,st:crashed?'fail':undefined});
@@ -5001,7 +5058,7 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
     init(){return{tot:0,bad:0,lat:[],dead:new Set(),killed:null,qb:{},clicks:{accepted:0,persisted:0},lost:{deadEnd:0,deadApp:0,overload:0,overBot:0,db:0,dbSync:0,noDb:0},appIn:{}};},
     step(S,G,dt,t){const legit=t<6?1000:t<12?3000:2000,bot=t>=12?2000:0;
       const tc=labAt(S,'crash',9,7,13),phase=t<6?'Launch':t<12?(t<tc?'A link goes viral':'Viral, and an app server dies'):(t>=tc&&t<tc+2?'Bot attack, and an app server dies':'Bot attack');
-      if(t>=tc&&!S.killed){const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a)));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
+      if(t>=tc&&!S.killed){const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a)));S.killed=b.id;S.dead.add(b.id);labSignal(S,b,'crashed',C.red);}}
       const flows=[],load={},bad=new Set(),F=(a,b,rate,isBad,c)=>{flows.push({a:a.id,b:b.id,rate,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       const appIn={};let lost=0;
       // front tier: traffic follows the wires to the app servers
@@ -5046,8 +5103,9 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
       S.tot+=legit*dt;S.bad+=Math.min(legit,lost)*dt;
       return{flows,load,dead:S.dead,phase,badEdges:bad};},
     hud(S){const s=S.tot?1-S.bad/S.tot:1,l=p95(S),b=backlog(S);return[['served',`${(s*100).toFixed(1)}%`,s>=.99?C.green:C.red],['p95',`${l} ms`,l<=80?C.green:C.red],['clicks waiting',`${Math.ceil(b)}`,b<1e-6?C.green:C.amber]];},
-    score(S,G,cost){const s=1-S.bad/S.tot,lat=p95(S),counted=!!S.clicks&&backlog(S)<1e-6&&Math.abs(S.clicks.accepted-S.clicks.persisted)<1e-6;
-      if(s>=.99&&lat<=80&&cost<=20&&counted)return{stars:3,title:'Launched without a scratch',msg:`${(s*100).toFixed(1)}% served, p95 ${lat} ms, $${cost}/h, every click counted. A limiter for the bots, a load balancer that skips the dead server, a spare app server, a cache for the viral link and a queue for the clicks: you built it.`};
+    measure:shortenerMetrics,
+    score(S,G,cost,m=shortenerMetrics(S,G,cost)){const s=m.requirements[0].observed,lat=m.requirements[1].observed,counted=m.requirements[3].passed;
+      if(m.requirements.every(x=>x.passed))return{stars:3,title:'Launched without a scratch',msg:`${(s*100).toFixed(1)}% served, p95 ${lat} ms, $${cost}/h, every click counted. A limiter for the bots, a load balancer that skips the dead server, a spare app server, a cache for the viral link and a queue for the clicks: you built it.`};
       const L=S.lost,top=Object.entries(L).sort((a,b)=>b[1]-a[1])[0];
       const why=top&&top[1]>S.tot*.003?({deadEnd:'Some traffic hit a dead end: every path from Users has to reach an app server.',deadApp:'Requests kept going to the crashed server. Put a load balancer in front: its health checks skip dead servers.',
         overload:'Your app servers ran out of capacity during the viral spike. Add servers, with one to spare for when one dies.',overBot:'The bot attack used up your app servers. Put a rate limiter in front of everything.',
@@ -5060,19 +5118,21 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
       return{stars:0,title:'The launch crashed',msg};}})});
 function p95(S){const a=S.lat.slice().sort((x,y)=>x[0]-y[0]),W_=a.reduce((s,x)=>s+x[1],0);let w=0;for(const[m,v]of a){w+=v;if(w>=W_*.95)return m;}return 0;}
 function backlog(S){return Object.values(S.qb).reduce((a,b)=>a+b,0);}
+function shortenerMetrics(S,G,cost){const served=S.tot?1-S.bad/S.tot:0,lat=p95(S),pending=backlog(S),unaccounted=S.clicks?Math.abs(S.clicks.accepted-S.clicks.persisted):Infinity;return{accepted:S.clicks?.accepted||0,persisted:S.clicks?.persisted||0,pending,requirements:[{name:'Served fraction',observed:served,target:.99,passed:served>=.99},{name:'Modeled p95 (ms)',observed:lat,target:80,passed:lat<=80},{name:'Model cost ($/h)',observed:cost,target:20,passed:cost<=20},{name:'Unpersisted click events',observed:Math.max(pending,unaccounted),target:0,passed:!!S.clicks&&pending<1e-6&&unaccounted<1e-6}]};}
 })();
 
 /* ---------------- 23. CAPSTONE: build and launch the chat app ---------------- */
 // You build it on the board. 100,000 people are online; 10% of each message's recipients are offline.
 // Messages: 4,000/s, a storm of 8,000/s from 5 s to 12 s, and the busiest gateway dies at 9 s.
-// Scored as recipients reached within a second: offline members count only through a push.
+// Scored as recipients reached in the capacity model: offline members count only through a push.
 (function(){
 const ONLINE=100000,SOCK=40000,CHAT=12000,SHARD=3000,DIRECT=20000;
-chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,000 people online, a message storm, the busiest gateway crashing and 10% of members offline. Reach at least 99.5% of recipients within a second (a push counts for offline members) and spend at most $22/h.',
+chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,000 people online, a message storm, the busiest gateway crashing and 10% of members offline. Reach at least 99.5% of recipients in the capacity model (a push counts for offline members) and spend at most $22/h.',
   hint:'People → load balancer → WebSocket gateways (room for everyone even after one dies) → chat service → enough store shards for the storm. Deliver through pub/sub to every gateway, push to the offline, and let clients resume from their last sequence number.',
   make:labGame({id:'capstone-chat',
     hints:['Count connections: how many people does a gateway hold, and how many are left if one dies?','A load balancer in front of gateways with room to lose one, a chat service, enough store shards for the storm, pub/sub back to every gateway, and push for offline members. Clients should resume from their last sequence number.'],
     solution:{nodes:['lb','gateway','chat','store','pubsub','push','gateway','gateway','gateway','store','store'],edges:[[0,1],[1,2],[2,3],[3,4],[3,5],[5,2],[3,6]],opts:{resume:true}},
+    assumptions:'Educational rate/capacity model: 100k connections; gateways hold 40k each, chat services take 12k messages/s, store shards take 3k writes/s. Offered traffic is 4k/s or 8k/s during the storm; 90% online delivery and 10% push delivery are modeled. Resume assumes replay succeeds. No message timestamps or end-to-end latency are measured, so this test does not certify a one-second delivery deadline. Dollar costs are model parameters, not provider quotes.',
     loadNote:(n,u)=>n.kind==='gateway'?`${Math.round(u*40)}k people on a 40k gateway`:n.kind==='store'?'more writes than a shard takes':n.kind==='chat'?'more messages than it handles':null,budget:22,dur:16,scale:400,
     intro:'Drag components onto the board and wire them from People. A message goes phone → gateway → chat service → store, then out to the recipient’s gateway or phone.',
     fixedKinds:{users:{label:'People',shape:'user',w:44,h:44}},
@@ -5095,7 +5155,7 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
       return[];},
     init(){return{sent:0,ok:0,dead:new Set(),killed:null,deadShare:0,deadAt:null,gwIn:{},lost:{noConn:0,noChat:0,store:0,route:0,fan:0,offline:0,crash:0}};},
     step(S,G,dt,t){const tc=labAt(S,'crash',9,6,12.5),rate=t>=5&&t<12?8000:4000,phase=t>=tc&&t<tc+2?'A gateway dies':t<5?'Normal traffic':t<12?'Message storm':'Recovering';
-      if(t>=tc&&!S.killed){const gws=G.of('gateway');if(gws.length){const b=labPick(S,'victim',gws,gws.reduce((a,c)=>((S.gwIn[c.id]||0)>(S.gwIn[a.id]||0)?c:a)));S.killed=b.id;S.dead.add(b.id);S.deadAt=t;S.deadShare=Math.min(S.gwIn[b.id]||0,SOCK)/ONLINE;FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
+      if(t>=tc&&!S.killed){const gws=G.of('gateway');if(gws.length){const b=labPick(S,'victim',gws,gws.reduce((a,c)=>((S.gwIn[c.id]||0)>(S.gwIn[a.id]||0)?c:a)));S.killed=b.id;S.dead.add(b.id);S.deadAt=t;S.deadShare=Math.min(S.gwIn[b.id]||0,SOCK)/ONLINE;labSignal(S,b,'crashed',C.red);}}
       const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       // connections: people → (LB) → gateways. The LB sends reconnects only to live gateways;
       // people wired straight to a gateway stay stuck on it when it dies.
@@ -5132,17 +5192,19 @@ chal('capstone-chat',{title:'Build the chat app',goal:'Build it yourself: 100,00
         if(push){reached+=stored*.1;F(c,push,stored*.1,false,C.green);}else S.lost.offline+=stored*.1*dt;});
       S.sent+=rate*dt;S.ok+=Math.min(rate,reached)*dt;
       return{flows,load,dead:S.dead,phase,badEdges:bad};},
-    hud(S){const r=S.sent?S.ok/S.sent:1;return[['reached in time',`${(r*100).toFixed(2)}%`,r>=.995?C.green:C.red]];},
-    score(S,G,cost){const r=S.ok/S.sent;
-      if(r>=.995&&cost<=22)return{stars:3,title:'Everyone reached in time',msg:`${(r*100).toFixed(2)}% reached within a second for $${cost}/h. Room to lose a gateway, shards for the storm, pub/sub for fan-out, push for the offline and exact resumes: you built it.`};
+    hud(S){const r=S.sent?S.ok/S.sent:1;return[['modeled delivery',`${(r*100).toFixed(2)}%`,r>=.995?C.green:C.red]];},
+    measure:chatMetrics,
+    score(S,G,cost,m=chatMetrics(S,G,cost)){const r=m.requirements[0].observed;
+      if(m.requirements.every(x=>x.passed))return{stars:3,title:'Delivery target met in the model',msg:`${(r*100).toFixed(2)}% reached in the capacity model for $${cost}/h. Room to lose a gateway, shards for the storm, pub/sub for fan-out, push for the offline and exact resumes: you built it.`};
       const top=Object.entries(S.lost).sort((a,b)=>b[1]-a[1])[0];
       const why=top&&top[1]>S.sent*.002?({noConn:'Not everyone could hold a connection: count sockets (40k per gateway) after one gateway dies, and put a load balancer in front so people reconnect to live gateways.',
         noChat:'Messages got stuck before the chat service: wire every gateway to it, and keep it under 12k messages/s.',store:'The store could not take the storm: add shards (3k writes/s each).',
         route:'Some gateways never got the messages for their users: wire pub/sub to every gateway.',fan:'Calling every gateway directly could not keep up with the storm: use pub/sub.',
         offline:'Offline members were not told until they next opened the app: add push notifications.',crash:'People on the dead gateway lost the messages sent while they reconnected: let clients resume from their last sequence number.'})[top[0]]:'';
       const msg=[why,cost>22?`Over budget at $${cost}/h.`:''].filter(Boolean).join(' ')||'Close: trim the cost.';
-      if(r>=.97)return{stars:2,title:`${(r*100).toFixed(2)}% reached in time`,msg};
-      return{stars:r>=.85?1:0,title:`${(r*100).toFixed(1)}% reached in time`,msg};}})});
+      if(r>=.97)return{stars:2,title:`${(r*100).toFixed(2)}% modeled delivery`,msg};
+      return{stars:r>=.85?1:0,title:`${(r*100).toFixed(1)}% modeled delivery`,msg};}})});
+function chatMetrics(S,G,cost){const delivered=S.sent?S.ok/S.sent:0;return{sent:S.sent,delivered:S.ok,requirements:[{name:'Modeled delivery fraction',observed:delivered,target:.995,passed:delivered>=.995},{name:'Model cost ($/h)',observed:cost,target:22,passed:cost<=22}]};}
 })();
 
 /* ---------------- 24. CAPSTONE: build the news feed and survive the big night ---------------- */
@@ -5186,7 +5248,7 @@ chal('capstone-feed',{title:'Build the news feed',goal:'Build it yourself: ordin
       const fanOut=!!(q&&writers.length),fromCache=fs&&G.out(fs,['feedcache']).length>0,fromDb=fs&&G.out(fs,['postdb']).length>0,page=fs&&G.out(fs,['pagecache']).length>0,skip=G.opts.skipStars;
       const flows=[],load={},bad=new Set(),F=(a,b,r,isBad,c)=>{if(!a||!b)return;flows.push({a:a.id,b:b.id,rate:r,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       // posting: fan-out writes pile into the queue; workers drain it
-      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=ts&&!skip){S.q+=STAR;S.star=true;labMark(q,'+30 M writes',C.red,15);}S.q=Math.max(0,S.q-cap*dt);
+      const cap=writers.length*WORKER;if(fanOut){S.q+=NEED*dt;if(!S.star&&t>=ts&&!skip){S.q+=STAR;S.star=true;labSignal(S,q,'+30 M writes',C.red);}S.q=Math.max(0,S.q-cap*dt);
         const wait=Math.max(NEED/cap,S.q/cap)+(cap<=NEED?60:0);S.fresh=Math.max(S.fresh,wait);load[q.id]=Math.min(1.5,S.q/(cap*10));writers.forEach(w=>load[w.id]=NEED/cap);}
       else if(fromCache)S.fresh=Math.max(S.fresh,1e9);         // nothing fills the feed cache: new posts never show up
       if(fromCache&&fanOut&&skip&&!fromDb)S.fresh=Math.max(S.fresh,1e9);   // stars skip fan-out, but nothing reads their posts
@@ -5307,13 +5369,13 @@ const GLOSSARY=[
 ['trace','The path of one request through every service, with a timing for each step.',['traces','distributed trace']],
 ['span','One timed step inside a trace.',['spans']],
 ['consensus','Getting several machines to agree on one value, even when some fail.',[]],
-['Raft','A consensus algorithm: nodes elect a leader, which copies a log to a majority.',[]],
+['Raft','A replicated-log protocol with at most one elected leader per term, up-to-date-log voting, stale-term rejection and current-term majority commitment.',[]],
 ['majority','More than half of the nodes: enough agreement to make progress safely.',[]],
 ['heartbeat','A regular "I\'m alive" message; when they stop, others react.',['heartbeats']],
 ['leader election','Choosing a new leader when the old one stops sending heartbeats.',['election']],
 ['two-phase commit','A coordinator asks every participant to prepare, then tells all of them to commit or all to abort.',['2PC']],
-['saga','A long transaction split into steps, each with a compensating step that undoes it.',['sagas']],
-['compensation','An action that undoes an earlier step, like a refund for a charge.',['compensating']],
+['saga','A durable workflow of local transactions and compensations. Recovery can require idempotent retries or manual intervention; external effects may be irreversible.',['sagas']],
+['compensation','A business action that counteracts an earlier effect, such as a refund. It can fail and may not restore the exact original state.',['compensating']],
 ['Snowflake ID','A compact timestamp-based id, commonly 64 bits, with a unique machine number and counter. Guarded clocks and counter limits are required; timestamp order does not establish causal order.',['Snowflake','Snowflake IDs']],
 ['UUID','A 128-bit identifier with several versions, including random UUIDv4 and timestamp-based UUIDv7.',['UUIDs']],
 ['UUIDv4','A UUID with random bits, suitable for independent generation without a central counter. It does not sort by creation time.',[]],
@@ -5333,7 +5395,7 @@ const GLOSSARY=[
 ['access token','A credential authorizing access to an API within its granted permissions; receiving it alone does not establish a login identity.',['access tokens']],
 ['refresh token','A longer-lived credential used only to get new access tokens.',['refresh tokens']],
 ['identity provider','The service that checks who you are and issues tokens in a "log in with…" flow.',['identity providers']],
-['quorum','How many replicas must answer for a read (R) or write (W) to count.',['quorums','read quorum','write quorum']],
+['quorum','The required replica replies for a read or write. Overlap assumes fixed membership and suitable version/write rules; the inequality alone does not guarantee linearizability.',['quorums','read quorum','write quorum']],
 ['Bloom filter','A compact bit array that says a key is definitely absent or maybe present.',['Bloom filters']],
 ['false positive','A "yes" or "maybe" that turns out to be wrong.',['false positives']],
 ['hash function','A function that turns a key into a number that looks random but is always the same for that key.',['hash functions']],
@@ -5358,7 +5420,7 @@ const GLOSSARY=[
 ['lease','A lock that expires after a set time unless it is renewed.',['leases']],
 ['fencing token','A number that grows with every lock grant; the resource rejects writes carrying an older number.',['fencing tokens']],
 ['garbage collection pause','A stretch of time where a program freezes while its runtime frees memory.',['GC pause']],
-['vector clock','Per-replica write counts attached to each version, used to tell which came first.',['vector clocks']],
+['vector clock','Per-replica counters: X precedes Y when every X count is ≤ Y and at least one is smaller. Equal clocks are equal versions; incomparable clocks are concurrent.',['vector clocks']],
 ['CRDT','Conflict-free replicated data type: a structure whose copies always merge to the same result.',['CRDTs']],
 ['last write wins','On a conflict, keep the version with the later timestamp and drop the other.',['last-write-wins']],
 ['301','A permanent HTTP redirect; browsers remember it.',[]],
@@ -5480,7 +5542,7 @@ function completeLesson(){const c=chapters[cur];seen[c.id]=1;store.set('sdve-see
 function finish(){rememberLesson();showCard(true,true);}
 function updProg(){$('progBar').style.width=(Object.keys(seen).filter(k=>chapters.some(c=>c.id===k)).length/chapters.length*100)+'%';}
 function frame(ts){if(last==null)last=ts;const dt=Math.min(.06,(ts-last)/1000);last=ts;
-  if(mode==='play'){if(challengeReady&&!challengePaused&&!blocked()&&!renderFault){ct+=dt;renderChal(dt);if(!renderFault&&api)try{api.tick();}catch(e){failRender(e);}}}
+  if(mode==='play'){if(challengeReady&&!challengePaused&&!blocked()&&!renderFault){ct+=dt;try{if(inst&&inst.update)inst.update(ct,dt);renderChal(dt);if(!renderFault&&api)api.tick();}catch(e){failRender(e);}}}
   else if(playing&&!dragging&&!blocked()&&!renderFault){const c=chapters[cur];t+=dt*speed;if(t>=c.dur){t=c.dur;setPlaying(false);finish();}render();if(Math.abs(t-checkpoint)>=2)rememberLesson();}
   requestAnimationFrame(frame);}
 
@@ -5590,7 +5652,7 @@ $('menuBtn').onclick=()=>setMenu(!document.body.classList.contains('menu'));
 $('menuClose').onclick=()=>setMenu(false);$('scrim').onclick=()=>setMenu(false);
 if(narrow.addEventListener)narrow.addEventListener('change',()=>setMenu(false));
 setMenu(false);
-window.addEventListener('keydown',e=>{if($('glossary').open||$('card').open||$('result').open)return;if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
+window.addEventListener('keydown',e=>{const dialog=[$('glossary'),$('card'),$('result')].find(d=>d.open);if(dialog){if(e.key==='Tab'){const items=[...dialog.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')].filter(b=>!b.disabled&&b.tabIndex!==-1&&!b.hidden&&(!b.getClientRects||b.getClientRects().length));const first=items[0],end=items[items.length-1];if(first&&(!dialog.contains(document.activeElement)||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===end)){e.preventDefault();(e.shiftKey?end:first).focus();}}return;}if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
   if((e.ctrlKey||e.metaKey||e.altKey)&&document.body.classList.contains('menu'))return;
   if(document.body.classList.contains('menu')){if(e.key==='Escape'){e.preventDefault();setMenu(false);}else if(e.key==='Tab'){
     const items=[...$('side').querySelectorAll('button,input,select,a[href]')].filter(b=>!b.disabled&&!b.closest('[hidden]'));

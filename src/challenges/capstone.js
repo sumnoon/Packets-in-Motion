@@ -35,7 +35,7 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
     init(){return{tot:0,bad:0,lat:[],dead:new Set(),killed:null,qb:{},clicks:{accepted:0,persisted:0},lost:{deadEnd:0,deadApp:0,overload:0,overBot:0,db:0,dbSync:0,noDb:0},appIn:{}};},
     step(S,G,dt,t){const legit=t<6?1000:t<12?3000:2000,bot=t>=12?2000:0;
       const tc=labAt(S,'crash',9,7,13),phase=t<6?'Launch':t<12?(t<tc?'A link goes viral':'Viral, and an app server dies'):(t>=tc&&t<tc+2?'Bot attack, and an app server dies':'Bot attack');
-      if(t>=tc&&!S.killed){const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a)));S.killed=b.id;S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
+      if(t>=tc&&!S.killed){const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.appIn[c.id]||[0])[0]>(S.appIn[a.id]||[0])[0]?c:a)));S.killed=b.id;S.dead.add(b.id);labSignal(S,b,'crashed',C.red);}}
       const flows=[],load={},bad=new Set(),F=(a,b,rate,isBad,c)=>{flows.push({a:a.id,b:b.id,rate,bad:isBad,c});if(isBad)bad.add(a.id+'>'+b.id);};
       const appIn={};let lost=0;
       // front tier: traffic follows the wires to the app servers
@@ -80,8 +80,9 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
       S.tot+=legit*dt;S.bad+=Math.min(legit,lost)*dt;
       return{flows,load,dead:S.dead,phase,badEdges:bad};},
     hud(S){const s=S.tot?1-S.bad/S.tot:1,l=p95(S),b=backlog(S);return[['served',`${(s*100).toFixed(1)}%`,s>=.99?C.green:C.red],['p95',`${l} ms`,l<=80?C.green:C.red],['clicks waiting',`${Math.ceil(b)}`,b<1e-6?C.green:C.amber]];},
-    score(S,G,cost){const s=1-S.bad/S.tot,lat=p95(S),counted=!!S.clicks&&backlog(S)<1e-6&&Math.abs(S.clicks.accepted-S.clicks.persisted)<1e-6;
-      if(s>=.99&&lat<=80&&cost<=20&&counted)return{stars:3,title:'Launched without a scratch',msg:`${(s*100).toFixed(1)}% served, p95 ${lat} ms, $${cost}/h, every click counted. A limiter for the bots, a load balancer that skips the dead server, a spare app server, a cache for the viral link and a queue for the clicks: you built it.`};
+    measure:shortenerMetrics,
+    score(S,G,cost,m=shortenerMetrics(S,G,cost)){const s=m.requirements[0].observed,lat=m.requirements[1].observed,counted=m.requirements[3].passed;
+      if(m.requirements.every(x=>x.passed))return{stars:3,title:'Launched without a scratch',msg:`${(s*100).toFixed(1)}% served, p95 ${lat} ms, $${cost}/h, every click counted. A limiter for the bots, a load balancer that skips the dead server, a spare app server, a cache for the viral link and a queue for the clicks: you built it.`};
       const L=S.lost,top=Object.entries(L).sort((a,b)=>b[1]-a[1])[0];
       const why=top&&top[1]>S.tot*.003?({deadEnd:'Some traffic hit a dead end: every path from Users has to reach an app server.',deadApp:'Requests kept going to the crashed server. Put a load balancer in front: its health checks skip dead servers.',
         overload:'Your app servers ran out of capacity during the viral spike. Add servers, with one to spare for when one dies.',overBot:'The bot attack used up your app servers. Put a rate limiter in front of everything.',
@@ -94,4 +95,5 @@ chal('capstone',{title:'Build the shortener',goal:'Build it yourself, then survi
       return{stars:0,title:'The launch crashed',msg};}})});
 function p95(S){const a=S.lat.slice().sort((x,y)=>x[0]-y[0]),W_=a.reduce((s,x)=>s+x[1],0);let w=0;for(const[m,v]of a){w+=v;if(w>=W_*.95)return m;}return 0;}
 function backlog(S){return Object.values(S.qb).reduce((a,b)=>a+b,0);}
+function shortenerMetrics(S,G,cost){const served=S.tot?1-S.bad/S.tot:0,lat=p95(S),pending=backlog(S),unaccounted=S.clicks?Math.abs(S.clicks.accepted-S.clicks.persisted):Infinity;return{accepted:S.clicks?.accepted||0,persisted:S.clicks?.persisted||0,pending,requirements:[{name:'Served fraction',observed:served,target:.99,passed:served>=.99},{name:'Modeled p95 (ms)',observed:lat,target:80,passed:lat<=80},{name:'Model cost ($/h)',observed:cost,target:20,passed:cost<=20},{name:'Unpersisted click events',observed:Math.max(pending,unaccounted),target:0,passed:!!S.clicks&&pending<1e-6&&unaccounted<1e-6}]};}
 })();

@@ -9,8 +9,8 @@ chal('cdn',{title:'Place the edge caches',goal:'You can afford two edge caches. 
       build(p,api){let acc=0;const fl=[];let el=0;
         function toggle(r){if(!r)return;if(E.has(r.id))E.delete(r.id);else if(E.size<2){E.add(r.id);FX.burst(r.x,r.y,C.amber,14);}else FX.text(r.x,r.y-40,'Budget: 2 edges',C.red,14);
           PICK.forEach(q=>{if(q.control)q.control.setAttribute('aria-pressed',String(E.has(q.id)));});api.status(`Edge caches: ${E.size?R.filter(q=>E.has(q.id)).map(q=>q.n).join(' and '):'none'} (${E.size} of 2). Average wait ${avg(E).toFixed(0)} ms.`);}
-        return{step(dt,t){el=t;acc+=dt*40;const now=api.now();while(acc>=1){acc--;let x=Math.random(),r=R[R.length-1];for(const q of R){if(x<q.pop){r=q;break;}x-=q.pop;}
-            const tgt=E.has(r.id)||r.origin?r:R[1],ms=lat(r,E);fl.push({t0:now,d:.25+ms/220,pts:[[r.x+(Math.random()-.5)*50,r.y+50],[tgt.x,tgt.y]],c:ms<40?C.green:ms<100?C.amber:C.red,r:3.5});}},
+        return{step(dt,t){el=t;acc+=dt*40;const now=api.now();while(acc>=1){acc--;let x=PIM_RANDOM.next(),r=R[R.length-1];for(const q of R){if(x<q.pop){r=q;break;}x-=q.pop;}
+            const tgt=E.has(r.id)||r.origin?r:R[1],ms=lat(r,E);fl.push({t0:now,d:.25+ms/220,pts:[[r.x+(PIM_RANDOM.next()-.5)*50,r.y+50],[tgt.x,tgt.y]],c:ms<40?C.green:ms<100?C.amber:C.red,r:3.5});}},
           draw(now){g.save();g.globalAlpha=.5;[[190,230,150,95],[340,400,70,80],[560,190,110,70],[790,250,190,100],[870,420,60,40]].forEach(([x,y,a,b])=>{g.beginPath();g.ellipse(x,y,a,b,0,0,7);g.fillStyle='#10182a';g.fill();});g.restore();
             flyers(now,fl);R.forEach(r=>{const on=E.has(r.id);for(let i=0;i<Math.round(r.pop*20);i++)dot(r.x-40+(i%7)*13,r.y+44+Math.floor(i/7)*12,C.blue,2.4,.7);
               if(r.origin)server(r.x,r.y,{label:'Origin',sub:'US-East',w:104,h:52,col:C.accent,st:'acc'});else box(r.x,r.y,{label:on?'Edge cache':r.n,sub:on?r.n:`${r.o} ms to origin`,c:on?C.amber:C.edge,w:118,h:50,glow:on});

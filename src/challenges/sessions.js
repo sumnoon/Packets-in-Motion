@@ -39,10 +39,10 @@ chal('sessions',{title:'Keep everyone logged in',goal:'Build it yourself: 30 use
       users:Array.from({length:N},()=>({seen:false,mem:new Set(),last:null,pin:null}))};},
     step(S,G,dt,t){const ts=labAt(S,'server',5,3,7),tm=labAt(S,'store',9,ts+2,11),phase=t<ts?'Users clicking around':t<tm?'A server dies':'The store\'s machine dies';
       const U=G.of('users')[0],lb=G.out(U,['lb'])[0],direct=G.out(U,['app']),store=G.of('store')[0];
-      if(t>=ts&&!S.killed){S.killed=true;const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.hits[c.id]||0)>(S.hits[a.id]||0)?c:a)));S.dead.add(b.id);FX.burst(b.x,b.y,C.red,30,220);labMark(b,'crashed',C.red,15);}}
-      if(t>=tm&&!S.storeHit&&store){S.storeHit=true;const rep=G.out(store,['replica'])[0];FX.burst(store.x,store.y,C.red,30,220);
-        if(rep)labMark(rep,'replica took over',C.green,14);
-        else{const lost=S.users.filter(u=>u.seen&&u.inStore).length;S.relog+=lost;S.why.store+=lost;labMark(store,'all sessions lost',C.red,15);}}
+      if(t>=ts&&!S.killed){S.killed=true;const apps=G.of('app');if(apps.length){const b=labPick(S,'victim',apps,apps.reduce((a,c)=>((S.hits[c.id]||0)>(S.hits[a.id]||0)?c:a)));S.dead.add(b.id);labSignal(S,b,'crashed',C.red);}}
+      if(t>=tm&&!S.storeHit&&store){S.storeHit=true;const rep=G.out(store,['replica'])[0];labSignal(S,store,'store machine failed',C.red);
+        if(rep)labSignal(S,rep,'replica took over',C.green);
+        else{const lost=S.users.filter(u=>u.seen&&u.inStore).length;S.relog+=lost;S.why.store+=lost;labSignal(S,store,'all sessions lost',C.red);}}
       const edges={},E=(a,b,isBad)=>{const key=a.id+'>'+b.id,e=edges[key]||(edges[key]={a:a.id,b:b.id,n:0,bad:false});e.n++;e.bad=e.bad||isBad;};
       const kick=why=>{S.relog++;S.why[why]++;};
       S.acc+=RATE*dt;

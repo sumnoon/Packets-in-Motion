@@ -15,8 +15,8 @@ chal('deployments',{title:'Ship v2 without hurting users',goal:'v2 has a bug tha
     build(p,api){const plan=deployPlan(p),total=deployErrors(p);let shown=0,acc=0,T=0,rolled=false;const fl=[];const LB=[330,300];
       return{step(dt,t){T=t;if(!rolled&&t>=plan.undo){rolled=true;FX.text(LB[0],LB[1]-60,'rolled back',C.green,15);}
           shown=Math.round(total*clamp(plan.segs.reduce((a,[s,e])=>a+clamp((t-s)/(e-s))*(e-s),0)/Math.max(.001,plan.segs.reduce((a,[s,e])=>a+e-s,0))));
-          acc+=dt*16;const now=api.now();while(acc>=1){acc--;const sh=v2share(p,t),toV2=Math.random()<sh,bad=toV2&&Math.random()<.4,y=toV2?420:180;
-            fl.push({t0:now,d:.45,pts:[[110,300],[LB[0]-62,LB[1]]],c:C.blue,r:3.5});fl.push({t0:now+.45,d:.45,pts:[[LB[0]+62,LB[1]],[700,y+(Math.random()-.5)*60]],c:bad?C.red:toV2?C.amber:C.blue,r:3.5,drop:bad?.85:0});}},
+          acc+=dt*16;const now=api.now();while(acc>=1){acc--;const sh=v2share(p,t),toV2=PIM_RANDOM.next()<sh,bad=toV2&&PIM_RANDOM.next()<.4,y=toV2?420:180;
+            fl.push({t0:now,d:.45,pts:[[110,300],[LB[0]-62,LB[1]]],c:C.blue,r:3.5});fl.push({t0:now+.45,d:.45,pts:[[LB[0]+62,LB[1]],[700,y+(PIM_RANDOM.next()-.5)*60]],c:bad?C.red:toV2?C.amber:C.blue,r:3.5,drop:bad?.85:0});}},
         draw(now,running){flyers(now,fl);for(let k=0;k<4;k++)user(110,210+k*60,{r:12});box(LB[0],LB[1],{label:'Load balancer',w:124,h:54});
           const sh=running?v2share(p,T):0;
           server(760,180,{label:'v1 fleet',sub:`${Math.round((1-sh)*100)}% of traffic`,w:150,h:60,col:C.blue,st:'blue'});

@@ -113,7 +113,7 @@ function completeLesson(){const c=chapters[cur];seen[c.id]=1;store.set('sdve-see
 function finish(){rememberLesson();showCard(true,true);}
 function updProg(){$('progBar').style.width=(Object.keys(seen).filter(k=>chapters.some(c=>c.id===k)).length/chapters.length*100)+'%';}
 function frame(ts){if(last==null)last=ts;const dt=Math.min(.06,(ts-last)/1000);last=ts;
-  if(mode==='play'){if(challengeReady&&!challengePaused&&!blocked()&&!renderFault){ct+=dt;renderChal(dt);if(!renderFault&&api)try{api.tick();}catch(e){failRender(e);}}}
+  if(mode==='play'){if(challengeReady&&!challengePaused&&!blocked()&&!renderFault){ct+=dt;try{if(inst&&inst.update)inst.update(ct,dt);renderChal(dt);if(!renderFault&&api)api.tick();}catch(e){failRender(e);}}}
   else if(playing&&!dragging&&!blocked()&&!renderFault){const c=chapters[cur];t+=dt*speed;if(t>=c.dur){t=c.dur;setPlaying(false);finish();}render();if(Math.abs(t-checkpoint)>=2)rememberLesson();}
   requestAnimationFrame(frame);}
 
@@ -223,7 +223,7 @@ $('menuBtn').onclick=()=>setMenu(!document.body.classList.contains('menu'));
 $('menuClose').onclick=()=>setMenu(false);$('scrim').onclick=()=>setMenu(false);
 if(narrow.addEventListener)narrow.addEventListener('change',()=>setMenu(false));
 setMenu(false);
-window.addEventListener('keydown',e=>{if($('glossary').open||$('card').open||$('result').open)return;if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
+window.addEventListener('keydown',e=>{const dialog=[$('glossary'),$('card'),$('result')].find(d=>d.open);if(dialog){if(e.key==='Tab'){const items=[...dialog.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')].filter(b=>!b.disabled&&b.tabIndex!==-1&&!b.hidden&&(!b.getClientRects||b.getClientRects().length));const first=items[0],end=items[items.length-1];if(first&&(!dialog.contains(document.activeElement)||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===end)){e.preventDefault();(e.shiftKey?end:first).focus();}}return;}if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
   if((e.ctrlKey||e.metaKey||e.altKey)&&document.body.classList.contains('menu'))return;
   if(document.body.classList.contains('menu')){if(e.key==='Escape'){e.preventDefault();setMenu(false);}else if(e.key==='Tab'){
     const items=[...$('side').querySelectorAll('button,input,select,a[href]')].filter(b=>!b.disabled&&!b.closest('[hidden]'));

@@ -11,9 +11,9 @@ beats:[
 [16,'If the coordinator dies mid-way','The services voted yes and are now stuck waiting with their locks held, unsure whether to commit or abort. 2PC can block.'],
 [21,'A saga: a chain of local steps','Instead, each service commits its own step at once and then triggers the next one. There are no global locks.'],
 [27,'A step fails → compensate','The car booking fails. The saga runs compensating steps in reverse: cancel the hotel, then refund the flight.'],
-[34,'Consistent in the end, never stuck','For a moment the flight really was booked. When the saga finishes, everything is undone cleanly and nobody is left holding a lock.']],
+[34,'Compensation can fail too','Persist saga progress and retry idempotent compensations after a crash. A refund may fail repeatedly and need manual intervention; an email or another irreversible effect cannot simply be undone. A saga avoids global locks, but does not guarantee automatic recovery.']],
 use:['2PC: a few databases that must commit atomically, close together','Sagas: long business flows across microservices (orders, trips, payments)','Sagas whenever services must stay available and independent'],
-cons:['2PC holds locks across the network and blocks if the coordinator fails','Sagas expose in-between states and need a compensating action for every step','Compensations must be retried safely, so they have to be idempotent'],
+cons:['2PC holds locks across the network and blocks if the coordinator fails','Sagas expose intermediate states; some external effects are irreversible','Persist progress; compensations need idempotent retries and a manual recovery path'],
 draw(t){
   const co=A(t,.5,20.6);box(CO[0],CO[1],{label:'Coordinator',sub:'2-phase commit',w:150,h:58,st:t>=18&&t<20.6?'fail':undefined,...co});
   user(140,295,{label:'traveller',...A(t,.2)});
@@ -39,5 +39,6 @@ draw(t){
   pk(t,31.6,1.3,[[SV[0][1][0]-72,SV[0][1][1]],[180,295]],C.amber,{label:'sorry: trip cancelled'});
   // timeline of states
   const ta=V(t,34);if(ta>0){const st=[['flight booked',C.green],['hotel booked',C.green],['car failed',C.red],['hotel cancelled',C.amber],['flight refunded',C.amber]];
-    st.forEach(([s,c],k)=>{pill(s,130+k*185,522,{c,z:12,a:ta*V(t,34+k*.25)});if(k)tx('→',130+k*185-94,522,{z:14,c:C.dim,a:ta});});}
+    st.forEach(([s,c],k)=>{pill(s,130+k*185,522,{c,z:12,a:ta*V(t,34+k*.25)});if(k)tx('→',130+k*185-94,522,{z:14,c:C.dim,a:ta});});
+    textBlock('Alternative: refund fails → persist retry → manual recovery. Irreversible effects need a business remedy.',380,410,540,{z:15,c:C.amber,a:V(t,35)});}
 }});})();
