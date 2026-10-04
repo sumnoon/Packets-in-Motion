@@ -130,6 +130,14 @@
 .j-packet{fill:var(--blue);filter:drop-shadow(0 0 4px var(--blue))}
 .j-dropped{fill:var(--red);filter:drop-shadow(0 0 4px var(--red))}
 .j-intro-next{margin-top:18px;font-size:14px;color:var(--dim)}
+.j-wire-reply{stroke:var(--green)}.j-reply{fill:var(--green);filter:drop-shadow(0 0 4px var(--green))}
+.j-intro-copy strong{color:var(--text)}
+.j-why{list-style:none;padding:0;margin:14px 0 26px;display:grid;gap:10px}
+.j-why li{position:relative;padding-left:20px;color:var(--dim);line-height:1.5}
+.j-why li::before{content:"";position:absolute;left:2px;top:.6em;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.j-recap{padding:6px 8px}.j-recap h3{margin:0 0 14px;font-size:18px}
+.j-recap ol{margin:0;padding-left:22px;display:grid;gap:14px}.j-recap li{color:var(--dim);line-height:1.5}.j-recap li strong{color:var(--text)}
+.j-recap p{margin:20px 0 0;padding-top:16px;border-top:1px solid var(--line);color:var(--dim)}
 @media(prefers-reduced-motion:reduce){.j-flow{display:none}}
 /* Learning map: where you are */
 .j-map-group li.j-here{background:color-mix(in srgb,var(--accent) 10%,transparent);border-radius:8px}

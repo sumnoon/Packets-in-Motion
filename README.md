@@ -16,7 +16,7 @@ An animated, interactive course that takes you from "how do two computers talk?"
 - **A challenge for every lesson**, scored with up to three stars, plus a quiz for each section.
 - **10 architecture labs:** drag in components, wire them, and watch your design survive (or not) a spike, a crash or an attack. The results point at the weakest part.
 - **Engineering missions:** help Maya, the founder of TownSquare, take her app from launch day to two regions, adapting one design as the constraints change.
-- **A guided start:** a single way in from Home, a 60-second interactive introduction, a first-visit tour and a learning map that shows where you are.
+- **A guided start:** a single way in from Home, a one-minute interactive introduction to what system design is, a first-visit tour and a learning map that shows where you are.
 - **One offline HTML file.** No install, no account, no network requests. Progress stays in your browser and can be exported.
 - **Built for everyone:** full keyboard control, screen-reader narration, Dark, Light and High contrast themes, and reduced-motion support.
 
@@ -28,9 +28,9 @@ Or run it offline: `index.html` is a single self-contained file with no dependen
 
 ## Getting started
 
-- **Home** has one job: a single way in. New visitors see **Start learning** with their first lesson, plus a link to the 60-second introduction. Returning learners see **Continue learning**, which reopens their last lesson at its saved position, speed included, without autoplay.
+- **Home** has one job: a single way in. New visitors see **Start learning** with their first lesson, plus a link to the introduction. Returning learners see **Continue learning**, which reopens their last lesson at its saved position, speed included, without autoplay.
 - **First-visit tour:** the very first time you open the course, a short guided tour points at each part of the page in turn (Home, Learning map, Missions, the chapter list, Settings and the start button), with Back, Next and Skip. It appears once; **Settings → Take the tour again** replays it.
-- **The 60-second introduction** starts with "Your app suddenly gets popular." Packets flow on the screen: send a traffic spike and watch one app overload and turn readers away, add a second app that sits idle, then add a load balancer and see the dropped reads disappear. Maya reacts along the way. It ends with a working system and a clear next lesson, Load Balancers. It's self-paced, with no timer or account.
+- **The introduction, "What is system design?"**, takes about a minute in six steps. It starts by showing that every app is a system: a tap travels across the internet to servers and a database, and the answer comes back. System design is arranging those computers so the app stays fast, reliable and affordable as it grows. Then you try it with Maya's app: send a traffic spike and watch one app overload and turn readers away, add a second app that sits idle, then add a load balancer and see the dropped reads disappear. The last step recaps what you did and why system design is useful to anyone (building apps, interviews, working with engineers, everyday curiosity), then offers the next lesson on your path. It's self-paced, with no timer or account.
 - **Learning map** draws each section as a route and each lesson as a station, marks **You are here** (your paused lesson, or your path's next one), and shows completion, challenge stars and suggested prerequisites. Choose your path there: **Learn the basics**, **Prepare for interviews** or **Explore systems**.
 - **The chapter list** in the sidebar still lists every lesson and quiz; search it with `/`.
 
@@ -221,7 +221,7 @@ The consensus, quorum, SQL migration, saga and vector-clock lessons state their 
 | `src/quizzes/<section>.js` | One quiz per section: questions, answers (right one first) and explanations |
 | `src/glossary.js` | Glossary terms, definitions and other spellings |
 | `src/journey-model.js` | Learning paths, the introduction's model and the missions' deterministic trials and saved-progress rules |
-| `src/journey.js` | Home, the 60-second introduction, the learning map and the missions pages |
+| `src/journey.js` | Home, the introduction, the learning map and the missions pages |
 | `src/characters.js` | Mission scenes: places Maya, the engineer and the server rack, with speech bubbles |
 | `src/character-assets.js` | Generated: the characters' poses as embedded SVG (do not edit) |
 | `src/player.js` | The player: controls, sidebar, progress, challenge mode, Settings and the first-visit tour |

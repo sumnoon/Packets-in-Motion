@@ -411,6 +411,14 @@ body.play .stage.editing canvas{touch-action:none}
 .j-packet{fill:var(--blue);filter:drop-shadow(0 0 4px var(--blue))}
 .j-dropped{fill:var(--red);filter:drop-shadow(0 0 4px var(--red))}
 .j-intro-next{margin-top:18px;font-size:14px;color:var(--dim)}
+.j-wire-reply{stroke:var(--green)}.j-reply{fill:var(--green);filter:drop-shadow(0 0 4px var(--green))}
+.j-intro-copy strong{color:var(--text)}
+.j-why{list-style:none;padding:0;margin:14px 0 26px;display:grid;gap:10px}
+.j-why li{position:relative;padding-left:20px;color:var(--dim);line-height:1.5}
+.j-why li::before{content:"";position:absolute;left:2px;top:.6em;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.j-recap{padding:6px 8px}.j-recap h3{margin:0 0 14px;font-size:18px}
+.j-recap ol{margin:0;padding-left:22px;display:grid;gap:14px}.j-recap li{color:var(--dim);line-height:1.5}.j-recap li strong{color:var(--text)}
+.j-recap p{margin:20px 0 0;padding-top:16px;border-top:1px solid var(--line);color:var(--dim)}
 @media(prefers-reduced-motion:reduce){.j-flow{display:none}}
 /* Learning map: where you are */
 .j-map-group li.j-here{background:color-mix(in srgb,var(--accent) 10%,transparent);border-radius:8px}
@@ -5807,7 +5815,7 @@ function initJourney(bridge){
     const target=next||path.ids[0],i=chapters.findIndex(c=>c.id===target),c=chapters[i];
     const intro=heading('','Build an instinct for systems.','System design, explained by watching it happen: short animated lessons, each followed by a hands-on challenge.');
     if(resumed){root.innerHTML=intro;return;}
-    root.innerHTML=intro+`<section class="j-start" aria-labelledby="jStartTitle"><div class="j-start-copy"><span class="j-resume-label" id="jStartTitle">${fresh?'Start learning':'Continue learning'}</span><strong>${esc(c.title)}</strong><span class="j-start-meta">${fresh?'Your first lesson':'Next on your path'} · chapter ${i+1} of ${chapters.length} · about ${Math.max(1,Math.round(c.dur/60))} min</span></div>${button('jStart',fresh?'Start learning':'Continue learning',true)}</section>${fresh?'<p class="j-start-alt">New to system design? <a href="#intro">Try the 60-second introduction</a> first.</p>':''}`;
+    root.innerHTML=intro+`<section class="j-start" aria-labelledby="jStartTitle"><div class="j-start-copy"><span class="j-resume-label" id="jStartTitle">${fresh?'Start learning':'Continue learning'}</span><strong>${esc(c.title)}</strong><span class="j-start-meta">${fresh?'Your first lesson':'Next on your path'} · chapter ${i+1} of ${chapters.length} · about ${Math.max(1,Math.round(c.dur/60))} min</span></div>${button('jStart',fresh?'Start learning':'Continue learning',true)}</section>${fresh?'<p class="j-start-alt">New to system design? <a href="#intro">Find out what it is in about a minute</a>.</p>':''}`;
     bind('jStart',()=>bridge.lesson(target));
   }
   function map(){
@@ -5844,12 +5852,38 @@ function initJourney(bridge){
     const label=s.balanced?`Readers, a load balancer and two apps, each serving ${s.loads[0]} reads a second.`:s.servers===2?`Every read goes to app 1 (${s.loads[0]} a second, capacity 200); app 2 is idle.`:`Readers send ${s.offered} reads a second to one app with capacity 200${s.offered>200?': it is overloaded and drops '+(s.offered-s.served)+' a second':''}.`;
     return `<figure class="j-diagram j-intro-diagram"><svg viewBox="0 0 ${W} ${appY+70}" role="img" aria-label="${esc(label)}"><g class="j-wires">${wires}</g><g class="j-flow" aria-hidden="true">${flow}</g>${nodes}</svg><figcaption>${s.balanced?'Readers → load balancer → two apps':'Readers → app 1'+(s.servers===2?' (app 2 gets nothing)':'')}</figcaption></figure>`;
   }
+  // Step 0: what system design is. A tap travels down to the servers and data; the answer comes back up.
+  function whatScene(){
+    const ys=[10,100,190,280],node=(y,label,sub,kind='')=>`<g class="j-node ${kind}"><rect x="170" y="${y}" width="260" height="58" rx="9"/><text x="300" y="${y+24}">${label}</text><text class="j-svg-small" x="300" y="${y+43}">${sub}</text></g>`;
+    let wires='',flow='';
+    for(let k=0;k<3;k++){const a=ys[k]+58,b=ys[k+1];wires+=`<path d="M288 ${a} V${b}"/><path class="j-wire-reply" d="M312 ${b} V${a}"/>`;}
+    for(let k=0;k<4;k++)flow+=`<circle class="j-packet" r="4.5"><animateMotion dur="2.4s" repeatCount="indefinite" begin="${(-0.6*k).toFixed(2)}s" path="M288 68 V280"/></circle><circle class="j-packet j-reply" r="4.5"><animateMotion dur="2.4s" repeatCount="indefinite" begin="${(-0.6*k-0.3).toFixed(2)}s" path="M312 280 V68"/></circle>`;
+    const nodes=node(ys[0],'YOU','Tap send in any app','j-node-blue')+node(ys[1],'THE INTERNET','Routers pass the request along')+node(ys[2],'APP SERVERS','Run the app’s code','j-node-mint')+node(ys[3],'DATABASE','Keeps posts, photos and accounts');
+    return `<figure class="j-diagram j-intro-diagram j-what"><svg viewBox="0 0 600 348" role="img" aria-label="Your tap travels as a request across the internet to the app's servers and database, and the answer comes back."><g class="j-wires">${wires}</g><g class="j-flow" aria-hidden="true">${flow}</g>${nodes}</svg><figcaption>Your tap → the internet → servers → data, and the answer comes back</figcaption></figure>`;
+  }
+  // The introduction: what system design is (step 0), the app getting popular and being fixed (steps 1-4),
+  // and why it is worth knowing (step 5). No timer: every step waits for the learner.
+  const INTRO_LAST=5;
   function introduction(moveFocus=false){
-    const s=journeyIntro(introStep),next=nextIntroLesson(),first=!Object.keys(bridge.progress().seen).length,titles=['A quiet morning.','Then everyone arrives.','A second app. Still a bottleneck.','Now the work is shared.'],copy=['One app handles 80 reads a second. It has room for 200. Let’s see what happens when the traffic grows.','360 reads a second reach an app that can handle 200. Some readers miss out. Give the system more capacity.','The new app is idle: every read still goes to the first one. A load balancer can distribute those reads.','Each app handles 180 reads a second. All 360 are served. Capacity and routing need to work together.'];
-    root.innerHTML=heading('ABOUT A MINUTE · GO AT YOUR OWN PACE','Your app suddenly gets popular.','Watch the traffic grow, then fix it with two small changes. About a minute, at your own pace.')+`<section class="j-intro"><div class="j-intro-scene">${introScene(s)}<div class="j-loads">${s.loads.map((n,i)=>`<div><span>App ${i+1} · ${n} / 200 reads/s</span><meter min="0" max="360" low="0" high="200" optimum="180" value="${n}" aria-label="App ${i+1} load"></meter></div>`).join('')}</div></div><div class="j-intro-copy">${maya(introStep===3?'celebrating':introStep?'worried':'wave')}<h2 id="jIntroStep" tabindex="-1">${titles[introStep]}</h2><p class="j-step-count">Step ${introStep+1} of 4 · About a minute, at your pace</p><p>${copy[introStep]}</p><dl class="j-metrics"><div><dt>Reads served / second</dt><dd>${s.served} <small>/ ${s.offered}</small></dd></div><div><dt>Reads dropped / second</dt><dd class="${s.offered>s.served?'j-warning':'j-success'}">${s.offered-s.served}</dd></div></dl><div class="j-actions">${introStep<3?button('jIntroNext',['Send the traffic spike','Add a second server','Add a load balancer'][introStep],true):button('jIntroLesson',`${first?'Start your first lesson':'Next lesson'}: ${esc(next.title)} →`,true)+'<a class="btn" href="#missions">Try your first mission</a>'}${introStep?button('jIntroReset','Start over'):''}</div>${introStep===3?`<p class="j-intro-next">You just used horizontal scaling and load balancing. ${next.id===balancerLesson().id?`<strong>${esc(next.title)}</strong> shows how a balancer picks a server, checks health and routes around failures.`:`The course builds up to both, starting with <strong>${esc(next.title)}</strong>.`}</p>`:'<a class="j-inline-link" href="#map">Explore the lessons</a>'}</div></section>`;
-    if(introStep<3)bind('jIntroNext',()=>{introStep++;if(introStep===3){state.intro=true;save();}introduction(true);});
-    if(introStep)bind('jIntroReset',()=>{introStep=0;introduction(true);});
-    if(introStep===3)bind('jIntroLesson',()=>bridge.lesson(next.id));
+    const step=introStep,demo=step>=1&&step<INTRO_LAST,s=journeyIntro(demo?step-1:3),next=nextIntroLesson(),first=!Object.keys(bridge.progress().seen).length;
+    const titles=['Every app you use is a system.','A quiet morning.','Then everyone arrives.','A second app. Still a bottleneck.','Now the work is shared.','That was system design.'];
+    const why=[['Building apps','they keep working when they get popular.'],['Job interviews','system design rounds are standard for software engineering roles.'],['Working with engineers','you understand why things break and what a fix costs.'],['Everyday curiosity','why ticket sites crash, and why a video starts instantly.']];
+    const copy=['<p>When you send a message, open a map or stream a video, your phone sends a request across the internet to computers somewhere, and an answer comes back.</p><p><strong>System design</strong> is deciding how those computers are arranged and connected, so the app stays <strong>fast</strong>, <strong>reliable</strong> and <strong>affordable</strong> as more people use it.</p><p>Let’s try it with Maya’s new app, TownSquare.</p>',
+      '<p>TownSquare runs on one app server. It handles 80 reads a second and has room for 200. Let’s see what happens when the traffic grows.</p>',
+      '<p>360 reads a second reach an app that can handle 200. Some readers miss out. Give the system more capacity.</p>',
+      '<p>The new app is idle: every read still goes to the first one. A load balancer can distribute those reads.</p>',
+      '<p>Each app handles 180 reads a second. All 360 are served. Capacity and routing need to work together.</p>',
+      `<p>You just made the kind of decision engineers make every day: how many machines to run, and how work reaches them. Knowing how systems behave is useful whether or not you write code:</p><ul class="j-why">${why.map(([a,b])=>`<li><strong>${a}:</strong> ${b}</li>`).join('')}</ul>`];
+    const poses=['wave','calm','worried','worried','celebrating','pointing'],nexts=['See it in action','Send the traffic spike','Add a second server','Add a load balancer','What did I just do?'];
+    const recap='<div class="j-recap"><h3>What you just did</h3><ol><li><strong>Spotted the bottleneck.</strong> One app got 360 reads a second but could only handle 200.</li><li><strong>Added capacity.</strong> A second app gave the system room for 400.</li><li><strong>Fixed the routing.</strong> A load balancer shared the reads, so all 360 were served.</li></ol><p>Every lesson in this course works the same way: watch a problem happen, then see how engineers fix it.</p></div>';
+    const scene=step===0?whatScene():step===INTRO_LAST?recap:`${introScene(s)}<div class="j-loads">${s.loads.map((n,i)=>`<div><span>App ${i+1} · ${n} / 200 reads/s</span><meter min="0" max="360" low="0" high="200" optimum="180" value="${n}" aria-label="App ${i+1} load"></meter></div>`).join('')}</div>`;
+    const metrics=demo?`<dl class="j-metrics"><div><dt>Reads served / second</dt><dd>${s.served} <small>/ ${s.offered}</small></dd></div><div><dt>Reads dropped / second</dt><dd class="${s.offered>s.served?'j-warning':'j-success'}">${s.offered-s.served}</dd></div></dl>`:'';
+    const actions=step<INTRO_LAST?button('jIntroNext',nexts[step],true):button('jIntroLesson',`${first?'Start your first lesson':'Next lesson'}: ${esc(next.title)} →`,true)+'<a class="btn" href="#missions">Try your first mission</a>';
+    const after=step<INTRO_LAST?'<a class="j-inline-link" href="#map">Explore the lessons</a>':`<p class="j-intro-next">${next.id===balancerLesson().id?`<strong>${esc(next.title)}</strong> shows how a balancer picks a server, checks health and routes around failures.`:`The course builds up to these ideas one at a time, starting with <strong>${esc(next.title)}</strong>.`}</p>`;
+    root.innerHTML=heading('','What is system design?','See what it means, try it yourself, and find out why it’s worth knowing. About a minute, at your own pace.')+`<section class="j-intro"><div class="j-intro-scene">${scene}</div><div class="j-intro-copy">${maya(poses[step])}<h2 id="jIntroStep" tabindex="-1">${titles[step]}</h2><p class="j-step-count">Step ${step+1} of ${INTRO_LAST+1} · About a minute, at your pace</p>${copy[step]}${metrics}<div class="j-actions">${actions}${step?button('jIntroReset','Start over'):''}</div>${after}</div></section>`;
+    if(step<INTRO_LAST)bind('jIntroNext',()=>{introStep++;if(introStep===INTRO_LAST){state.intro=true;save();}introduction(true);});
+    if(step)bind('jIntroReset',()=>{introStep=0;introduction(true);});
+    if(step===INTRO_LAST)bind('jIntroLesson',()=>bridge.lesson(next.id));
     if(moveFocus)focus('jIntroStep');
   }
   function mission(){
