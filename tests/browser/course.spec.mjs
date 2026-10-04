@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 const SEED=33040;
 test.beforeEach(async({page},info)=>{info.annotations.push({type:'random-seed',description:String(SEED)});await page.addInitScript(seed=>{window.PIM_TEST_SEED=seed;},SEED);
-  const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});info._courseErrors=errors;});
+  await page.addInitScript(()=>{localStorage.setItem('pim-tour','done');localStorage.setItem('pim-missions-help','1');});const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});info._courseErrors=errors;});
 test.afterEach(async({},info)=>{expect(info._courseErrors,`browser errors (seed ${SEED})`).toEqual([]);});
 async function lesson(page,id){await page.goto('/#'+id);const pause=page.getByRole('button',{name:'Pause',exact:true});if(await pause.isVisible())await pause.click();}
 async function lab(page,id='sessions'){await lesson(page,id);await page.locator('#chalBtn').click();}
@@ -42,8 +42,7 @@ test('lab draft, options and exported graphs survive reload and import',async({p
   await page.getByRole('button',{name:/^Sticky sessions:/}).click();await page.getByRole('button',{name:'Undo',exact:true}).click();
   await expect(page.locator('#labSummary')).toContainText('App server');await expect(page.locator('#labSummary')).toContainText('off');
   await page.reload();await page.locator('#chalBtn').click();await expect(page.locator('#labSummary')).toContainText('App server');
-  if(info.project.name==='touch-portrait')await page.locator('#menuBtn').click();
-  const downloading=page.waitForEvent('download');await page.locator('#exportBtn').click();const download=await downloading,file=info.outputPath('progress.json');await download.saveAs(file);
+  await page.locator('#settingsBtn').click();const downloading=page.waitForEvent('download');await page.locator('#exportBtn').click();const download=await downloading,file=info.outputPath('progress.json');await download.saveAs(file);
   const context=await browser.newContext({baseURL:'http://127.0.0.1:4173'});try{const recipient=await context.newPage();await recipient.goto('/#sessions');await recipient.locator('#importFile').setInputFiles(file);await expect(recipient.locator('#ioMsg')).toContainText('Updated');await recipient.locator('#chalBtn').click();await expect(recipient.locator('#labSummary')).toContainText('App server');}finally{await context.close();}
 });
 

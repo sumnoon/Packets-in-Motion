@@ -78,8 +78,8 @@ test('closed trade-offs and results are hidden; modal focus is immediate and ret
 test('mobile drawer removes closed navigation from focus, contains Tab, restores focus and adapts to desktop',()=>{
   const p=loadPage({player:true,media:{'(max-width:900px)':true}});
   assert.equal(el(p,'side').inert,true);el(p,'menuBtn').click();assert.equal(el(p,'main').inert,true);assert.equal(el(p,'side').inert,false);assert.equal(p.document.activeElement.id,'find');
-  el(p,'menuClose').focus();p.key('Tab',el(p,'menuClose'),{shiftKey:true});assert.equal(p.document.activeElement.id,'importBtn');
-  p.key('Tab',el(p,'importBtn'));assert.equal(p.document.activeElement.id,'menuClose');
+  el(p,'menuClose').focus();p.key('Tab',el(p,'menuClose'),{shiftKey:true});assert.equal(p.document.activeElement.id,'glossBtn');
+  p.key('Tab',el(p,'glossBtn'));assert.equal(p.document.activeElement.id,'menuClose');
   p.key('Escape');assert.equal(el(p,'side').inert,true);assert.equal(el(p,'main').inert,false);assert.equal(p.document.activeElement.id,'menuBtn');
   el(p,'menuBtn').click();p.media.get('(max-width:900px)').change(false);assert.equal(el(p,'side').inert,false);assert.equal(el(p,'main').inert,false);assert.equal(el(p,'menuBtn').getAttribute('aria-expanded'),'false');
 });

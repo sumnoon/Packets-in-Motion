@@ -37,20 +37,15 @@
     <p class="nofind" id="noFind" hidden>No chapters match. Try another word.</p>
     <div class="side-foot">
       <button class="btn sm" id="glossBtn" title="Glossary (G)">Glossary</button>
-      <button class="btn sm tg" id="shortcutsBtn" aria-pressed="true">Keyboard shortcuts: on</button>
-      <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button>
-      <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
-      <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
-      <p class="io-msg" id="ioMsg" role="status"></p>
       <p class="io-msg" id="storageMsg" role="status"></p>
     </div>
   </aside>
   <div class="scrim" id="scrim" aria-hidden="true"></div>
   <main id="main" tabindex="-1">
     <div class="wrap">
-      <nav class="course-nav" aria-label="Learning views"><a id="navHome" href="#home">Home</a><a id="navMap" href="#map">Learning map</a><a id="navMissions" href="#missions">Missions</a><button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button></nav>
-      <div class="resume" id="resume" hidden><div class="j-resume-copy"><span class="j-resume-label">Continue learning</span><p id="resumeText"></p><span class="j-resume-bar" aria-hidden="true"><i id="resumeBar"></i></span></div><button class="btn pri" id="continueBtn">Continue learning</button></div>
+      <nav class="course-nav" aria-label="Learning views"><a id="navHome" href="#home">Home</a><a id="navMap" href="#map">Learning map</a><a id="navMissions" href="#missions">Missions</a><button class="btn" id="settingsBtn" aria-haspopup="dialog">⚙ Settings</button><button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button></nav>
       <div id="journey" hidden></div>
+      <div class="resume" id="resume" hidden><div class="j-resume-copy"><span class="j-resume-label">Continue learning</span><p id="resumeText"></p><span class="j-resume-bar" aria-hidden="true"><i id="resumeBar"></i></span></div><button class="btn pri" id="continueBtn">Continue learning</button></div>
       <div id="lessonView">
       <div class="top">
         <div>
@@ -133,6 +128,32 @@
           <div class="acts"><button class="btn" id="resRetry">↺ Try again</button><button class="btn" id="resWatch">Watch the lesson</button><button class="btn pri" id="resNext">Next lesson →</button></div>
         </div></dialog>
 <div class="tip" id="tip" role="tooltip" hidden></div>
+<dialog class="settings" id="settings" hidden aria-labelledby="setTitle"><div class="in">
+  <div class="set-head"><h2 id="setTitle">Settings</h2><button class="btn sm" id="setClose">Close</button></div>
+  <section class="set-group"><h3>Display</h3><label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label></section>
+  <section class="set-group"><h3>Controls and sound</h3>
+    <button class="btn sm tg" id="shortcutsBtn" aria-pressed="true">Keyboard shortcuts: on</button>
+    <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button></section>
+  <section class="set-group"><h3>Your progress</h3><p class="set-note">Progress is saved in this browser. Export it to keep a backup or move it to another browser.</p>
+      <div class="prog-io"><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+    <p class="io-msg" id="ioMsg" role="status"></p></section>
+  <section class="set-group"><h3>Getting around</h3><button class="btn sm" id="tourBtn">Take the tour again</button></section>
+</div></dialog>
+<dialog class="settings mission-help" id="missionHelp" hidden aria-labelledby="mhTitle"><div class="in">
+  <p class="mh-eyebrow">Engineering missions</p>
+  <h2 id="mhTitle">Design a system that survives real growth</h2>
+  <p>You are the engineer for <strong>TownSquare</strong>, a fictional local-events app. Over three missions it launches, goes viral and expands to a second region. Your job is to design an architecture that keeps it running.</p>
+  <ol class="mh-steps">
+    <li><strong>Read the brief.</strong> Each mission names the traffic, the failures to survive and a budget.</li>
+    <li><strong>Shape your system.</strong> Choose app servers, a load balancer, a cache and later a second region. The diagram updates as you go.</li>
+    <li><strong>Test all conditions.</strong> Every condition must serve its traffic within budget. If a check fails, the result tells you what to change.</li>
+  </ol>
+  <p class="mh-note">Pass a mission to unlock the next one. Your design carries over, so each mission builds on the last. Missions are separate from lesson stars, and nothing is timed.</p>
+  <div class="set-actions"><button class="btn pri" id="mhStart">Start the first mission</button></div>
+</div></dialog>
+<div class="tour" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle"><div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-box" id="tourBox"><p class="tour-step" id="tourStep"></p><h2 id="tourTitle"></h2><p id="tourText"></p>
+    <div class="tour-actions"><button class="btn sm" id="tourSkip">Skip tour</button><span class="tour-gap"></span><button class="btn sm" id="tourBack">Back</button><button class="btn sm pri" id="tourNext">Next</button></div></div></div>
 <dialog class="gloss" id="glossary" aria-labelledby="glTitle"><div class="gh"><h2 id="glTitle">Glossary</h2><input type="search" id="glFind" placeholder="Filter terms" aria-label="Filter terms" autocomplete="off"><button class="btn sm" id="glClose">Close</button></div><dl id="glList"></dl></dialog>
 <script>
 <!-- include: engine.js -->

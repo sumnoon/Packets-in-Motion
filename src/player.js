@@ -5,7 +5,7 @@
 const $=id=>document.getElementById(id);
 const store=PIM_STORE;
 const initialHash=location.hash,hubNames={home:'Home',map:'Learning map',intro:'Introduction',missions:'Engineering missions'};
-let hub=null,journey=null;
+let hub=null,journey=null,tourAt=-1;   // tourAt: the first-visit tour's step, -1 when closed
 labRestore();
 let seen=pimSeen(store.json('sdve-seen',{}));
 let stars=pimStars(store.json('pim-stars',{}));
@@ -56,7 +56,7 @@ function failRender(e){if(renderFault)return;renderFault={mode,id:quizG?QUIZ[qui
   console.error('Stage failed',renderFault,e);setPlaying(false);if(api)api.dispose();pdown=null;cv.hidden=true;
   $('renderError').hidden=false;$('renderErrorText').textContent=mode==='play'?'This challenge could not be drawn. Your saved design is available when you retry. No result was awarded.':'This animation could not be drawn. You can still read every step in the transcript.';
   if(mode==='watch')setTranscript(true);announce($('renderErrorText').textContent);}
-function blocked(){return !!hub||document.hidden||document.body.classList.contains('menu')||$('glossary').open||$('card').open||$('result').open;}
+function blocked(){return !!hub||tourAt>=0||document.hidden||document.body.classList.contains('menu')||['glossary','card','result','settings','missionHelp'].some(id=>$(id).open);}
 function render(){if(renderFault)return;if(mode==='play'){renderChal(0);return;}const c=chapters[cur];
   try{g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBackground();c.draw(t);
     g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBeatTitle(c,t);}catch(e){failRender(e);}
@@ -225,7 +225,7 @@ $('menuBtn').onclick=()=>setMenu(!document.body.classList.contains('menu'));
 $('menuClose').onclick=()=>setMenu(false);$('scrim').onclick=()=>setMenu(false);
 if(narrow.addEventListener)narrow.addEventListener('change',()=>setMenu(false));
 setMenu(false);
-window.addEventListener('keydown',e=>{const dialog=[$('glossary'),$('card'),$('result')].find(d=>d.open);if(dialog){if(e.key==='Tab'){const items=[...dialog.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')].filter(b=>!b.disabled&&b.tabIndex!==-1&&!b.hidden&&(!b.getClientRects||b.getClientRects().length));const first=items[0],end=items[items.length-1];if(first&&(!dialog.contains(document.activeElement)||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===end)){e.preventDefault();(e.shiftKey?end:first).focus();}}return;}if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
+window.addEventListener('keydown',e=>{if(tourAt>=0){tourKey(e);return;}const dialog=[$('glossary'),$('card'),$('result'),$('settings'),$('missionHelp')].find(d=>d.open);if(dialog){if(e.key==='Tab'){const items=[...dialog.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')].filter(b=>!b.disabled&&b.tabIndex!==-1&&!b.hidden&&(!b.getClientRects||b.getClientRects().length));const first=items[0],end=items[items.length-1];if(first&&(!dialog.contains(document.activeElement)||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===end)){e.preventDefault();(e.shiftKey?end:first).focus();}}return;}if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
   if((e.ctrlKey||e.metaKey||e.altKey)&&document.body.classList.contains('menu'))return;
   if(document.body.classList.contains('menu')){if(e.key==='Escape'){e.preventDefault();setMenu(false);}else if(e.key==='Tab'){
     const items=[...$('side').querySelectorAll('button,input,select,a[href]')].filter(b=>!b.disabled&&!b.closest('[hidden]'));
@@ -384,7 +384,44 @@ function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',Str
 $('soundBtn').onclick=()=>{setSound(!SFX.on);SFX.play('good');};
 
 setSound(store.get('pim-sound')==='1');hideTip();
-journey=initJourney({progress:()=>({seen,stars}),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
+// ---------- settings: one dialog, reached from the top navigation ----------
+$('settingsBtn').onclick=()=>{setMenu(false);openDialog('settings','setClose');};
+$('setClose').onclick=()=>closeDialog('settings');
+$('settings').addEventListener('cancel',e=>{e.preventDefault();closeDialog('settings');});
+// ---------- missions: what the page is for, shown once on the first visit ----------
+function closeMissionHelp(){closeDialog('missionHelp');store.set('pim-missions-help','1');}
+$('mhStart').onclick=closeMissionHelp;$('missionHelp').addEventListener('cancel',e=>{e.preventDefault();closeMissionHelp();});
+// ---------- first-visit tour: points at each part of the page in turn ----------
+const TOUR=[
+  {title:'Welcome to Packets in Motion',text:'Learn system design by watching it happen: short animated lessons, each followed by a hands-on challenge. Here is a quick look around.'},
+  {target:'#navHome',title:'Home',text:'Your way in. Continue the lesson you paused, or start learning from the first lesson.'},
+  {target:'#navMap',title:'Learning map',text:'Every lesson on your path as a route of stations: where you are, what you have finished and what to learn first. Switch paths here: the basics, interview preparation, or everything.'},
+  {target:'#navMissions',title:'Missions',text:'Put the lessons to work. Design the architecture for a growing app, then test it against traffic spikes and failures.'},
+  {target:()=>narrow.matches?'#menuBtn':'#find',title:'Chapters',text:narrow.matches?`Open the list of all ${chapters.length} lessons and the section quizzes, search it, and jump anywhere.`:`All ${chapters.length} lessons and the section quizzes are listed below. Search them here (press /) and jump anywhere.`},
+  {target:'#settingsBtn',title:'Settings',text:'Theme, keyboard shortcuts, sound cues, and exporting or importing your progress. You can take this tour again from here.'},
+  {target:()=>$('jStart')?'#jStart':'#continueBtn',title:'Ready when you are',text:'Start your first lesson here, or try the 60-second introduction to see the big idea in action.'}];
+const css=(el,o)=>{if(el&&el.style)Object.assign(el.style,o);};
+function tourTarget(i){const t=TOUR[i].target,sel=typeof t==='function'?t():t,el=sel&&document.querySelector(sel);return el&&(!el.getClientRects||el.getClientRects().length)?el:null;}
+// the spotlight hugs the target; the card sits below it, above it, or beside a tall target
+function placeTour(){if(tourAt<0)return;const el=tourTarget(tourAt),box=$('tourBox');$('tourSpot').classList.toggle('none',!el);box.classList.toggle('center',!el);
+  if(!el){css(box,{left:'',top:'',width:''});return;}
+  const r=el.getBoundingClientRect(),pad=6,vw=innerWidth,vh=innerHeight,bw=Math.min(360,vw-32),bh=box.offsetHeight||220;
+  css($('tourSpot'),{left:r.left-pad+'px',top:r.top-pad+'px',width:r.width+pad*2+'px',height:r.height+pad*2+'px'});
+  let left,top;if(r.height>vh*.5){left=r.right+16;top=Math.max(16,Math.min(vh-bh-16,r.top+40));if(left+bw>vw-16){left=16;top=vh-bh-16;}}
+  else{left=Math.min(Math.max(16,r.left+r.width/2-bw/2),vw-bw-16);top=r.bottom+14+bh<vh-16?r.bottom+14:Math.max(16,r.top-bh-14);}
+  css(box,{left:left+'px',top:top+'px',width:bw+'px'});}
+function showTourStep(i){tourAt=i;const el=tourTarget(i),r=el&&el.getBoundingClientRect();if(r&&(r.top<0||r.bottom>innerHeight)&&el.scrollIntoView)el.scrollIntoView({block:'nearest'});
+  $('tourStep').textContent=`${i+1} of ${TOUR.length}`;$('tourTitle').textContent=TOUR[i].title;$('tourText').textContent=TOUR[i].text;
+  $('tourBack').hidden=i===0;$('tourNext').textContent=i===TOUR.length-1?'Done':'Next';placeTour();$('tourNext').focus({preventScroll:true});}
+function startTour(){closeDialog('settings');if(hub!=='home')showHub('home',false,false);setMenu(false);$('tour').hidden=false;$('app').inert=true;showTourStep(0);}
+function endTour(){if(tourAt<0)return;tourAt=-1;$('tour').hidden=true;$('app').inert=false;store.set('pim-tour','done');const go=$('jStart')||$('continueBtn');if(go)go.focus({preventScroll:true});}
+function tourKey(e){if(e.key==='Escape'){e.preventDefault();endTour();return;}
+  if(e.key==='Tab'){const items=[...$('tourBox').querySelectorAll('button')].filter(b=>!b.hidden),first=items[0],end=items[items.length-1];
+    if(!$('tourBox').contains(document.activeElement)||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===end){e.preventDefault();(e.shiftKey?end:first).focus();}}}
+$('tourNext').onclick=()=>tourAt<TOUR.length-1?showTourStep(tourAt+1):endTour();
+$('tourBack').onclick=()=>showTourStep(Math.max(0,tourAt-1));$('tourSkip').onclick=endTour;$('tourBtn').onclick=startTour;
+window.addEventListener('resize',placeTour);
+journey=initJourney({progress:()=>({seen,stars}),missionHelp:first=>setTimeout(()=>{if($('missionHelp').open)return;$('mhStart').textContent=first?'Start the first mission':'Got it';openDialog('missionHelp','mhStart');},0),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
 // a shared lab design: ?lab=<id>&d=<design> opens that lab with the design on the board
@@ -392,5 +429,6 @@ const sp=typeof URLSearchParams!=='undefined'?new URLSearchParams(location.searc
 const shared=sIdx>=0&&CHAL[sLab]&&labImport(sLab,sp.get('d')||'');
 if(shared){history.replaceState(null,'',location.pathname+'#'+sLab);load(sIdx,false);startChal();}
 else{load(start,!!initialHash&&!Object.hasOwn(hubNames,initialHash.slice(1))&&!startQ&&!resumeRecord);if(startQ)startQuiz(startQ);else if(!initialHash||Object.hasOwn(hubNames,initialHash.slice(1)))showHub(initialHash.slice(1)||'home',true,false,false);}restoring=false;saveRoute();$('speed').value=String(speed);
+if(hub==='home'&&!shared&&store.get('pim-tour')===null&&!Object.keys(seen).length&&!resumeRecord)setTimeout(startTour,400);
 resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();

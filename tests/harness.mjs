@@ -175,7 +175,8 @@ export function loadPage(opts = {}) {
   const frames = [];
   const winListeners = {};
   const media=new Map();
-  const storage = new Map(Object.entries(opts.storage || {}));
+  // a returning visitor who has dismissed the first-visit tour and missions explanation, unless a test asks for a first visit
+  const storage = new Map(Object.entries({ ...(opts.firstVisit ? {} : { 'pim-tour': 'done', 'pim-missions-help': '1' }), ...(opts.storage || {}) }));
   let timerId=0;
   const context = {
     document,
