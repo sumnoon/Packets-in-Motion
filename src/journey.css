@@ -80,7 +80,7 @@
 .j-mission-tab[aria-current]{color:var(--text);border-bottom-color:var(--accent)}
 .j-mission-tab>span{color:var(--accent);margin-right:8px}.j-mission-tab small{display:block;font-size:11px;margin-top:8px}
 .j-mission-tab:disabled{cursor:default;opacity:.65}
-.j-brief{display:grid;grid-template-columns:1.5fr 1fr;gap:36px;margin:0 0 24px}
+.j-brief{display:grid;grid-template-columns:1fr;gap:14px;margin:0 0 24px}
 .j-brief p{color:var(--dim);margin:8px 0}.j-brief-goal{border-left:1px solid var(--accent);padding:8px 0 8px 20px;align-self:center;font-size:14px}
 .j-workbench{display:grid;grid-template-columns:1.15fr 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .j-blueprint{padding:30px 18px;background:var(--panel);display:flex;flex-direction:column;justify-content:center;min-width:0}
@@ -159,7 +159,7 @@ dialog.settings .in{padding:20px 22px 22px}
 .set-group .theme{font-size:13.5px;color:var(--text);width:100%}
 .set-note{margin:0;font-size:13px;color:var(--dim);line-height:1.5}
 .set-group .io-msg:empty{display:none}
-dialog.mission-help{width:min(560px,calc(100vw - 32px))}
+dialog.mission-help{width:min(600px,calc(100vw - 32px));max-height:min(92vh,860px)}
 .mission-help .in>p{color:var(--text-2,var(--dim));line-height:1.6;margin:10px 0}
 .mh-eyebrow{font-size:12px!important;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)!important;margin:0!important}
 .mission-help h2{margin:6px 0 4px;font-size:22px;line-height:1.25}
@@ -180,3 +180,38 @@ dialog.mission-help{width:min(560px,calc(100vw - 32px))}
 .tour-actions .btn{min-height:36px}
 @media(prefers-reduced-motion:reduce){.tour-spot,.tour-box{transition:none}}
 @media(max-width:600px){.j-start{flex-direction:column;align-items:stretch}.j-start .btn{width:100%}.j-mission-how ol{gap:12px}}
+/* Mission characters: Maya and her line on the left; your reply, you and the rack on the right */
+.m-scene{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 24px;align-items:end;padding:10px 4px 0;border-bottom:1px solid var(--line);min-width:0}
+.m-side{display:flex;align-items:center;gap:14px;min-width:0}
+.m-side-you{justify-content:flex-end}
+.m-you{display:flex;align-items:flex-end;gap:6px;flex:none}
+.mc{width:104px;height:190px;flex:none;overflow:visible;display:block}
+.m-rack{width:40px;height:100px;flex:none;margin-bottom:8px}
+.m-bubble{position:relative;flex:1 1 auto;min-width:0;max-width:52ch;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:40px;animation:mPop .35s cubic-bezier(.2,.9,.3,1.25) both}
+.m-bubble p{margin:3px 0 0!important;font-size:14.5px;line-height:1.55;color:var(--text)!important}
+.m-who{font-size:11.5px;font-weight:700;letter-spacing:.03em;color:var(--accent)}
+.m-bubble-maya{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));border-bottom-left-radius:4px}
+.m-bubble-you{border-color:color-mix(in srgb,var(--green) 55%,var(--line));border-bottom-right-radius:4px;animation-delay:.25s}
+.m-bubble-you .m-who{color:var(--green)}
+.mc-body{transform-box:fill-box;transform-origin:50% 100%;animation:mcBreathe 3.4s ease-in-out infinite}
+.mc-engineer .mc-body{animation-delay:-1.3s}
+.mc-eyes{transform-box:fill-box;transform-origin:center;animation:chBlink 5s infinite}
+.mc-engineer .mc-eyes{animation-delay:-2.2s}
+.mc-celebrate .mc-body{animation:chHop .9s ease-in-out infinite}
+.mc-worried .mc-body{animation:chFidget 1.6s ease-in-out infinite}
+.mc-confetti>*{animation:chConfetti 1.8s ease-in infinite}.mc-confetti>:nth-child(2){animation-delay:-.6s}.mc-confetti>:nth-child(3){animation-delay:-1.1s}.mc-confetti>:nth-child(4){animation-delay:-.3s}.mc-confetti>:nth-child(5){animation-delay:-1.4s}
+.m-rack-fail .m-led{animation:mLed .7s steps(2) infinite}
+@keyframes mcBreathe{50%{transform:scaleY(1.012) translateY(-1px)}}
+@keyframes chBlink{0%,95%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@keyframes chHop{0%,100%{transform:translateY(0)}40%{transform:translateY(-10px)}60%{transform:translateY(-10px)}}
+@keyframes chFidget{0%,100%{transform:translateX(0)}50%{transform:translateX(-1.5px)}}
+@keyframes chConfetti{0%{transform:translateY(-6px);opacity:0}15%{opacity:1}100%{transform:translateY(60px) rotate(180deg);opacity:0}}
+@keyframes mPop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes mLed{50%{opacity:.2}}
+@media(prefers-reduced-motion:reduce){.mc-body,.mc-eyes,.mc-confetti>*,.m-bubble,.m-rack-fail .m-led{animation:none!important}}
+/* the explanation dialog opens with Maya's introduction: stacked, since the dialog is narrow */
+.mh-scene .m-scene{grid-template-columns:1fr;gap:6px;margin:0 0 10px}
+.mh-scene .mc{width:72px;height:132px}.mh-scene .m-bubble{margin-bottom:22px}.mh-scene .m-rack{width:30px;height:76px}
+.j-brief .m-scene{margin-top:10px}
+.j-mission-result .m-scene{margin:0 0 12px}
+@media(max-width:900px){.m-scene{grid-template-columns:1fr;gap:6px}.m-side-you:not(:has(.m-bubble)){display:none}.mc{width:84px;height:154px}.m-bubble{margin-bottom:28px}.m-rack{width:32px;height:80px}}

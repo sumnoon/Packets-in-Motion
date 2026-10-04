@@ -90,3 +90,11 @@ test('Missions explains itself on the first visit only, and Home offers a single
   const again=loadPage({player:true,hash:'#missions'});again.runTimers(1);assert.equal(el(again,'missionHelp').open,false);
   const home=loadPage({player:true}),html=el(home,'journey').innerHTML;assert.match(html,/id="jStart">Start learning</);assert.doesNotMatch(html,/j-path|j-story|j-practice/);assert.equal(el(home,'resume').hidden,true);
 });
+test('mission characters: every pose draws, lines are escaped, and each mission has Maya\u2019s voice',()=>{
+  const charSVG=page.get('charSVG'),scene=page.get('missionScene'),poses=page.get('CHAR_POSES'),missions=page.get('JOURNEY_MISSIONS');
+  for(const [who,list] of Object.entries(poses))for(const pose of list){const svg=charSVG(who,pose,'label');assert.match(svg,/^<svg class="mc mc-/);assert.doesNotMatch(svg,/undefined|NaN/,`${who} ${pose}`);}
+  const html=scene({maya:'worried',eng:'point',rack:'fail',say:'<b>"x"</b> & y',reply:'ok'});
+  assert.match(html,/&lt;b&gt;&quot;x&quot;&lt;\/b&gt; &amp; y/);assert.match(html,/m-rack-fail/);assert.match(html,/You · engineer/);
+  assert.doesNotMatch(scene({say:'hi'}),/m-bubble-you/,'no reply bubble unless there is a reply');
+  for(const m of missions){assert.ok(poses.maya.includes(m.pose),m.id);assert.ok(m.story.length>40&&m.win.length>20,m.id);}
+});

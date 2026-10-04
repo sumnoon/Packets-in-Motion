@@ -94,7 +94,7 @@ test('a first visit takes a guided tour of each part of the page, once, and Sett
 test('a first visit to Missions explains the page, once, and the explanation can be reopened',async({page})=>{
   await page.addInitScript(()=>localStorage.setItem('pim-tour','done'));
   await page.goto('/#missions');await expect(page.locator('#missionHelp')).toBeVisible();await expect(page.locator('#mhTitle')).toHaveText('Design a system that survives real growth');
-  await expect(page.locator('#mhStart')).toHaveText('Start the first mission');await go(page,'mhStart');await expect(page.locator('#missionHelp')).toBeHidden();
+  await expect(page.locator('#mhScene .mc-maya.mc-wave')).toBeVisible();await expect(page.locator('#mhScene')).toContainText("Hi, I'm Maya");await expect(page.locator('#mhStart')).toHaveText('Start the first mission');await go(page,'mhStart');await expect(page.locator('#missionHelp')).toBeHidden();
   await page.reload();await expect(page.locator('#journeyTitle')).toHaveText('Engineering missions');await expect(page.locator('#missionHelp')).toBeHidden();
   await go(page,'jMissionHelp');await expect(page.locator('#missionHelp')).toBeVisible();await expect(page.locator('#mhStart')).toHaveText('Got it');await page.keyboard.press('Escape');await expect(page.locator('#missionHelp')).toBeHidden();
 });
@@ -104,4 +104,10 @@ test('Settings opens from the top navigation without scrolling, on Home and in a
     for(const id of ['theme','shortcutsBtn','soundBtn','exportBtn','importBtn','tourBtn'])await expect(page.locator('#'+id)).toBeVisible();
     await page.locator('#theme').selectOption('light');await expect(page.locator('html')).toHaveAttribute('data-theme','light');
     await page.keyboard.press('Escape');await expect(page.locator('#settings')).toBeHidden();await page.evaluate(()=>localStorage.setItem('pim-theme','dark'));}
+});
+test('Maya tells each mission\u2019s story and reacts to your result, with you beside the rack',async({page})=>{
+  await page.goto('/#missions');await expect(page.locator('.j-brief .mc-maya')).toBeVisible();await expect(page.locator('.j-brief .m-bubble-maya')).toContainText('We launch TownSquare tomorrow');
+  await go(page,'jTest');await expect(page.locator('#jMissionResult .mc-maya.mc-worried')).toBeVisible();await expect(page.locator('#jMissionResult .m-rack-fail')).toBeVisible();await expect(page.locator('#jMissionResult .m-bubble-maya')).toContainText('turned away');
+  await solveLaunch(page);await expect(page.locator('#jMissionResult .mc-maya.mc-celebrate')).toBeVisible();await expect(page.locator('#jMissionResult .m-bubble-maya')).toContainText('Launch day is a success');
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

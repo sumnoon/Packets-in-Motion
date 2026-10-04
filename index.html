@@ -361,7 +361,7 @@ body.play .stage.editing canvas{touch-action:none}
 .j-mission-tab[aria-current]{color:var(--text);border-bottom-color:var(--accent)}
 .j-mission-tab>span{color:var(--accent);margin-right:8px}.j-mission-tab small{display:block;font-size:11px;margin-top:8px}
 .j-mission-tab:disabled{cursor:default;opacity:.65}
-.j-brief{display:grid;grid-template-columns:1.5fr 1fr;gap:36px;margin:0 0 24px}
+.j-brief{display:grid;grid-template-columns:1fr;gap:14px;margin:0 0 24px}
 .j-brief p{color:var(--dim);margin:8px 0}.j-brief-goal{border-left:1px solid var(--accent);padding:8px 0 8px 20px;align-self:center;font-size:14px}
 .j-workbench{display:grid;grid-template-columns:1.15fr 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .j-blueprint{padding:30px 18px;background:var(--panel);display:flex;flex-direction:column;justify-content:center;min-width:0}
@@ -440,7 +440,7 @@ dialog.settings .in{padding:20px 22px 22px}
 .set-group .theme{font-size:13.5px;color:var(--text);width:100%}
 .set-note{margin:0;font-size:13px;color:var(--dim);line-height:1.5}
 .set-group .io-msg:empty{display:none}
-dialog.mission-help{width:min(560px,calc(100vw - 32px))}
+dialog.mission-help{width:min(600px,calc(100vw - 32px));max-height:min(92vh,860px)}
 .mission-help .in>p{color:var(--text-2,var(--dim));line-height:1.6;margin:10px 0}
 .mh-eyebrow{font-size:12px!important;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)!important;margin:0!important}
 .mission-help h2{margin:6px 0 4px;font-size:22px;line-height:1.25}
@@ -461,6 +461,41 @@ dialog.mission-help{width:min(560px,calc(100vw - 32px))}
 .tour-actions .btn{min-height:36px}
 @media(prefers-reduced-motion:reduce){.tour-spot,.tour-box{transition:none}}
 @media(max-width:600px){.j-start{flex-direction:column;align-items:stretch}.j-start .btn{width:100%}.j-mission-how ol{gap:12px}}
+/* Mission characters: Maya and her line on the left; your reply, you and the rack on the right */
+.m-scene{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px 24px;align-items:end;padding:10px 4px 0;border-bottom:1px solid var(--line);min-width:0}
+.m-side{display:flex;align-items:center;gap:14px;min-width:0}
+.m-side-you{justify-content:flex-end}
+.m-you{display:flex;align-items:flex-end;gap:6px;flex:none}
+.mc{width:104px;height:190px;flex:none;overflow:visible;display:block}
+.m-rack{width:40px;height:100px;flex:none;margin-bottom:8px}
+.m-bubble{position:relative;flex:1 1 auto;min-width:0;max-width:52ch;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:40px;animation:mPop .35s cubic-bezier(.2,.9,.3,1.25) both}
+.m-bubble p{margin:3px 0 0!important;font-size:14.5px;line-height:1.55;color:var(--text)!important}
+.m-who{font-size:11.5px;font-weight:700;letter-spacing:.03em;color:var(--accent)}
+.m-bubble-maya{border-color:color-mix(in srgb,var(--accent) 55%,var(--line));border-bottom-left-radius:4px}
+.m-bubble-you{border-color:color-mix(in srgb,var(--green) 55%,var(--line));border-bottom-right-radius:4px;animation-delay:.25s}
+.m-bubble-you .m-who{color:var(--green)}
+.mc-body{transform-box:fill-box;transform-origin:50% 100%;animation:mcBreathe 3.4s ease-in-out infinite}
+.mc-engineer .mc-body{animation-delay:-1.3s}
+.mc-eyes{transform-box:fill-box;transform-origin:center;animation:chBlink 5s infinite}
+.mc-engineer .mc-eyes{animation-delay:-2.2s}
+.mc-celebrate .mc-body{animation:chHop .9s ease-in-out infinite}
+.mc-worried .mc-body{animation:chFidget 1.6s ease-in-out infinite}
+.mc-confetti>*{animation:chConfetti 1.8s ease-in infinite}.mc-confetti>:nth-child(2){animation-delay:-.6s}.mc-confetti>:nth-child(3){animation-delay:-1.1s}.mc-confetti>:nth-child(4){animation-delay:-.3s}.mc-confetti>:nth-child(5){animation-delay:-1.4s}
+.m-rack-fail .m-led{animation:mLed .7s steps(2) infinite}
+@keyframes mcBreathe{50%{transform:scaleY(1.012) translateY(-1px)}}
+@keyframes chBlink{0%,95%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
+@keyframes chHop{0%,100%{transform:translateY(0)}40%{transform:translateY(-10px)}60%{transform:translateY(-10px)}}
+@keyframes chFidget{0%,100%{transform:translateX(0)}50%{transform:translateX(-1.5px)}}
+@keyframes chConfetti{0%{transform:translateY(-6px);opacity:0}15%{opacity:1}100%{transform:translateY(60px) rotate(180deg);opacity:0}}
+@keyframes mPop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+@keyframes mLed{50%{opacity:.2}}
+@media(prefers-reduced-motion:reduce){.mc-body,.mc-eyes,.mc-confetti>*,.m-bubble,.m-rack-fail .m-led{animation:none!important}}
+/* the explanation dialog opens with Maya's introduction: stacked, since the dialog is narrow */
+.mh-scene .m-scene{grid-template-columns:1fr;gap:6px;margin:0 0 10px}
+.mh-scene .mc{width:72px;height:132px}.mh-scene .m-bubble{margin-bottom:22px}.mh-scene .m-rack{width:30px;height:76px}
+.j-brief .m-scene{margin-top:10px}
+.j-mission-result .m-scene{margin:0 0 12px}
+@media(max-width:900px){.m-scene{grid-template-columns:1fr;gap:6px}.m-side-you:not(:has(.m-bubble)){display:none}.mc{width:84px;height:154px}.m-bubble{margin-bottom:28px}.m-rack{width:32px;height:80px}}
 </style>
 </head>
 <body>
@@ -577,9 +612,9 @@ dialog.mission-help{width:min(560px,calc(100vw - 32px))}
   <section class="set-group"><h3>Getting around</h3><button class="btn sm" id="tourBtn">Take the tour again</button></section>
 </div></dialog>
 <dialog class="settings mission-help" id="missionHelp" hidden aria-labelledby="mhTitle"><div class="in">
+  <div class="mh-scene" id="mhScene"></div>
   <p class="mh-eyebrow">Engineering missions</p>
   <h2 id="mhTitle">Design a system that survives real growth</h2>
-  <p>You are the engineer for <strong>TownSquare</strong>, a fictional local-events app. Over three missions it launches, goes viral and expands to a second region. Your job is to design an architecture that keeps it running.</p>
   <ol class="mh-steps">
     <li><strong>Read the brief.</strong> Each mission names the traffic, the failures to survive and a budget.</li>
     <li><strong>Shape your system.</strong> Choose app servers, a load balancer, a cache and later a second region. The diagram updates as you go.</li>
@@ -5633,6 +5668,98 @@ const GLOSSARY=[
 ['302','A temporary HTTP redirect; browsers ask again every time.',[]]];
 </script>
 <script>
+/* ---------------- mission characters ----------------
+   Maya, TownSquare's founder, and you, the engineer, drawn as full-body flat figures in SVG so
+   they can change pose without any image files. Each figure stands in a 120 × 220 box with its
+   feet on y = 212. Poses move the arms (shoulder → elbow → hand), the face and the props; the
+   rest of the body is shared. Motion (breathing, blinking, a hop, confetti) is CSS in
+   journey.css and switches off under reduced motion. */
+const CHAR_POSES={
+  maya:['calm','wave','worried','celebrate','point'],
+  engineer:['type','think','point','celebrate']
+};
+const CHAR_LOOK={
+  maya:{skin:'#f1c3a7',skinShade:'#d99c80',hair:'#2b2152',top:'var(--accent)',topShade:'#7c6bd6',legs:'#1c2540',shoes:'#0d1322'},
+  engineer:{skin:'#c68a62',skinShade:'#a5694a',hair:'#2a1c12',top:'var(--green)',topShade:'#1f9a72',legs:'#1d3557',shoes:'#0d1322'}
+};
+// arms as [elbow, hand] for the left and right sides, per pose
+const CHAR_ARMS={
+  calm:[[44,120],[52,132],[76,120],[68,130]],
+  wave:[[42,124],[42,150],[94,82],[96,46]],
+  worried:[[30,86],[46,56],[90,86],[74,56]],
+  celebrate:[[34,70],[28,34],[86,70],[92,34]],
+  point:[[40,122],[42,146],[92,96],[114,86]],
+  type:[[44,122],[54,134],[76,122],[68,134]],
+  think:[[44,122],[64,124],[80,112],[66,72]]
+};
+function charFace(pose){
+  const eyes=pose==='celebrate'?'<path d="M50 54 q3 -4 6 0 M64 54 q3 -4 6 0" stroke="#2a1a14" stroke-width="2" fill="none" stroke-linecap="round"/>'
+    :'<g class="mc-eyes"><ellipse cx="53" cy="54" rx="2.2" ry="2.6" fill="#2a1a14"/><ellipse cx="67" cy="54" rx="2.2" ry="2.6" fill="#2a1a14"/></g>';
+  const brows=pose==='worried'?'<path d="M48 46 l8 3 M72 46 l-8 3" stroke="#2a1a14" stroke-width="1.8" stroke-linecap="round"/>'
+    :pose==='think'?'<path d="M48 47 q4 -2 8 0 M64 45 q4 -1 8 1" stroke="#2a1a14" stroke-width="1.6" fill="none" stroke-linecap="round"/>'
+    :'<path d="M48 47 q4 -2 8 0 M64 47 q4 -2 8 0" stroke="#2a1a14" stroke-width="1.6" fill="none" stroke-linecap="round"/>';
+  const mouth=pose==='worried'?'<ellipse cx="60" cy="64" rx="3.2" ry="2.6" fill="#8a3a2a"/>'
+    :pose==='celebrate'||pose==='wave'?'<path d="M53 61 q7 8 14 0 z" fill="#8a3a2a"/>'
+    :pose==='think'?'<path d="M56 64 q5 -1 9 -3" stroke="#8a3a2a" stroke-width="1.8" fill="none" stroke-linecap="round"/>'
+    :'<path d="M54 62 q6 4 12 0" stroke="#8a3a2a" stroke-width="1.8" fill="none" stroke-linecap="round"/>';
+  return brows+eyes+mouth+'<ellipse cx="49" cy="61" rx="3" ry="1.8" fill="#e8907a" opacity=".35"/><ellipse cx="71" cy="61" rx="3" ry="1.8" fill="#e8907a" opacity=".35"/>';
+}
+function charHair(who,back){
+  if(who==='maya')return back
+    ?'<path d="M38 52 Q36 24 60 22 Q84 24 82 52 L84 96 Q74 102 70 88 L70 60 L50 60 L50 88 Q46 102 36 96 Z" fill="#2b2152"/>'
+    :'<path d="M41 52 Q42 30 60 30 Q78 30 79 52 Q74 38 60 38 Q52 38 46 44 Q44 48 41 52 Z" fill="#2b2152"/><path d="M58 31 Q68 30 76 40" stroke="#4a3d82" stroke-width="2" fill="none" stroke-linecap="round"/>';
+  return back?'':'<path d="M41 50 Q40 26 60 26 Q80 26 79 50 Q76 36 64 36 Q66 32 60 31 Q50 34 46 40 Q42 44 41 50 Z" fill="#2a1c12"/>';
+}
+// one arm: a sleeve from shoulder to elbow, a forearm to the hand, then the hand
+function charArm(sx,sy,[ex,ey],[hx,hy],look,front){
+  return `<path d="M${sx} ${sy} L${ex} ${ey}" stroke="${front?look.top:look.topShade}" stroke-width="11" stroke-linecap="round"/>`+
+    `<path d="M${ex} ${ey} L${hx} ${hy}" stroke="${front?look.top:look.topShade}" stroke-width="9" stroke-linecap="round"/>`+
+    `<circle cx="${hx}" cy="${hy}" r="5.2" fill="${look.skin}"/>`;
+}
+function charProps(who,pose){
+  if(who==='maya'&&pose==='calm')return '<g transform="rotate(-8 60 124)"><rect x="47" y="108" width="28" height="36" rx="4" fill="#0f1a2e" stroke="#9fb4d8" stroke-width="2"/><rect x="51" y="113" width="20" height="5" rx="1.5" fill="var(--blue)"/><rect x="51" y="121" width="14" height="3" rx="1" fill="#5d7196"/><rect x="51" y="127" width="17" height="3" rx="1" fill="#5d7196"/></g>';
+  if(who==='engineer'&&pose==='type')return '<g><path d="M36 136 L84 136 L90 146 L30 146 Z" fill="#9fb4d8"/><rect x="40" y="110" width="40" height="27" rx="3" fill="#1b2a44" stroke="#9fb4d8" stroke-width="2"/><path d="M45 118 h18 M45 124 h26 M45 130 h12" stroke="var(--green)" stroke-width="2" stroke-linecap="round"/></g>';
+  return '';
+}
+function charSVG(who,pose,label){
+  const look=CHAR_LOOK[who],a=CHAR_ARMS[pose]||CHAR_ARMS.calm,front=who==='engineer'&&pose==='type'||who==='maya'&&pose==='calm';
+  const glasses=who==='engineer'?'<g fill="none" stroke="#1b2333" stroke-width="1.6"><circle cx="53" cy="54" r="5"/><circle cx="67" cy="54" r="5"/><path d="M58 54 h4"/></g>':'';
+  const badge=who==='engineer'?'<path d="M54 82 L60 100 L66 82" stroke="#e7ecf5" stroke-width="1.4" fill="none"/><rect x="56" y="100" width="8" height="10" rx="1.5" fill="#e7ecf5"/>':'<circle cx="60" cy="88" r="2.4" fill="#f5e6b8"/>';
+  // arms behind a held prop are drawn first so the prop covers the hands' join
+  const arms=charArm(46,90,a[0],a[1],look,!front)+charArm(74,90,a[2],a[3],look,!front);
+  return `<svg class="mc mc-${who} mc-${pose}" viewBox="0 0 120 220" role="img" aria-label="${esc(label)}">
+<ellipse cx="60" cy="213" rx="30" ry="5" fill="#000" opacity=".22"/>
+<g class="mc-body">
+<path d="M50 150 L48 206" stroke="${look.legs}" stroke-width="12" stroke-linecap="round"/><path d="M70 150 L72 206" stroke="${look.legs}" stroke-width="12" stroke-linecap="round"/>
+<path d="M40 204 h14 a4 4 0 0 1 0 8 h-17 a3 3 0 0 1 3 -8 Z M66 204 h14 a3 3 0 0 1 3 8 h-17 a4 4 0 0 1 0 -8 Z" fill="${look.shoes}"/>
+${charHair(who,true)}
+${front?'':arms}
+<path d="M42 88 Q60 78 78 88 L82 152 Q60 158 38 152 Z" fill="${look.top}"/>
+<path d="M60 82 L60 152" stroke="${look.topShade}" stroke-width="1.2" opacity=".5"/>
+${badge}
+<rect x="55" y="68" width="10" height="14" rx="3" fill="${look.skinShade}"/>
+<circle cx="60" cy="52" r="19" fill="${look.skin}"/>
+${charHair(who,false)}
+${charFace(pose)}${glasses}
+${front?charProps(who,pose)+arms:''}
+</g>
+${pose==='celebrate'?'<g class="mc-confetti"><rect x="18" y="20" width="5" height="5" fill="var(--amber)"/><rect x="98" y="14" width="5" height="5" fill="var(--green)"/><circle cx="30" cy="8" r="3" fill="var(--blue)"/><circle cx="90" cy="30" r="3" fill="var(--red)"/><rect x="60" y="2" width="4" height="6" fill="var(--accent)"/></g>':''}
+</svg>`;
+}
+// a small server rack whose lights show how the system is doing: ok, hot or fail
+function rackSVG(state){
+  const light=i=>state==='fail'&&i===1?'var(--red)':state==='hot'&&i<2?'var(--amber)':'var(--green)';
+  return `<svg class="m-rack m-rack-${state}" viewBox="0 0 60 150" aria-hidden="true"><rect x="2" y="2" width="56" height="146" rx="6" fill="#0f1a2e" stroke="#3b4a69" stroke-width="2"/>${[0,1,2,3].map(i=>`<rect x="9" y="${12+i*33}" width="42" height="25" rx="3" fill="#18253d"/><circle class="m-led" cx="17" cy="${24.5+i*33}" r="3" fill="${light(i)}"/><circle cx="26" cy="${24.5+i*33}" r="3" fill="${light(i)}" opacity=".6"/><path d="M34 ${21+i*33} h11 M34 ${28+i*33} h8" stroke="#3b4a69" stroke-width="2" stroke-linecap="round"/>`).join('')}</svg>`;
+}
+// a scene: Maya speaking on the left; you, the engineer, with an optional reply and the rack on the right
+function missionScene({maya='calm',eng='type',rack='ok',say='',reply='',mood=''}){
+  return `<div class="m-scene${mood?' m-scene-'+mood:''}">
+<div class="m-side m-side-maya">${charSVG('maya',maya,`Maya, TownSquare's founder, ${({calm:'holding a tablet',wave:'waving hello',worried:'looking worried',celebrate:'celebrating',point:'pointing ahead'})[maya]||''}`)}
+<div class="m-bubble m-bubble-maya"><span class="m-who">Maya · founder, TownSquare</span><p>${esc(say)}</p></div></div>
+<div class="m-side m-side-you">${reply?`<div class="m-bubble m-bubble-you"><span class="m-who">You · engineer</span><p>${esc(reply)}</p></div>`:''}
+<div class="m-you">${charSVG('engineer',eng,`You, the engineer, ${({type:'typing on a laptop',think:'thinking',point:'pointing at the server rack',celebrate:'celebrating'})[eng]||''}`)}${rackSVG(rack)}</div></div>
+</div>`;
+}
 /* Learning journeys and TownSquare's deliberately small, deterministic model.
    Units are teaching credits, not cloud prices. Every condition must pass. */
 const JOURNEY_PATHS={
@@ -5641,9 +5768,9 @@ const JOURNEY_PATHS={
   explore:{title:'Explore systems',note:'Every lesson, in any order. Follow whatever catches your interest.',ids:chapters.map(c=>c.id)}
 };
 const JOURNEY_MISSIONS=[
-  {id:'launch',title:'Open the doors',chapter:'01',traffic:300,budget:7,story:'TownSquare helps neighbors find local events. Launch day brings 300 page reads a second. Your single app can serve 200. Keep the doors open without overspending.',goal:'Serve at least 99% of reads within 7 credits.',learn:['scaling','load-balancers'],conditions:[{name:'Launch traffic',eastDown:0,westDown:0}]},
-  {id:'spike',title:'Everyone shares the link',chapter:'02',traffic:900,budget:11,story:'A popular organizer shares TownSquare. Reads triple, and one East app may fail. Most visitors ask for the same event pages. Adapt your launch design to survive both conditions.',goal:'Serve at least 99% of reads in every condition within 11 credits.',learn:['caching','spof'],conditions:[{name:'Viral traffic',eastDown:0,westDown:0},{name:'One East app fails',eastDown:1,westDown:0}]},
-  {id:'regions',title:'Across the ocean',chapter:'03',traffic:1200,budget:20,story:'TownSquare is going international. Forty percent of reads now come from the West. Crossing regions takes 180 ms; a local response takes 40 ms. Bring the system closer to its readers and survive an app failure in either region.',goal:'Serve at least 99% of reads, with at least 95% of all reads within 100 ms, in every condition. Budget: 20 credits.',learn:['cdn','replication'],conditions:[{name:'Two regions online',eastDown:0,westDown:0},{name:'One East app fails',eastDown:1,westDown:0},{name:'One West app fails',eastDown:0,westDown:1}]}
+  {id:'launch',title:'Open the doors',chapter:'01',traffic:300,budget:7,pose:'calm',story:'We launch TownSquare tomorrow! We expect 300 page reads a second, but our one app can only serve 200. Can you keep the doors open without blowing our budget?',win:'The doors are open and nobody is waiting. Launch day is a success. Thank you!',goal:'Serve at least 99% of reads within 7 credits.',learn:['scaling','load-balancers'],conditions:[{name:'Launch traffic',eastDown:0,westDown:0}]},
+  {id:'spike',title:'Everyone shares the link',chapter:'02',traffic:900,budget:11,pose:'worried',story:'A popular organizer just shared us and reads have tripled! One of our East apps keeps wobbling, too. Most people are opening the same event pages. Can we survive this?',win:'We survived the spike, even with a server down. Everyone is talking about TownSquare!',goal:'Serve at least 99% of reads in every condition within 11 credits.',learn:['caching','spof'],conditions:[{name:'Viral traffic',eastDown:0,westDown:0},{name:'One East app fails',eastDown:1,westDown:0}]},
+  {id:'regions',title:'Across the ocean',chapter:'03',traffic:1200,budget:20,pose:'point',story:'We are going international! Forty percent of our readers are now in the West. Crossing the ocean takes 180 ms, a local answer takes 40 ms. Can you bring TownSquare closer to them, and survive an app failing on either side?',win:'TownSquare is global, and fast on both sides of the ocean. We could not have done it without you.',goal:'Serve at least 99% of reads, with at least 95% of all reads within 100 ms, in every condition. Budget: 20 credits.',learn:['cdn','replication'],conditions:[{name:'Two regions online',eastDown:0,westDown:0},{name:'One East app fails',eastDown:1,westDown:0},{name:'One West app fails',eastDown:0,westDown:1}]}
 ];
 function journeyDesign(value){
   if(!pimRecord(value)||!Number.isInteger(value.east)||value.east<1||value.east>6||!Number.isInteger(value.west)||value.west<0||value.west>4||typeof value.balancer!=='boolean'||typeof value.cache!=='boolean')return null;
@@ -5768,7 +5895,7 @@ function initJourney(bridge){
   function mission(){
     const m=JOURNEY_MISSIONS[state.stage],d=state.draft,done=!!state.proofs[m.id];
     root.innerHTML=heading('','Engineering missions','Design the architecture for TownSquare, a fictional events app, as it grows. Each mission brings new traffic and a new constraint: change your design, test it, and pass every check within the budget to unlock the next mission.')+`<div class="j-mission-how"><ol><li><span>1</span>Read the brief</li><li><span>2</span>Shape your system</li><li><span>3</span>Test all conditions</li></ol><button class="btn" id="jMissionHelp">How missions work</button></div><nav class="j-mission-nav" aria-label="Story chapters">${JOURNEY_MISSIONS.map((x,i)=>`<button class="j-mission-tab" id="jMission-${i}" ${i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id]?'disabled':''} ${i===state.stage?'aria-current="step"':''}><span>${state.proofs[x.id]?'✓':x.chapter}</span>${x.title}<small>${i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id]?'Complete the previous mission':state.proofs[x.id]?'Completed':'Ready to try'}</small></button>`).join('')}</nav>
-      <section class="j-brief"><div><h2>${m.chapter} · ${m.title}</h2><p>${m.story}</p></div><div class="j-brief-goal"><strong>Your goal</strong><p>${m.goal}</p></div></section>
+      <section class="j-brief"><div><h2>${m.chapter} · ${m.title}</h2>${missionScene({maya:m.pose,eng:'think',say:m.story})}</div><div class="j-brief-goal"><strong>Your goal</strong><p>${m.goal}</p></div></section>
       <div class="j-workbench"><section class="j-blueprint" aria-label="Your architecture"><div id="jMissionDiagram">${diagram(d,{traffic:m.traffic,caption:'Your current design · test it against every condition'})}</div><p class="j-budget" id="jBudget">${journeyCost(d)} / ${m.budget} credits</p></section><section class="j-design-controls" aria-labelledby="jDesignTitle"><h2 id="jDesignTitle">Shape your system</h2><p class="j-control-hint">Your design carries into the next mission.</p><label>East app servers <span>200 reads/s each · 2 credits each</span><select id="jEast">${Array.from({length:6},(_,i)=>`<option value="${i+1}"${d.east===i+1?' selected':''}>${i+1} app${i?'s':''}</option>`).join('')}</select></label><label class="j-check"><input id="jBalancer" type="checkbox"${d.balancer?' checked':''}><span><strong>Load balancer</strong><small>Distribute reads across apps and available regions · 1 credit</small></span></label>${state.stage>0?`<label class="j-check"><input id="jCache" type="checkbox"${d.cache?' checked':''}><span><strong>Event-page cache</strong><small>Serve 60% of reads before they reach apps · 2 credits total</small></span></label>`:''}${state.stage===2?`<label>West app servers <span>3 credits each + 3 for a local read replica</span><select id="jWest">${Array.from({length:5},(_,i)=>`<option value="${i}"${d.west===i?' selected':''}>${i?i+' app'+(i>1?'s':''):'No West region'}</option>`).join('')}</select></label>`:''}${button('jTest','Test all conditions',true)}<p class="j-control-hint">Instant capacity checks. No countdown.</p></section></div>
       <section class="j-mission-result" id="jMissionResult" aria-labelledby="jResultTitle" ${result?'':'hidden'}></section>
       <p class="j-tested" id="jSavedProof">${done?'Completed with a passing design. Edits above are a separate draft until you test them.':''}</p>
@@ -5783,7 +5910,10 @@ function initJourney(bridge){
   }
   function renderResult(){
     const m=JOURNEY_MISSIONS[state.stage],r=result,box=$('jMissionResult');if(!r)return;
-    box.hidden=false;box.innerHTML=`<h2 id="jResultTitle" tabindex="-1">${r.passed?'Your design holds up.':'A useful failure. A better next move.'}</h2><p>${r.passed?state.stage===2?'TownSquare is ready for readers in both regions. You completed the story.':'You met the delivery goal and the budget. Bring this design into the next chapter.':r.cost>m.budget?'Your design exceeds the budget. Reduce its cost and test again.':!state.draft.balancer?'Extra servers need traffic. Add a load balancer to distribute the work.':state.stage>0&&!state.draft.cache?'Repeated reads overload the apps or store. Try caching event pages.':state.stage===2&&!state.draft.west?'West readers still cross the ocean. Add apps in the West region.':'A failure leaves too little capacity. Add an app in the affected region and test again.'}</p><ul class="j-condition-list">${r.rows.map(x=>`<li><strong>${x.name}</strong><span>${(x.delivery*100).toFixed(1)}% served${state.stage===2?` · ${(x.fast*100).toFixed(1)}% within 100 ms`:''}</span><b class="${x.passed?'j-success':'j-warning'}">${x.passed?'Pass':'Needs work'}</b></li>`).join('')}<li><strong>Budget</strong><span>${r.cost} / ${m.budget} credits</span><b class="${r.cost<=m.budget?'j-success':'j-warning'}">${r.cost<=m.budget?'Pass':'Over budget'}</b></li></ul><div class="j-actions">${r.passed&&state.stage<2?button('jNextMission','Continue the story →',true):r.passed?'<a class="btn pri" href="#map">Keep exploring →</a>':''}</div>`;
+    // Maya reacts to the result: a celebration, or a worry in plain words; the rack shows the system's state
+    const worry=r.cost>m.budget?'That design costs more than we can afford right now.':state.stage===2&&r.rows.some(x=>x.fast<.95)?'Readers in the West are still waiting too long.':'Some readers are still being turned away.';
+    const scene=r.passed?missionScene({maya:'celebrate',eng:'celebrate',say:m.win,reply:state.stage<2?'On to the next one!':'Let us keep it running.',mood:'win'}):missionScene({maya:'worried',eng:'point',rack:'fail',say:worry,reply:'Let me look at the design again.',mood:'fail'});
+    box.hidden=false;box.innerHTML=scene+`<h2 id="jResultTitle" tabindex="-1">${r.passed?'Your design holds up.':'A useful failure. A better next move.'}</h2><p>${r.passed?state.stage===2?'TownSquare is ready for readers in both regions. You completed the story.':'You met the delivery goal and the budget. Bring this design into the next chapter.':r.cost>m.budget?'Your design exceeds the budget. Reduce its cost and test again.':!state.draft.balancer?'Extra servers need traffic. Add a load balancer to distribute the work.':state.stage>0&&!state.draft.cache?'Repeated reads overload the apps or store. Try caching event pages.':state.stage===2&&!state.draft.west?'West readers still cross the ocean. Add apps in the West region.':'A failure leaves too little capacity. Add an app in the affected region and test again.'}</p><ul class="j-condition-list">${r.rows.map(x=>`<li><strong>${x.name}</strong><span>${(x.delivery*100).toFixed(1)}% served${state.stage===2?` · ${(x.fast*100).toFixed(1)}% within 100 ms`:''}</span><b class="${x.passed?'j-success':'j-warning'}">${x.passed?'Pass':'Needs work'}</b></li>`).join('')}<li><strong>Budget</strong><span>${r.cost} / ${m.budget} credits</span><b class="${r.cost<=m.budget?'j-success':'j-warning'}">${r.cost<=m.budget?'Pass':'Over budget'}</b></li></ul><div class="j-actions">${r.passed&&state.stage<2?button('jNextMission','Continue the story →',true):r.passed?'<a class="btn pri" href="#map">Keep exploring →</a>':''}</div>`;
     if(r.passed&&state.stage<2)bind('jNextMission',()=>{state.stage++;result=null;save();mission();focus();$('main').scrollTop=0;});
     $('jSavedProof').textContent=r.passed?'This passing design is saved.':'This draft has not passed all checks.';
   }
@@ -6215,7 +6345,8 @@ function tourKey(e){if(e.key==='Escape'){e.preventDefault();endTour();return;}
 $('tourNext').onclick=()=>tourAt<TOUR.length-1?showTourStep(tourAt+1):endTour();
 $('tourBack').onclick=()=>showTourStep(Math.max(0,tourAt-1));$('tourSkip').onclick=endTour;$('tourBtn').onclick=startTour;
 window.addEventListener('resize',placeTour);
-journey=initJourney({progress:()=>({seen,stars}),missionHelp:first=>setTimeout(()=>{if($('missionHelp').open)return;$('mhStart').textContent=first?'Start the first mission':'Got it';openDialog('missionHelp','mhStart');},0),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
+journey=initJourney({progress:()=>({seen,stars}),missionHelp:first=>setTimeout(()=>{if($('missionHelp').open)return;$('mhStart').textContent=first?'Start the first mission':'Got it';
+  $('mhScene').innerHTML=missionScene({maya:'wave',eng:'type',say:"Hi, I'm Maya! I run TownSquare, a little app that helps neighbors find local events. Things are about to get busy. Will you be our engineer?",reply:'Happy to help. Show me the first brief.'});openDialog('missionHelp','mhStart');},0),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
 // a shared lab design: ?lab=<id>&d=<design> opens that lab with the design on the board
