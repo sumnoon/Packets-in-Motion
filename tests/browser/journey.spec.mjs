@@ -1,6 +1,8 @@
 import {test,expect} from '@playwright/test';
 
-test.beforeEach(async({page},info)=>{const errors=[];page.on('pageerror',e=>errors.push(e.message));info._journeyErrors=errors;});
+// returning visitors: the first-visit tour and missions explanation are already dismissed, unless a test is about a first visit
+test.beforeEach(async({page},info)=>{const errors=[];page.on('pageerror',e=>errors.push(e.message));info._journeyErrors=errors;
+  if(!/first visit/.test(info.title))await page.addInitScript(()=>{localStorage.setItem('pim-tour','done');localStorage.setItem('pim-missions-help','1');});});
 test.afterEach(async({},info)=>{expect(info._journeyErrors).toEqual([]);});
 const go=async(page,id)=>{await page.locator('#'+id).click();};
 const stored=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('pim-journey')));
@@ -8,8 +10,8 @@ async function solveLaunch(page){await page.locator('#jEast').selectOption('2');
 
 test('Home remembers a selected route and Continue preserves lesson position through browser history',async({page})=>{
   await page.goto('/');await expect(page).toHaveURL(/#home$/);await expect(page.locator('#resume')).toBeHidden();
-  await go(page,'jPath-interview');await page.reload();await expect(page.locator('#jPath-interview')).toHaveAttribute('aria-pressed','true');
-  await go(page,'jStart');await expect(page).toHaveURL(/#estimation$/);await go(page,'stepNext');await go(page,'playBtn');
+  await go(page,'navMap');await page.locator('#jMapPath').selectOption('interview');await page.reload();await expect(page.locator('#jMapPath')).toHaveValue('interview');
+  await go(page,'navHome');await go(page,'jStart');await expect(page).toHaveURL(/#estimation$/);await go(page,'stepNext');await go(page,'playBtn');
   const time=await page.locator('#time').textContent();await go(page,'navHome');await expect(page.locator('#resume')).toBeVisible();
   await page.keyboard.press(']');await expect(page).toHaveURL(/#home$/);await page.goBack();await expect(page).toHaveURL(/#estimation$/);await expect(page.locator('#time')).toHaveText(time);
   await page.goForward();await expect(page.locator('#journeyTitle')).toContainText('Build an instinct');await go(page,'continueBtn');await expect(page.locator('#time')).toHaveText(time);await expect(page.locator('#playBtn')).toHaveAttribute('aria-label','Play');
@@ -29,11 +31,10 @@ test('interactive introduction exposes overload, idle app and balanced recovery 
   await page.locator('#jIntroNext').focus();await page.keyboard.press('Enter');await expect(page.locator('#jIntroStep')).toHaveText('Now the work is shared.');await expect(page.locator('#jIntroStep')).toBeFocused();
   expect((await stored(page)).intro).toBe(true);await expect(page.locator('.j-loads')).toContainText('App 2 · 180 / 200');await go(page,'jIntroReset');await expect(page.locator('#jIntroStep')).toHaveText('A quiet morning.');
 });
-test('quizzes and suggested practice open their visible challenge from Home',async({page},info)=>{
+test('quizzes open their visible challenge, and Back returns Home',async({page},info)=>{
   await page.goto('/');if(info.project.name==='touch-portrait')await go(page,'menuBtn');
   await page.locator('.qz[data-q="Traffic"]').click();await expect(page.locator('#journey')).toBeHidden();await expect(page.locator('#cStart')).toBeVisible();await expect(page).toHaveURL(/#quiz-traffic$/);
   await page.goBack();await expect(page).toHaveURL(/#home$/);await expect(page.locator('#journey')).toBeVisible();
-  await go(page,'jStart');await go(page,'completeBtn');await go(page,'navHome');await page.getByRole('button',{name:/Suggested practice:/}).click();await expect(page.locator('#cStart')).toBeVisible();await expect(page.locator('#cTitle')).toHaveText('Knock on the right door');
 });
 test('TownSquare carries a design through all three missions and restores valid progress',async({page})=>{
   await page.goto('/#missions');await expect(page.locator('#jMission-1')).toBeDisabled();await go(page,'jTest');await expect(page.locator('#jResultTitle')).toContainText('useful failure');
@@ -47,8 +48,7 @@ test('TownSquare carries a design through all three missions and restores valid 
 });
 test('journey export/import restores missions and rejects invented completion atomically',async({page,browser},info)=>{
   await page.goto('/#missions');await solveLaunch(page);await go(page,'jNextMission');
-  if(info.project.name==='touch-portrait')await go(page,'menuBtn');
-  const downloading=page.waitForEvent('download');await go(page,'exportBtn');const download=await downloading,file=info.outputPath('journey-progress.json');await download.saveAs(file);
+  await go(page,'settingsBtn');const downloading=page.waitForEvent('download');await go(page,'exportBtn');const download=await downloading,file=info.outputPath('journey-progress.json');await download.saveAs(file);
   const context=await browser.newContext({baseURL:'http://127.0.0.1:4173'});
   try{const other=await context.newPage();await other.goto('/#missions');await other.locator('#importFile').setInputFiles(file);await expect(other.locator('#jMission-1')).toHaveAttribute('aria-current','step');await expect(other.locator('#jEast')).toHaveValue('2');
     const before=await stored(other),bad={app:'packets-in-motion',version:2,seen:{packets:1},stars:{packets:3},journey:{...before,proofs:{launch:{east:1,west:0,balancer:false,cache:false}}}};
@@ -60,18 +60,17 @@ test('journey surfaces fit desktop and touch widths in dark, light and contrast 
     await page.goto('/#'+route);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await expect(page.locator('#journeyTitle')).toBeVisible();
     await page.screenshot({path:info.outputPath(route+'.png')});
-    if(route==='home'){await page.locator('.j-story-strip').scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('home-story.png')});}
     if(route==='intro'){await go(page,'jIntroNext');await page.screenshot({path:info.outputPath('intro-active.png')});}
     if(route==='missions'){await page.locator('.j-design-controls').scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('mission-controls.png')});await solveLaunch(page);await page.locator('#jMissionResult').scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath('mission-result.png')});}
   }
   for(const theme of ['light','contrast']){await page.evaluate(t=>{document.getElementById('theme').value=t;document.getElementById('theme').dispatchEvent(new Event('change'));},theme);await expect(page.locator('html')).toHaveAttribute('data-theme',theme);await page.screenshot({path:info.outputPath('missions-'+theme+'.png')});}
 });
-test('Home greets newcomers with Start learning and the three paths, then turns a paused lesson into Continue learning',async({page})=>{
-  await page.goto('/');await expect(page.locator('#jStart')).toHaveText('Start learning');await expect(page.locator('#jPathTitle')).toHaveText('Where would you like to start?');
-  await expect(page.locator('.j-path strong')).toHaveText(['Learn the basics','Prepare for interviews','Explore systems']);
+test('Home shows only Start learning for a newcomer, then only Continue learning once a lesson is paused',async({page})=>{
+  await page.goto('/');await expect(page.locator('#jStartTitle')).toHaveText('Start learning');await expect(page.locator('#jStart')).toHaveText('Start learning');
+  await expect(page.locator('.j-path, .j-story-strip, .j-practice')).toHaveCount(0);await expect(page.locator('#resume')).toBeHidden();
   await go(page,'jStart');await expect(page).toHaveURL(/#packets$/);await go(page,'stepNext');await go(page,'navHome');
-  await expect(page.locator('#resume')).toContainText('Continue learning');await expect(page.locator('#resumeText')).toContainText('How Computers Talk');
-  await expect(page.locator('#continueBtn')).toHaveText('Continue learning');await expect(page.locator('#jStart')).not.toHaveClass(/pri/);await expect(page.locator('#jPathTitle')).toHaveText('Your learning path');
+  await expect(page.locator('#resume')).toBeVisible();await expect(page.locator('#resumeText')).toContainText('How Computers Talk');await expect(page.locator('#continueBtn')).toHaveText('Continue learning');
+  await expect(page.locator('#jStart')).toHaveCount(0);
 });
 test('the introduction animates the overload and ends with a clear next lesson',async({page})=>{
   await page.goto('/#intro');await expect(page.locator('#journeyTitle')).toHaveText('Your app suddenly gets popular.');
@@ -83,4 +82,26 @@ test('the introduction animates the overload and ends with a clear next lesson',
 test('the map marks where you are: the paused lesson, otherwise the route\u2019s next lesson',async({page})=>{
   await page.goto('/#map');await expect(page.locator('li.j-here a.j-map-lesson')).toHaveAttribute('href','#packets');await expect(page.locator('li.j-here')).toContainText('You are here');await expect(page.locator('li.j-here')).toHaveCount(1);
   await page.goto('/#caching');await go(page,'stepNext');await go(page,'navMap');await expect(page.locator('li.j-here a.j-map-lesson')).toHaveAttribute('href','#caching');await expect(page.locator('li.j-here a.j-map-lesson')).toHaveAttribute('aria-current','step');
+});
+test('a first visit takes a guided tour of each part of the page, once, and Settings can replay it',async({page})=>{
+  await page.goto('/');await expect(page.locator('#tour')).toBeVisible();await expect(page.locator('#tourTitle')).toHaveText('Welcome to Packets in Motion');await expect(page.locator('#tourNext')).toBeFocused();
+  for(const title of ['Home','Learning map','Missions','Chapters','Settings','Ready when you are']){await go(page,'tourNext');await expect(page.locator('#tourTitle')).toHaveText(title);}
+  await go(page,'tourBack');await expect(page.locator('#tourTitle')).toHaveText('Settings');await go(page,'tourNext');
+  await expect(page.locator('#tourNext')).toHaveText('Done');await go(page,'tourNext');await expect(page.locator('#tour')).toBeHidden();
+  expect(await page.evaluate(()=>localStorage.getItem('pim-tour'))).toBe('done');await page.reload();await expect(page.locator('#tour')).toBeHidden();
+  await go(page,'settingsBtn');await go(page,'tourBtn');await expect(page.locator('#tour')).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('#tour')).toBeHidden();
+});
+test('a first visit to Missions explains the page, once, and the explanation can be reopened',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('pim-tour','done'));
+  await page.goto('/#missions');await expect(page.locator('#missionHelp')).toBeVisible();await expect(page.locator('#mhTitle')).toHaveText('Design a system that survives real growth');
+  await expect(page.locator('#mhStart')).toHaveText('Start the first mission');await go(page,'mhStart');await expect(page.locator('#missionHelp')).toBeHidden();
+  await page.reload();await expect(page.locator('#journeyTitle')).toHaveText('Engineering missions');await expect(page.locator('#missionHelp')).toBeHidden();
+  await go(page,'jMissionHelp');await expect(page.locator('#missionHelp')).toBeVisible();await expect(page.locator('#mhStart')).toHaveText('Got it');await page.keyboard.press('Escape');await expect(page.locator('#missionHelp')).toBeHidden();
+});
+test('Settings opens from the top navigation without scrolling, on Home and in a lesson',async({page})=>{
+  for(const route of ['home','packets']){await page.goto('/#'+route);
+    await expect(page.locator('#settingsBtn')).toBeInViewport();await go(page,'settingsBtn');await expect(page.locator('#settings')).toBeVisible();
+    for(const id of ['theme','shortcutsBtn','soundBtn','exportBtn','importBtn','tourBtn'])await expect(page.locator('#'+id)).toBeVisible();
+    await page.locator('#theme').selectOption('light');await expect(page.locator('html')).toHaveAttribute('data-theme','light');
+    await page.keyboard.press('Escape');await expect(page.locator('#settings')).toBeHidden();await page.evaluate(()=>localStorage.setItem('pim-theme','dark'));}
 });

@@ -415,6 +415,52 @@ body.play .stage.editing canvas{touch-action:none}
 .j-here-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--on-accent);background:var(--accent);border-radius:999px;padding:2px 9px;margin-right:10px;vertical-align:1px}
 .j-group-here .j-station{background:var(--accent);color:var(--on-accent)}
 @media(max-width:600px){#resume:not([hidden]){flex-direction:column;align-items:stretch}#resume #continueBtn{width:100%}}
+/* Home: one way in */
+.j-start{display:flex;align-items:center;justify-content:space-between;gap:20px;border:1px solid var(--accent);border-radius:14px;background:var(--panel);padding:18px 22px;margin:4px 0 6px}
+.j-start-copy{display:flex;flex-direction:column;gap:6px;min-width:0}
+.j-start-copy strong{font-size:17px;line-height:1.4}
+.j-start-meta{font-size:13px;color:var(--dim)}
+.j-start .btn{min-height:48px;padding-inline:22px;font-size:15px;flex:none}
+.j-start-alt{font-size:14px;color:var(--dim);margin:14px 2px 0}
+#journey:has(+#resume:not([hidden])) .journey-heading{margin-bottom:8px}
+/* Missions: the three steps, and a way back to the explanation */
+.j-mission-how{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:-6px 0 4px}
+.j-mission-how ol{list-style:none;margin:0;padding:0;display:flex;gap:22px;flex-wrap:wrap;font-size:14px;color:var(--text)}
+.j-mission-how li{display:flex;align-items:center;gap:8px}
+.j-mission-how li span{width:24px;height:24px;border-radius:50%;border:1px solid var(--accent);color:var(--accent);display:grid;place-items:center;font-size:12px}
+/* Settings and the missions explanation share one dialog style */
+dialog.settings{width:min(460px,calc(100vw - 32px));max-height:min(86vh,720px);padding:0;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:16px}
+dialog.settings::backdrop{background:rgba(4,6,13,.7)}
+dialog.settings .in{padding:20px 22px 22px}
+.set-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.set-head h2{margin:0;font-size:19px}
+.set-group{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:16px 0;border-top:1px solid var(--line)}
+.set-group:first-of-type{border-top:0}
+.set-group h3{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.set-group .theme{font-size:13.5px;color:var(--text);width:100%}
+.set-note{margin:0;font-size:13px;color:var(--dim);line-height:1.5}
+.set-group .io-msg:empty{display:none}
+dialog.mission-help{width:min(560px,calc(100vw - 32px))}
+.mission-help .in>p{color:var(--text-2,var(--dim));line-height:1.6;margin:10px 0}
+.mh-eyebrow{font-size:12px!important;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)!important;margin:0!important}
+.mission-help h2{margin:6px 0 4px;font-size:22px;line-height:1.25}
+.mh-steps{margin:14px 0;padding-left:22px;display:flex;flex-direction:column;gap:10px;line-height:1.55}
+.mh-note{font-size:13.5px}
+.set-actions{display:flex;justify-content:flex-end;margin-top:16px}
+/* First-visit tour: a spotlight on one part of the page and a card that explains it */
+.tour{position:fixed;inset:0;z-index:60}
+.tour[hidden]{display:none}
+.tour-spot{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(4,6,13,.72);outline:2px solid var(--accent);pointer-events:none;transition:left .25s,top .25s,width .25s,height .25s}
+.tour-spot.none{left:50%!important;top:50%!important;width:0!important;height:0!important;outline:0}
+.tour-box{position:fixed;background:var(--panel);color:var(--text);border:1px solid var(--accent);border-radius:14px;padding:16px 18px;box-shadow:0 18px 50px rgba(0,0,0,.5);transition:left .25s,top .25s}
+.tour-box.center{left:50%!important;top:50%!important;transform:translate(-50%,-50%);width:min(400px,calc(100vw - 32px))}
+.tour-step{margin:0;font-size:12px;color:var(--accent);letter-spacing:.04em}
+.tour-box h2{margin:6px 0 6px;font-size:18px}
+.tour-box>p:not(.tour-step){margin:0;font-size:14px;line-height:1.55;color:var(--dim)}
+.tour-actions{display:flex;align-items:center;gap:8px;margin-top:14px}.tour-gap{flex:1}
+.tour-actions .btn{min-height:36px}
+@media(prefers-reduced-motion:reduce){.tour-spot,.tour-box{transition:none}}
+@media(max-width:600px){.j-start{flex-direction:column;align-items:stretch}.j-start .btn{width:100%}.j-mission-how ol{gap:12px}}
 </style>
 </head>
 <body>
@@ -428,20 +474,15 @@ body.play .stage.editing canvas{touch-action:none}
     <p class="nofind" id="noFind" hidden>No chapters match. Try another word.</p>
     <div class="side-foot">
       <button class="btn sm" id="glossBtn" title="Glossary (G)">Glossary</button>
-      <button class="btn sm tg" id="shortcutsBtn" aria-pressed="true">Keyboard shortcuts: on</button>
-      <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button>
-      <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
-      <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
-      <p class="io-msg" id="ioMsg" role="status"></p>
       <p class="io-msg" id="storageMsg" role="status"></p>
     </div>
   </aside>
   <div class="scrim" id="scrim" aria-hidden="true"></div>
   <main id="main" tabindex="-1">
     <div class="wrap">
-      <nav class="course-nav" aria-label="Learning views"><a id="navHome" href="#home">Home</a><a id="navMap" href="#map">Learning map</a><a id="navMissions" href="#missions">Missions</a><button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button></nav>
-      <div class="resume" id="resume" hidden><div class="j-resume-copy"><span class="j-resume-label">Continue learning</span><p id="resumeText"></p><span class="j-resume-bar" aria-hidden="true"><i id="resumeBar"></i></span></div><button class="btn pri" id="continueBtn">Continue learning</button></div>
+      <nav class="course-nav" aria-label="Learning views"><a id="navHome" href="#home">Home</a><a id="navMap" href="#map">Learning map</a><a id="navMissions" href="#missions">Missions</a><button class="btn" id="settingsBtn" aria-haspopup="dialog">⚙ Settings</button><button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button></nav>
       <div id="journey" hidden></div>
+      <div class="resume" id="resume" hidden><div class="j-resume-copy"><span class="j-resume-label">Continue learning</span><p id="resumeText"></p><span class="j-resume-bar" aria-hidden="true"><i id="resumeBar"></i></span></div><button class="btn pri" id="continueBtn">Continue learning</button></div>
       <div id="lessonView">
       <div class="top">
         <div>
@@ -524,6 +565,32 @@ body.play .stage.editing canvas{touch-action:none}
           <div class="acts"><button class="btn" id="resRetry">↺ Try again</button><button class="btn" id="resWatch">Watch the lesson</button><button class="btn pri" id="resNext">Next lesson →</button></div>
         </div></dialog>
 <div class="tip" id="tip" role="tooltip" hidden></div>
+<dialog class="settings" id="settings" hidden aria-labelledby="setTitle"><div class="in">
+  <div class="set-head"><h2 id="setTitle">Settings</h2><button class="btn sm" id="setClose">Close</button></div>
+  <section class="set-group"><h3>Display</h3><label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label></section>
+  <section class="set-group"><h3>Controls and sound</h3>
+    <button class="btn sm tg" id="shortcutsBtn" aria-pressed="true">Keyboard shortcuts: on</button>
+    <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button></section>
+  <section class="set-group"><h3>Your progress</h3><p class="set-note">Progress is saved in this browser. Export it to keep a backup or move it to another browser.</p>
+      <div class="prog-io"><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
+    <p class="io-msg" id="ioMsg" role="status"></p></section>
+  <section class="set-group"><h3>Getting around</h3><button class="btn sm" id="tourBtn">Take the tour again</button></section>
+</div></dialog>
+<dialog class="settings mission-help" id="missionHelp" hidden aria-labelledby="mhTitle"><div class="in">
+  <p class="mh-eyebrow">Engineering missions</p>
+  <h2 id="mhTitle">Design a system that survives real growth</h2>
+  <p>You are the engineer for <strong>TownSquare</strong>, a fictional local-events app. Over three missions it launches, goes viral and expands to a second region. Your job is to design an architecture that keeps it running.</p>
+  <ol class="mh-steps">
+    <li><strong>Read the brief.</strong> Each mission names the traffic, the failures to survive and a budget.</li>
+    <li><strong>Shape your system.</strong> Choose app servers, a load balancer, a cache and later a second region. The diagram updates as you go.</li>
+    <li><strong>Test all conditions.</strong> Every condition must serve its traffic within budget. If a check fails, the result tells you what to change.</li>
+  </ol>
+  <p class="mh-note">Pass a mission to unlock the next one. Your design carries over, so each mission builds on the last. Missions are separate from lesson stars, and nothing is timed.</p>
+  <div class="set-actions"><button class="btn pri" id="mhStart">Start the first mission</button></div>
+</div></dialog>
+<div class="tour" id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle"><div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-box" id="tourBox"><p class="tour-step" id="tourStep"></p><h2 id="tourTitle"></h2><p id="tourText"></p>
+    <div class="tour-actions"><button class="btn sm" id="tourSkip">Skip tour</button><span class="tour-gap"></span><button class="btn sm" id="tourBack">Back</button><button class="btn sm pri" id="tourNext">Next</button></div></div></div>
 <dialog class="gloss" id="glossary" aria-labelledby="glTitle"><div class="gh"><h2 id="glTitle">Glossary</h2><input type="search" id="glFind" placeholder="Filter terms" aria-label="Filter terms" autocomplete="off"><button class="btn sm" id="glClose">Close</button></div><dl id="glList"></dl></dialog>
 <script>
 "use strict";
@@ -5647,21 +5714,16 @@ function initJourney(bridge){
     const description=cache?'The cache serves 60% of reads before the apps. Remaining reads go through apps to the store. ':'';
     return `<figure class="j-diagram"><svg viewBox="0 0 600 ${storeY+69}" role="img" aria-label="${esc(description+caption)}"><g class="j-wires">${paths}</g>${node(215,4,170,'READERS',traffic+' reads / second','j-node-blue')}${node(205,92,190,d.balancer?'LOAD BALANCER':'DIRECT CONNECTION',d.balancer?'Distribute the load':'First app receives all reads',d.balancer?'j-node-mint':'')}${cache?node(205,180,190,'EVENT-PAGE CACHE','60% served · 40% continue','j-node-mint'):''}${west?node(55,appY,190,`${d.east} EAST APPS`,'200 reads/s each')+node(355,appY,190,`${d.west} WEST APPS`,split?'200 reads/s each':'No route from readers'):node(185,appY,230,`${d.east} APP${d.east===1?'':'S'}`,d.balancer?'Traffic shared across apps':'Extra apps wait for traffic')}${west?node(55,storeY,190,'EAST STORE','500 reads/s')+node(355,storeY,190,'WEST REPLICA','500 reads/s'):node(185,storeY,230,intro?'RESPONSE':'EVENT STORE',intro?'Follow the requests':'500 reads/s','j-node-mint')}</svg><figcaption>${caption}</figcaption></figure>`;
   }
+  // Home has one job: one clear way in. A paused lesson shows the Continue learning card (drawn by the
+  // player below this heading); otherwise a single Start learning or Continue learning card.
   function home(){
-    const progress=bridge.progress(),path=JOURNEY_PATHS[state.path],next=path.ids.find(id=>!progress.seen[id]),practice=path.ids.find(id=>progress.seen[id]&&CHAL[id]&&(progress.stars[id]||0)<3),done=path.ids.filter(id=>progress.seen[id]).length;
-    const target=next||practice||path.ids[0],chapter=chapters.find(c=>c.id===target),completed=Object.keys(state.proofs).length;
-    // A saved lesson position becomes the page's one primary action (the Continue learning card above);
-    // newcomers get Start learning and a choice of path.
-    const resumed=!!pimResume(PIM_STORE.json('pim-resume',null)),fresh=!resumed&&!Object.keys(progress.seen).length;
-    const startLabel=resumed?'Next on your path':fresh?'Start learning':next?'Continue learning':practice?'Practice your skills':'Revisit the path';
-    root.innerHTML=`<section class="j-hero"><div>${heading('YOUR SYSTEM DESIGN JOURNEY','Build an instinct<br>for systems.','Watch a request travel. Change the architecture. See why it works.')}<div class="j-actions">${button('jStart',startLabel,!resumed)}<a class="btn" href="#intro">${state.intro?'Replay the introduction':'Try the 60-second introduction'}</a></div><p class="j-next">${next?'Up next':practice?'Practice':'Revisit'}: <strong>${esc(chapter.title)}</strong></p></div>${diagram({east:2,west:0,balancer:true,cache:false},{traffic:300,caption:'One request. A whole system of decisions.'})}</section>
-      <section class="j-section" aria-labelledby="jPathTitle"><div class="j-section-title"><h2 id="jPathTitle">${fresh?'Where would you like to start?':'Your learning path'}</h2><a href="#map">Open learning map →</a></div><div class="j-paths">${Object.entries(JOURNEY_PATHS).map(([id,p],i)=>`<button id="jPath-${id}" class="j-path" aria-pressed="${state.path===id}"><strong>${p.title}</strong><span>${p.note}</span><span class="j-path-selection">${state.path===id?'Selected path':'Choose path'}</span></button>`).join('')}</div><p class="j-path-progress">${done} of ${path.ids.length} lessons completed on this path. You can switch paths or open any chapter.</p></section>
-      <section class="j-story-strip"><div><h2>Your first engineering story.</h2><p>Take TownSquare from launch day to two regions. Keep the same design, face new constraints, and make it better.</p><a class="btn" href="#missions">${completed?'Continue the story':'Meet your first mission'} →</a></div><ol class="j-story-track">${JOURNEY_MISSIONS.map((m,i)=>`<li><span>${state.proofs[m.id]?'✓':m.chapter}</span><strong>${m.title}</strong><small>${state.proofs[m.id]?'Completed':i===state.stage?'Your current mission':'Coming up'}</small></li>`).join('')}</ol></section>
-      <p class="j-local-note">Your progress stays in this browser. Use Export in the chapter menu to take it with you.</p>`;
-    bind('jStart',()=>!next&&practice?bridge.practice(target):bridge.lesson(target));
-    // one suggested practice exercise: a completed lesson on this path whose challenge still has stars to earn
-    if(practice&&next){const suggestion=document.createElement('button');suggestion.className='btn j-practice';suggestion.textContent=`Suggested practice: ${CHAL[practice].title} · ${chapters.find(c=>c.id===practice).title} (${progress.stars[practice]||0}/3 ★)`;suggestion.onclick=()=>bridge.practice(practice);root.querySelector('.j-hero>div')?.appendChild(suggestion);}
-    Object.keys(JOURNEY_PATHS).forEach(id=>bind('jPath-'+id,()=>{state.path=id;save();home();focus('jPath-'+id);}));
+    const progress=bridge.progress(),path=JOURNEY_PATHS[state.path],next=path.ids.find(id=>!progress.seen[id]);
+    const resumed=!!pimResume(PIM_STORE.json('pim-resume',null)),fresh=!Object.keys(progress.seen).length;
+    const target=next||path.ids[0],i=chapters.findIndex(c=>c.id===target),c=chapters[i];
+    const intro=heading('','Build an instinct for systems.','System design, explained by watching it happen: short animated lessons, each followed by a hands-on challenge.');
+    if(resumed){root.innerHTML=intro;return;}
+    root.innerHTML=intro+`<section class="j-start" aria-labelledby="jStartTitle"><div class="j-start-copy"><span class="j-resume-label" id="jStartTitle">${fresh?'Start learning':'Continue learning'}</span><strong>${esc(c.title)}</strong><span class="j-start-meta">${fresh?'Your first lesson':'Next on your path'} · chapter ${i+1} of ${chapters.length} · about ${Math.max(1,Math.round(c.dur/60))} min</span></div>${button('jStart',fresh?'Start learning':'Continue learning',true)}</section>${fresh?'<p class="j-start-alt">New to system design? <a href="#intro">Try the 60-second introduction</a> first.</p>':''}`;
+    bind('jStart',()=>bridge.lesson(target));
   }
   function map(){
     const progress=bridge.progress(),ids=JOURNEY_PATHS[state.path].ids,groups=[...new Set(chapters.filter(c=>ids.includes(c.id)).map(c=>c.group))];
@@ -5705,13 +5767,15 @@ function initJourney(bridge){
   }
   function mission(){
     const m=JOURNEY_MISSIONS[state.stage],d=state.draft,done=!!state.proofs[m.id];
-    root.innerHTML=heading('TOWNSQUARE · AN ENGINEERING STORY','A small idea. Room to grow.','A fictional events app. Your architecture. Three moments that change everything.')+`<nav class="j-mission-nav" aria-label="Story chapters">${JOURNEY_MISSIONS.map((x,i)=>`<button class="j-mission-tab" id="jMission-${i}" ${i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id]?'disabled':''} ${i===state.stage?'aria-current="step"':''}><span>${state.proofs[x.id]?'✓':x.chapter}</span>${x.title}<small>${i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id]?'Complete the previous mission':state.proofs[x.id]?'Completed':'Ready to try'}</small></button>`).join('')}</nav>
+    root.innerHTML=heading('','Engineering missions','Design the architecture for TownSquare, a fictional events app, as it grows. Each mission brings new traffic and a new constraint: change your design, test it, and pass every check within the budget to unlock the next mission.')+`<div class="j-mission-how"><ol><li><span>1</span>Read the brief</li><li><span>2</span>Shape your system</li><li><span>3</span>Test all conditions</li></ol><button class="btn" id="jMissionHelp">How missions work</button></div><nav class="j-mission-nav" aria-label="Story chapters">${JOURNEY_MISSIONS.map((x,i)=>`<button class="j-mission-tab" id="jMission-${i}" ${i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id]?'disabled':''} ${i===state.stage?'aria-current="step"':''}><span>${state.proofs[x.id]?'✓':x.chapter}</span>${x.title}<small>${i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id]?'Complete the previous mission':state.proofs[x.id]?'Completed':'Ready to try'}</small></button>`).join('')}</nav>
       <section class="j-brief"><div><h2>${m.chapter} · ${m.title}</h2><p>${m.story}</p></div><div class="j-brief-goal"><strong>Your goal</strong><p>${m.goal}</p></div></section>
       <div class="j-workbench"><section class="j-blueprint" aria-label="Your architecture"><div id="jMissionDiagram">${diagram(d,{traffic:m.traffic,caption:'Your current design · test it against every condition'})}</div><p class="j-budget" id="jBudget">${journeyCost(d)} / ${m.budget} credits</p></section><section class="j-design-controls" aria-labelledby="jDesignTitle"><h2 id="jDesignTitle">Shape your system</h2><p class="j-control-hint">Your design carries into the next mission.</p><label>East app servers <span>200 reads/s each · 2 credits each</span><select id="jEast">${Array.from({length:6},(_,i)=>`<option value="${i+1}"${d.east===i+1?' selected':''}>${i+1} app${i?'s':''}</option>`).join('')}</select></label><label class="j-check"><input id="jBalancer" type="checkbox"${d.balancer?' checked':''}><span><strong>Load balancer</strong><small>Distribute reads across apps and available regions · 1 credit</small></span></label>${state.stage>0?`<label class="j-check"><input id="jCache" type="checkbox"${d.cache?' checked':''}><span><strong>Event-page cache</strong><small>Serve 60% of reads before they reach apps · 2 credits total</small></span></label>`:''}${state.stage===2?`<label>West app servers <span>3 credits each + 3 for a local read replica</span><select id="jWest">${Array.from({length:5},(_,i)=>`<option value="${i}"${d.west===i?' selected':''}>${i?i+' app'+(i>1?'s':''):'No West region'}</option>`).join('')}</select></label>`:''}${button('jTest','Test all conditions',true)}<p class="j-control-hint">Instant capacity checks. No countdown.</p></section></div>
       <section class="j-mission-result" id="jMissionResult" aria-labelledby="jResultTitle" ${result?'':'hidden'}></section>
       <p class="j-tested" id="jSavedProof">${done?'Completed with a passing design. Edits above are a separate draft until you test them.':''}</p>
       <details class="j-model"><summary>How this teaching model works</summary><p>Each app serves 200 reads/s. Without a load balancer, only the first East app receives reads; if that app fails, no app reads are served. A cache serves a fixed 60% of reads before the apps, including during app failures. Each region’s store handles 500 reads/s. The East store costs 2 credits and is always included.</p><p>The load balancer splits reads among healthy apps. In mission 3, when West apps exist, it also routes 60% of reads East and 40% West. A West region includes a local read replica. Local reads take 40 ms; West readers served from East take 180 ms. Failed reads never count as fast reads.</p><p>Every named condition must meet the goal independently. Credits are teaching units, not provider prices. This read-only model excludes writes, replication lag, cache misses changing over time, network failures and load balancer failures.</p></details><div class="j-study"><strong>Explore the ideas</strong>${m.learn.map(lessonLink).join('')}</div>`;
     for(let i=0;i<3;i++)bind('jMission-'+i,()=>{if(i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id])return;if(i===state.stage)return;const previous=state.stage;state.stage=i;state.draft={...(state.proofs[JOURNEY_MISSIONS[i].id]||(i>previous?state.proofs[JOURNEY_MISSIONS[i-1].id]:journeyInitial().draft))};if(i<2)state.draft.west=0;if(i===0)state.draft.cache=false;result=null;save();mission();focus('jMission-'+i);});
+    bind('jMissionHelp',()=>bridge.missionHelp(false));
+    if(!PIM_STORE.get('pim-missions-help'))bridge.missionHelp(state.stage===0&&!Object.keys(state.proofs).length);
     const change=()=>{state.draft={east:+$('jEast').value,west:state.stage===2?+$('jWest').value:0,balancer:$('jBalancer').checked,cache:state.stage>0&&$('jCache').checked};result=null;save();$('jMissionDiagram').innerHTML=diagram(state.draft,{traffic:m.traffic,caption:'Your current design · test it against every condition'});$('jBudget').textContent=`${journeyCost(state.draft)} / ${m.budget} credits`;$('jMissionResult').hidden=true;$('jSavedProof').textContent=done?'Previously completed. This edited draft has not been tested.':'Design changed. Test all conditions to check it.';};
     ['jEast','jBalancer',...(state.stage>0?['jCache']:[]),...(state.stage===2?['jWest']:[])].forEach(id=>{$(id).onchange=change;});
     bind('jTest',()=>{result=journeyTrial(state.stage,state.draft);if(result.passed){state.proofs[m.id]={...state.draft};save();}renderResult();focus('jResultTitle');});
@@ -5735,7 +5799,7 @@ function initJourney(bridge){
 const $=id=>document.getElementById(id);
 const store=PIM_STORE;
 const initialHash=location.hash,hubNames={home:'Home',map:'Learning map',intro:'Introduction',missions:'Engineering missions'};
-let hub=null,journey=null;
+let hub=null,journey=null,tourAt=-1;   // tourAt: the first-visit tour's step, -1 when closed
 labRestore();
 let seen=pimSeen(store.json('sdve-seen',{}));
 let stars=pimStars(store.json('pim-stars',{}));
@@ -5786,7 +5850,7 @@ function failRender(e){if(renderFault)return;renderFault={mode,id:quizG?QUIZ[qui
   console.error('Stage failed',renderFault,e);setPlaying(false);if(api)api.dispose();pdown=null;cv.hidden=true;
   $('renderError').hidden=false;$('renderErrorText').textContent=mode==='play'?'This challenge could not be drawn. Your saved design is available when you retry. No result was awarded.':'This animation could not be drawn. You can still read every step in the transcript.';
   if(mode==='watch')setTranscript(true);announce($('renderErrorText').textContent);}
-function blocked(){return !!hub||document.hidden||document.body.classList.contains('menu')||$('glossary').open||$('card').open||$('result').open;}
+function blocked(){return !!hub||tourAt>=0||document.hidden||document.body.classList.contains('menu')||['glossary','card','result','settings','missionHelp'].some(id=>$(id).open);}
 function render(){if(renderFault)return;if(mode==='play'){renderChal(0);return;}const c=chapters[cur];
   try{g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBackground();c.draw(t);
     g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBeatTitle(c,t);}catch(e){failRender(e);}
@@ -5955,7 +6019,7 @@ $('menuBtn').onclick=()=>setMenu(!document.body.classList.contains('menu'));
 $('menuClose').onclick=()=>setMenu(false);$('scrim').onclick=()=>setMenu(false);
 if(narrow.addEventListener)narrow.addEventListener('change',()=>setMenu(false));
 setMenu(false);
-window.addEventListener('keydown',e=>{const dialog=[$('glossary'),$('card'),$('result')].find(d=>d.open);if(dialog){if(e.key==='Tab'){const items=[...dialog.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')].filter(b=>!b.disabled&&b.tabIndex!==-1&&!b.hidden&&(!b.getClientRects||b.getClientRects().length));const first=items[0],end=items[items.length-1];if(first&&(!dialog.contains(document.activeElement)||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===end)){e.preventDefault();(e.shiftKey?end:first).focus();}}return;}if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
+window.addEventListener('keydown',e=>{if(tourAt>=0){tourKey(e);return;}const dialog=[$('glossary'),$('card'),$('result'),$('settings'),$('missionHelp')].find(d=>d.open);if(dialog){if(e.key==='Tab'){const items=[...dialog.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')].filter(b=>!b.disabled&&b.tabIndex!==-1&&!b.hidden&&(!b.getClientRects||b.getClientRects().length));const first=items[0],end=items[items.length-1];if(first&&(!dialog.contains(document.activeElement)||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===end)){e.preventDefault();(e.shiftKey?end:first).focus();}}return;}if(e.key==='Escape'&&!tip.hidden){hideTip();return;}
   if((e.ctrlKey||e.metaKey||e.altKey)&&document.body.classList.contains('menu'))return;
   if(document.body.classList.contains('menu')){if(e.key==='Escape'){e.preventDefault();setMenu(false);}else if(e.key==='Tab'){
     const items=[...$('side').querySelectorAll('button,input,select,a[href]')].filter(b=>!b.disabled&&!b.closest('[hidden]'));
@@ -6114,7 +6178,44 @@ function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',Str
 $('soundBtn').onclick=()=>{setSound(!SFX.on);SFX.play('good');};
 
 setSound(store.get('pim-sound')==='1');hideTip();
-journey=initJourney({progress:()=>({seen,stars}),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
+// ---------- settings: one dialog, reached from the top navigation ----------
+$('settingsBtn').onclick=()=>{setMenu(false);openDialog('settings','setClose');};
+$('setClose').onclick=()=>closeDialog('settings');
+$('settings').addEventListener('cancel',e=>{e.preventDefault();closeDialog('settings');});
+// ---------- missions: what the page is for, shown once on the first visit ----------
+function closeMissionHelp(){closeDialog('missionHelp');store.set('pim-missions-help','1');}
+$('mhStart').onclick=closeMissionHelp;$('missionHelp').addEventListener('cancel',e=>{e.preventDefault();closeMissionHelp();});
+// ---------- first-visit tour: points at each part of the page in turn ----------
+const TOUR=[
+  {title:'Welcome to Packets in Motion',text:'Learn system design by watching it happen: short animated lessons, each followed by a hands-on challenge. Here is a quick look around.'},
+  {target:'#navHome',title:'Home',text:'Your way in. Continue the lesson you paused, or start learning from the first lesson.'},
+  {target:'#navMap',title:'Learning map',text:'Every lesson on your path as a route of stations: where you are, what you have finished and what to learn first. Switch paths here: the basics, interview preparation, or everything.'},
+  {target:'#navMissions',title:'Missions',text:'Put the lessons to work. Design the architecture for a growing app, then test it against traffic spikes and failures.'},
+  {target:()=>narrow.matches?'#menuBtn':'#find',title:'Chapters',text:narrow.matches?`Open the list of all ${chapters.length} lessons and the section quizzes, search it, and jump anywhere.`:`All ${chapters.length} lessons and the section quizzes are listed below. Search them here (press /) and jump anywhere.`},
+  {target:'#settingsBtn',title:'Settings',text:'Theme, keyboard shortcuts, sound cues, and exporting or importing your progress. You can take this tour again from here.'},
+  {target:()=>$('jStart')?'#jStart':'#continueBtn',title:'Ready when you are',text:'Start your first lesson here, or try the 60-second introduction to see the big idea in action.'}];
+const css=(el,o)=>{if(el&&el.style)Object.assign(el.style,o);};
+function tourTarget(i){const t=TOUR[i].target,sel=typeof t==='function'?t():t,el=sel&&document.querySelector(sel);return el&&(!el.getClientRects||el.getClientRects().length)?el:null;}
+// the spotlight hugs the target; the card sits below it, above it, or beside a tall target
+function placeTour(){if(tourAt<0)return;const el=tourTarget(tourAt),box=$('tourBox');$('tourSpot').classList.toggle('none',!el);box.classList.toggle('center',!el);
+  if(!el){css(box,{left:'',top:'',width:''});return;}
+  const r=el.getBoundingClientRect(),pad=6,vw=innerWidth,vh=innerHeight,bw=Math.min(360,vw-32),bh=box.offsetHeight||220;
+  css($('tourSpot'),{left:r.left-pad+'px',top:r.top-pad+'px',width:r.width+pad*2+'px',height:r.height+pad*2+'px'});
+  let left,top;if(r.height>vh*.5){left=r.right+16;top=Math.max(16,Math.min(vh-bh-16,r.top+40));if(left+bw>vw-16){left=16;top=vh-bh-16;}}
+  else{left=Math.min(Math.max(16,r.left+r.width/2-bw/2),vw-bw-16);top=r.bottom+14+bh<vh-16?r.bottom+14:Math.max(16,r.top-bh-14);}
+  css(box,{left:left+'px',top:top+'px',width:bw+'px'});}
+function showTourStep(i){tourAt=i;const el=tourTarget(i),r=el&&el.getBoundingClientRect();if(r&&(r.top<0||r.bottom>innerHeight)&&el.scrollIntoView)el.scrollIntoView({block:'nearest'});
+  $('tourStep').textContent=`${i+1} of ${TOUR.length}`;$('tourTitle').textContent=TOUR[i].title;$('tourText').textContent=TOUR[i].text;
+  $('tourBack').hidden=i===0;$('tourNext').textContent=i===TOUR.length-1?'Done':'Next';placeTour();$('tourNext').focus({preventScroll:true});}
+function startTour(){closeDialog('settings');if(hub!=='home')showHub('home',false,false);setMenu(false);$('tour').hidden=false;$('app').inert=true;showTourStep(0);}
+function endTour(){if(tourAt<0)return;tourAt=-1;$('tour').hidden=true;$('app').inert=false;store.set('pim-tour','done');const go=$('jStart')||$('continueBtn');if(go)go.focus({preventScroll:true});}
+function tourKey(e){if(e.key==='Escape'){e.preventDefault();endTour();return;}
+  if(e.key==='Tab'){const items=[...$('tourBox').querySelectorAll('button')].filter(b=>!b.hidden),first=items[0],end=items[items.length-1];
+    if(!$('tourBox').contains(document.activeElement)||e.shiftKey&&document.activeElement===first||!e.shiftKey&&document.activeElement===end){e.preventDefault();(e.shiftKey?end:first).focus();}}}
+$('tourNext').onclick=()=>tourAt<TOUR.length-1?showTourStep(tourAt+1):endTour();
+$('tourBack').onclick=()=>showTourStep(Math.max(0,tourAt-1));$('tourSkip').onclick=endTour;$('tourBtn').onclick=startTour;
+window.addEventListener('resize',placeTour);
+journey=initJourney({progress:()=>({seen,stars}),missionHelp:first=>setTimeout(()=>{if($('missionHelp').open)return;$('mhStart').textContent=first?'Start the first mission':'Got it';openDialog('missionHelp','mhStart');},0),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
 // a shared lab design: ?lab=<id>&d=<design> opens that lab with the design on the board
@@ -6122,6 +6223,7 @@ const sp=typeof URLSearchParams!=='undefined'?new URLSearchParams(location.searc
 const shared=sIdx>=0&&CHAL[sLab]&&labImport(sLab,sp.get('d')||'');
 if(shared){history.replaceState(null,'',location.pathname+'#'+sLab);load(sIdx,false);startChal();}
 else{load(start,!!initialHash&&!Object.hasOwn(hubNames,initialHash.slice(1))&&!startQ&&!resumeRecord);if(startQ)startQuiz(startQ);else if(!initialHash||Object.hasOwn(hubNames,initialHash.slice(1)))showHub(initialHash.slice(1)||'home',true,false,false);}restoring=false;saveRoute();$('speed').value=String(speed);
+if(hub==='home'&&!shared&&store.get('pim-tour')===null&&!Object.keys(seen).length&&!resumeRecord)setTimeout(startTour,400);
 resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();
 </script>

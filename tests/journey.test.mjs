@@ -74,3 +74,19 @@ test('invalid journey evidence rejects an entire import before course progress m
   assert.equal(p.storage.has('sdve-seen'),false);assert.equal(p.storage.has('pim-stars'),false);
   assert.match(el('ioMsg').textContent,/Nothing was imported/);
 });
+test('the tour starts only on a genuine first visit to Home, and is remembered once finished or skipped',()=>{
+  const el=(p,id)=>p.document.getElementById(id);
+  const first=loadPage({player:true,firstVisit:true});first.runTimers(1);
+  assert.equal(el(first,'tour').hidden,false);assert.equal(el(first,'tourTitle').textContent,'Welcome to Packets in Motion');assert.equal(first.document.activeElement.id,'tourNext');
+  el(first,'tourSkip').click();assert.equal(el(first,'tour').hidden,true);assert.equal(first.storage.get('pim-tour'),'done');
+  for(const opts of [{firstVisit:true,storage:{'sdve-seen':JSON.stringify({packets:1})}},{firstVisit:true,hash:'#caching'},{player:true}]){
+    const p=loadPage({player:true,...opts});p.runTimers(1);assert.equal(el(p,'tour').hidden,true,JSON.stringify(opts));assert.deepEqual(p.errors,[]);}
+});
+test('Missions explains itself on the first visit only, and Home offers a single way in',()=>{
+  const el=(p,id)=>p.document.getElementById(id);
+  const p=loadPage({player:true,firstVisit:true,hash:'#missions',storage:{'pim-tour':'done'}});p.runTimers(1);
+  assert.equal(el(p,'missionHelp').open,true);assert.equal(el(p,'mhStart').textContent,'Start the first mission');
+  el(p,'mhStart').click();assert.equal(el(p,'missionHelp').open,false);assert.equal(p.storage.get('pim-missions-help'),'1');
+  const again=loadPage({player:true,hash:'#missions'});again.runTimers(1);assert.equal(el(again,'missionHelp').open,false);
+  const home=loadPage({player:true}),html=el(home,'journey').innerHTML;assert.match(html,/id="jStart">Start learning</);assert.doesNotMatch(html,/j-path|j-story|j-practice/);assert.equal(el(home,'resume').hidden,true);
+});

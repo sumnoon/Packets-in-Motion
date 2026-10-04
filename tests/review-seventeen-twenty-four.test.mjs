@@ -46,7 +46,7 @@ test('player shortcuts respect focus, browser modifiers, native inputs and the s
 
 test('browser find does not invoke fullscreen and modified Tab does not trigger drawer trapping',()=>{
   const p=loadPage({player:true,hash:'#packets',fullscreen:true,media:{'(max-width:900px)':true}});p.key('f',el(p,'cv'),{ctrlKey:true});assert.equal(p.document.fullscreenElement,undefined);p.key('f',el(p,'cv'));assert.equal(p.document.fullscreenElement,p.document.documentElement);
-  el(p,'menuBtn').click();el(p,'importBtn').focus();let prevented=false;p.key('Tab',el(p,'importBtn'),{ctrlKey:true,preventDefault(){prevented=true;}});assert.equal(prevented,false);assert.equal(p.document.activeElement.id,'importBtn');
+  el(p,'menuBtn').click();el(p,'glossBtn').focus();let prevented=false;p.key('Tab',el(p,'glossBtn'),{ctrlKey:true,preventDefault(){prevented=true;}});assert.equal(prevented,false);assert.equal(p.document.activeElement.id,'glossBtn');
 });
 
 test('timeline describes time and step, jumps between beats, and retains native range keys',()=>{
