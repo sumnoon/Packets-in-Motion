@@ -1,0 +1,210 @@
+[
+  {
+    "name": "server-rack-healthy",
+    "width": 100,
+    "height": 180,
+    "category": "Racks",
+    "description": "Server rack: healthy",
+    "file": "server-rack-healthy.svg"
+  },
+  {
+    "name": "server-rack-under-load",
+    "width": 100,
+    "height": 180,
+    "category": "Racks",
+    "description": "Server rack: under load",
+    "file": "server-rack-under-load.svg"
+  },
+  {
+    "name": "server-rack-failing",
+    "width": 100,
+    "height": 180,
+    "category": "Racks",
+    "description": "Server rack: failing",
+    "file": "server-rack-failing.svg"
+  },
+  {
+    "name": "server-rack-failing-dim",
+    "width": 100,
+    "height": 180,
+    "category": "Racks",
+    "description": "Server rack: failing dim",
+    "file": "server-rack-failing-dim.svg"
+  },
+  {
+    "name": "laptop-open",
+    "width": 140,
+    "height": 110,
+    "category": "Hand props",
+    "description": "Open laptop with abstract mint code lines",
+    "file": "laptop-open.svg"
+  },
+  {
+    "name": "tablet-chart",
+    "width": 74,
+    "height": 96,
+    "category": "Hand props",
+    "description": "Tablet with blue chart blocks",
+    "file": "tablet-chart.svg"
+  },
+  {
+    "name": "townsquare-office",
+    "width": 480,
+    "height": 230,
+    "category": "Scene pieces",
+    "description": "Muted office corner with desk, plant and night city window",
+    "file": "townsquare-office.svg"
+  },
+  {
+    "name": "world-regions",
+    "width": 450,
+    "height": 240,
+    "category": "Scene pieces",
+    "description": "World silhouette with West and East region markers and a packet route",
+    "file": "world-regions.svg"
+  },
+  {
+    "name": "confetti-violet-square",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "violet square confetti",
+    "file": "confetti-violet-square.svg"
+  },
+  {
+    "name": "confetti-violet-circle",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "violet circle confetti",
+    "file": "confetti-violet-circle.svg"
+  },
+  {
+    "name": "confetti-mint-square",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "mint square confetti",
+    "file": "confetti-mint-square.svg"
+  },
+  {
+    "name": "confetti-mint-circle",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "mint circle confetti",
+    "file": "confetti-mint-circle.svg"
+  },
+  {
+    "name": "confetti-blue-square",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "blue square confetti",
+    "file": "confetti-blue-square.svg"
+  },
+  {
+    "name": "confetti-blue-circle",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "blue circle confetti",
+    "file": "confetti-blue-circle.svg"
+  },
+  {
+    "name": "confetti-amber-square",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "amber square confetti",
+    "file": "confetti-amber-square.svg"
+  },
+  {
+    "name": "confetti-amber-circle",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "amber circle confetti",
+    "file": "confetti-amber-circle.svg"
+  },
+  {
+    "name": "confetti-red-square",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "red square confetti",
+    "file": "confetti-red-square.svg"
+  },
+  {
+    "name": "confetti-red-circle",
+    "width": 20,
+    "height": 20,
+    "category": "Effects",
+    "description": "red circle confetti",
+    "file": "confetti-red-circle.svg"
+  },
+  {
+    "name": "sparkle",
+    "width": 48,
+    "height": 48,
+    "category": "Effects",
+    "description": "Small four-point burst and sparkle",
+    "file": "sparkle.svg"
+  },
+  {
+    "name": "exclamation",
+    "width": 32,
+    "height": 56,
+    "category": "Effects",
+    "description": "Exclamation mark drawn as paths",
+    "file": "exclamation.svg"
+  },
+  {
+    "name": "sweat-drop",
+    "width": 32,
+    "height": 48,
+    "category": "Effects",
+    "description": "Blue sweat drop",
+    "file": "sweat-drop.svg"
+  },
+  {
+    "name": "speech-tail-left",
+    "width": 40,
+    "height": 32,
+    "category": "Effects",
+    "description": "left speech-bubble tail with an open attachment edge",
+    "file": "speech-tail-left.svg"
+  },
+  {
+    "name": "speech-tail-right",
+    "width": 40,
+    "height": 32,
+    "category": "Effects",
+    "description": "right speech-bubble tail with an open attachment edge",
+    "file": "speech-tail-right.svg"
+  },
+  {
+    "name": "postcard-launch-day",
+    "width": 600,
+    "height": 400,
+    "category": "Mission postcards",
+    "description": "Launch day: a storefront app on a phone with people arriving",
+    "file": "postcard-launch-day.svg"
+  },
+  {
+    "name": "postcard-viral-night",
+    "width": 600,
+    "height": 400,
+    "category": "Mission postcards",
+    "description": "The viral night: phones lighting up across a night city",
+    "file": "postcard-viral-night.svg"
+  },
+  {
+    "name": "postcard-going-global",
+    "width": 600,
+    "height": 400,
+    "category": "Mission postcards",
+    "description": "Going global: two regions connected across the world",
+    "file": "postcard-going-global.svg"
+  }
+]

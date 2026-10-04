@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TownSquare mission art</title>
+<style>
+:root{color-scheme:dark;font:15px/1.6 system-ui;background:#04060d;color:#e7ecf5}body{margin:0;padding:32px}main{max-width:1400px;margin:auto}header{display:flex;gap:24px;align-items:center;justify-content:space-between}h1{font-size:26px;letter-spacing:-.6px;margin:0}h2{font-size:20px;margin:40px 0 16px}p{color:#8f9ab0;margin:8px 0 20px}a{color:#a78bfa}button{font:inherit;padding:9px 16px;border:1px solid #27334d;background:#131b2b;color:#e7ecf5;border-radius:8px;cursor:pointer}button:focus-visible,a:focus-visible{outline:2px solid #a78bfa;outline-offset:4px}#sheet{display:block;width:100%;height:auto;border:1px solid #27334d;border-radius:12px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}.postcards{grid-template-columns:repeat(3,minmax(0,1fr))}figure{margin:0;min-width:0}figure img{display:block;width:100%;height:170px;object-fit:contain;padding:16px;box-sizing:border-box;background:#131b2b;border:1px solid #27334d;border-radius:10px}.postcards img{height:auto;aspect-ratio:3/2;padding:0}figcaption{font-size:13px;margin-top:8px;color:#8f9ab0}body.light #sheet,body.light figure img{background:#e7ecf5}.effects{grid-template-columns:repeat(auto-fit,minmax(115px,1fr))}.effects img{height:95px;padding:22px}@media(max-width:650px){body{padding:18px}header{align-items:flex-start}h1{font-size:22px}.postcards{grid-template-columns:1fr}.grid:not(.effects):not(.postcards){grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+<main><header><div><h1>TownSquare · mission art</h1><p>26 editable SVG assets · transparent canvases · flat color</p></div><button type="button" id="background" aria-pressed="false">Light backdrop</button></header>
+<a href="mission-art-sheet.svg">Open the complete SVG sheet</a><img id="sheet" src="mission-art-sheet.svg" alt="Racks, laptop, tablet, office corner, regional map, effects and three mission postcards">
+<section><h2>Server states</h2><div class="grid" data-category="Racks"></div></section>
+<section><h2>Hand props</h2><div class="grid" data-category="Hand props"></div></section>
+<section><h2>Scene pieces</h2><div class="grid" data-category="Scene pieces"></div></section>
+<section><h2>Effects</h2><div class="grid effects" data-category="Effects"></div></section>
+<section><h2>Mission postcards</h2><div class="grid postcards" data-category="Mission postcards"></div></section></main>
+<script type="module">
+const assets=await(await fetch('./manifest.json')).json();
+for(const asset of assets){const figure=document.createElement('figure'),link=document.createElement('a'),image=document.createElement('img'),caption=document.createElement('figcaption');link.href=asset.file;image.src=asset.file;image.alt=asset.description;caption.textContent=asset.description;link.append(image);figure.append(link,caption);document.querySelector(`[data-category="${asset.category}"]`).append(figure);}
+document.querySelector('#background').onclick=event=>{const light=document.body.classList.toggle('light');event.currentTarget.setAttribute('aria-pressed',String(light));event.currentTarget.textContent=light?'Dark backdrop':'Light backdrop';};
+</script></html>
