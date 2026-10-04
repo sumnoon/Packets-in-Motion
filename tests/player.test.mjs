@@ -5,11 +5,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadPage } from './harness.mjs';
 
-test('boots on the first chapter, or the one in the URL hash', () => {
+test('boots on Home, while chapter deep links still open the lesson', () => {
   const page = loadPage({ player: true });
   const chapters = page.get('chapters');
   assert.equal(page.document.getElementById('title').textContent, chapters[0].title);
-  assert.equal(page.context.location.hash, '#' + chapters[0].id);
+  assert.equal(page.context.location.hash, '#home');
+  assert.equal(page.document.getElementById('lessonView').hidden, true);
   const deep = loadPage({ player: true, hash: '#caching' });
   assert.equal(deep.document.getElementById('title').textContent, chapters.find(c => c.id === 'caching').title);
   assert.deepEqual(page.errors, []);
@@ -17,7 +18,7 @@ test('boots on the first chapter, or the one in the URL hash', () => {
 });
 
 test('the sidebar lists every chapter under its group', () => {
-  const page = loadPage({ player: true });
+  const page = loadPage({ player: true, hash: '#packets' });
   const chapters = page.get('chapters');
   const toc = page.document.getElementById('toc');
   const items = toc.children.filter(e => e.className === 'ch' || e.className.startsWith('ch '));
@@ -27,7 +28,7 @@ test('the sidebar lists every chapter under its group', () => {
 });
 
 test('every chapter plays, seeks and opens its challenge without errors', () => {
-  const page = loadPage({ player: true });
+  const page = loadPage({ player: true, hash: '#packets' });
   const chapters = page.get('chapters');
   let ts = 0;
   const run = n => { for (let i = 0; i < n; i++) { ts += 1000 / 30; page.frame(ts); } };
@@ -89,7 +90,7 @@ test('screen readers: chapter names, current step, live captions and transcript'
 });
 
 test('Space and Enter on a focused button are left to the button', () => {
-  const page = loadPage({ player: true });
+  const page = loadPage({ player: true, hash: '#packets' });
   const before = page.document.getElementById('playBtn').getAttribute('aria-label');
   page.key(' ', { tagName: 'BUTTON' });
   assert.equal(page.document.getElementById('playBtn').getAttribute('aria-label'), before);
@@ -98,7 +99,7 @@ test('Space and Enter on a focused button are left to the button', () => {
 });
 
 test('themes: picked from the sidebar, remembered, high contrast brightens the stage', () => {
-  const page = loadPage({ player: true });
+  const page = loadPage({ player: true, hash: '#packets' });
   const C = page.get('C'), dim = C.dim, sel = page.document.getElementById('theme');
   assert.equal(page.document.documentElement.getAttribute('data-theme'), 'dark');
   sel.onchange({ target: { value: 'contrast' } });

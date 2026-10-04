@@ -4,6 +4,8 @@
 (function(){
 const $=id=>document.getElementById(id);
 const store=PIM_STORE;
+const initialHash=location.hash,hubNames={home:'Home',map:'Learning map',intro:'Introduction',missions:'Engineering missions'};
+let hub=null,journey=null;
 labRestore();
 let seen=pimSeen(store.json('sdve-seen',{}));
 let stars=pimStars(store.json('pim-stars',{}));
@@ -12,7 +14,7 @@ let challengeToken=0;
 let renderFault=null,challengeReady=false,challengePaused=false;
 let practiceTimed=store.get('pim-practice-timed')!=='0';
 let shortcuts=store.get('pim-shortcuts')!=='0',diagramEditing=!matchMedia('(pointer:coarse)').matches;
-const resumeRecord=pimResume(store.json('pim-resume',null)),linkedVisit=!!location.hash;let restoring=true,loaded=false,checkpoint=-1;
+const resumeRecord=pimResume(store.json('pim-resume',null));let restoring=true,loaded=false,checkpoint=-1;
 let cur=0,t=0,playing=false,speed=pimSpeed(store.get('pim-speed')),last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
@@ -54,7 +56,7 @@ function failRender(e){if(renderFault)return;renderFault={mode,id:quizG?QUIZ[qui
   console.error('Stage failed',renderFault,e);setPlaying(false);if(api)api.dispose();pdown=null;cv.hidden=true;
   $('renderError').hidden=false;$('renderErrorText').textContent=mode==='play'?'This challenge could not be drawn. Your saved design is available when you retry. No result was awarded.':'This animation could not be drawn. You can still read every step in the transcript.';
   if(mode==='watch')setTranscript(true);announce($('renderErrorText').textContent);}
-function blocked(){return document.hidden||document.body.classList.contains('menu')||$('glossary').open||$('card').open||$('result').open;}
+function blocked(){return !!hub||document.hidden||document.body.classList.contains('menu')||$('glossary').open||$('card').open||$('result').open;}
 function render(){if(renderFault)return;if(mode==='play'){renderChal(0);return;}const c=chapters[cur];
   try{g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBackground();c.draw(t);
     g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBeatTitle(c,t);}catch(e){failRender(e);}
@@ -83,26 +85,26 @@ function showCard(v,done){$('card').classList.toggle('done',!!done);if(v)openDia
 $('card').addEventListener('cancel',e=>{e.preventDefault();showCard(false);});
 $('result').addEventListener('cancel',e=>{e.preventDefault();hideResult();});
 function routeState(){return {pim:1,chapter:chapters[cur].id,quiz:quizG,challenge:mode==='play',time:t};}
-function saveRoute(){if(loaded&&!restoring)history.replaceState(routeState(),'');}
-function rememberLesson(){if(!loaded||quizG)return;store.put('pim-resume',{version:1,chapter:chapters[cur].id,time:t,speed});saveRoute();checkpoint=t;}
+function saveRoute(){if(loaded&&!restoring&&!hub)history.replaceState(routeState(),'');}
+function rememberLesson(){if(!loaded||quizG||hub)return;store.put('pim-resume',{version:1,chapter:chapters[cur].id,time:t,speed});saveRoute();checkpoint=t;}
 function syncCompletion(){const done=!!seen[chapters[cur].id];['completeBtn','cardComplete'].forEach(id=>{$(id).textContent=done?'Lesson completed':'Mark lesson complete';$(id).disabled=done;});}
 function seek(nt){const c=chapters[cur];t=clamp(nt,0,c.dur);if(t<c.dur)showCard(false);render();rememberLesson();}
 window.seek=seek;
-function load(i,autoplay){rememberLesson();if(loaded)$('resume').hidden=true;if(mode==='play')exitChal(true);hideResult();showCard(false);clearRenderFault();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;checkpoint=-1;loaded=true;$('main').scrollTop=0;
+function load(i,autoplay){rememberLesson();hub=null;$('journey').hidden=true;$('lessonView').hidden=false;syncHubNav();if(loaded)$('resume').hidden=true;if(mode==='play')exitChal(true);hideResult();showCard(false);clearRenderFault();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;checkpoint=-1;loaded=true;$('main').scrollTop=0;
   heading();$('cardChal').hidden=!CHAL[c.id];
   $('cardTitle').textContent=c.title;buildTranscript(c);annTitle=true;listTerms($('useList'),c.use);listTerms($('conList'),c.cons);cardLinks(c);
   $('ticks').innerHTML=c.beats.slice(1).map(b=>`<b style="left:${b[0]/c.dur*100}%"></b>`).join('');
   markToc();
   $('nextBtn').disabled=false;$('cardNext').textContent=cur===chapters.length-1?'Back to chapter 1 →':'Next chapter →';
-  $('learningStatus').textContent='';syncCompletion();setPlaying(!!autoplay);last=null;render();}
+  $('learningStatus').textContent='';syncCompletion();setPlaying(!!autoplay);last=null;resize();}
 // title, eyebrow, tab title and URL for the current chapter (or the running quiz)
 function heading(){const c=chapters[cur],q=quizG&&QUIZ[quizG];
   $('eyebrow').textContent=q?`${q.group} · Section quiz`:`${c.group} · Chapter ${cur+1} of ${chapters.length}`;$('title').textContent=q?q.title:c.title;
   document.title=(q?q.title:c.title)+' · Packets in Motion';$('chalBtn').hidden=!!q||!CHAL[c.id];
   const h='#'+(q?q.id:c.id);if(location.hash!==h)history[restoring?'replaceState':'pushState'](routeState(),'',h);else if(!restoring)saveRoute();}
 // sidebar state: the current chapter (or quiz), watched marks, names for screen readers
-function markToc(){document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i,on=!quizG&&j===cur;b.classList.toggle('on',on);b.classList.toggle('seen',!!seen[chapters[j].id]);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');tocLabel(b);});
-  document.querySelectorAll('.qz').forEach(b=>{const on=b.dataset.q===quizG;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');qzLabel(b);});
+function markToc(){document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i,on=!hub&&!quizG&&j===cur;b.classList.toggle('on',on);b.classList.toggle('seen',!!seen[chapters[j].id]);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');tocLabel(b);});
+  document.querySelectorAll('.qz').forEach(b=>{const on=!hub&&b.dataset.q===quizG;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');qzLabel(b);});
   const on=document.querySelector(quizG?'.qz.on':'.ch.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});}
 // "Before this" and "Related" chapter links on the trade-offs card
 function cardLinks(c){const box=$('cardLinks');box.innerHTML='';
@@ -174,13 +176,13 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
 function disposeChallenge(){cancelPointer();challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
 function labLayout(v){const hint=$('cHintBtn');$('cpanel').querySelector('.cbar').appendChild(hint);$('labIntro').hidden=!v;$('labActions').hidden=!v;$('labActions').innerHTML='';(v?$('labIntro'):$('cpanel')).prepend($('cBrief'));if(v)$('labActions').appendChild(hint);}
-function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');labLayout(!!LAB_DEFS[c.id]&&!gname);
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();hub=null;$('journey').hidden=true;$('lessonView').hidden=false;$('resume').hidden=true;syncHubNav();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');labLayout(!!LAB_DEFS[c.id]&&!gname);
   $('diagramEdit').hidden=false;syncDiagramEditing();
   challengeReady=!!LAB_DEFS[c.id]&&!gname;challengePaused=false;$('cStart').hidden=challengeReady;$('cPause').hidden=!challengeReady;$('cPause').textContent='Pause challenge';$('cPause').setAttribute('aria-pressed','false');
   $('cTimingLabel').hidden=!d.timed;$('cTiming').value=practiceTimed?'timed':'untimed';$('cTiming').disabled=false;
   $('cTitle').textContent=d.title;$('cGoal').textContent=!practiceTimed&&d.untimedGoal?d.untimedGoal:d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();try{inst=d.make(api);}catch(e){failRender(e);}$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
-  $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
+  $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();resize();}
 function exitChal(quiet){disposeChallenge();labLayout(false);clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;mode='watch';if(wasQuiz&&!quiet){heading();markToc();}capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet){saveRoute();render();}}
 function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
@@ -233,7 +235,7 @@ window.addEventListener('keydown',e=>{const dialog=[$('glossary'),$('card'),$('r
   if(e.target===$('stage')&&$('stage').classList.contains('readable')&&/^(?:Arrow(?:Left|Right|Up|Down)|PageUp|PageDown|Home|End| )$/.test(e.key))return;
   if(!$('main').contains(e.target))return;
   if(e.ctrlKey||e.metaKey||e.altKey){if(mode==='play'&&e.target===cv&&(e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='z'&&inst&&inst.key&&challengeInput()){e.preventDefault();inst.key(e.key,ct,e);}return;}
-  if(!shortcuts)return;const c=chapters[cur];
+  if(!shortcuts)return;if(hub){if(e.key==='/'){e.preventDefault();setMenu(true);$('find').focus();}else if(e.key==='g'||e.key==='G')openGlossary();return;}const c=chapters[cur];
   if(mode!=='play'&&(e.target.tagName==='BUTTON'||e.target.tagName==='A')&&(e.key===' '||e.key==='Enter'))return;   // the focused control handles it
   if(mode==='play'){if(e.key==='Escape'){if($('result').classList.contains('show'))hideResult();else exitChal();}
     else if(e.key===']')load(cur+1,true);else if(e.key==='[')load(cur-1,true);
@@ -259,10 +261,23 @@ document.addEventListener('visibilitychange',()=>{last=null;if(document.hidden){
 window.addEventListener('resize',resize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe(cv);
 const quizFor=h=>Object.keys(QUIZ).find(g=>'#'+QUIZ[g].id===h);
-function restoreRoute(){const q=quizFor(location.hash),i=q?firstOf(q):chapters.findIndex(c=>'#'+c.id===location.hash);if(i<0)return;const state=history.state,valid=pimRecord(state)&&state.pim===1&&state.quiz===(q||null)&&chapters.some(c=>c.id===state.chapter)&&(q||state.chapter===chapters[i].id),j=valid?chapters.findIndex(c=>c.id===state.chapter):i;
-  restoring=true;load(j,false);if(valid&&Number.isFinite(state.time))seek(state.time);if(q)startQuiz(q);else if(valid&&state.challenge===true)startChal();restoring=false;saveRoute();}
+function syncHubNav(){[['navHome','home'],['navMap','map'],['navMissions','missions']].forEach(([id,name])=>{if(hub===name)$(id).setAttribute('aria-current','page');else $(id).removeAttribute('aria-current');});}
+function showHub(name,replace=false,focus=true,saveLesson=true){
+  if(saveLesson)rememberLesson();setPlaying(false);if(mode==='play')exitChal(true);hideResult();showCard(false);hideTip();clearTimeout(liveT);setMenu(false);
+  hub=name;$('lessonView').hidden=true;$('journey').hidden=false;$('resume').hidden=true;syncHubNav();markToc();journey.show(name);
+  document.title=hubNames[name]+' · Packets in Motion';history[replace?'replaceState':'pushState']({pim:1,hub:name},'','#'+name);
+  if(name==='home'){const r=pimResume(store.json('pim-resume',null));if(r){const i=chapters.findIndex(c=>c.id===r.chapter),c=chapters[i];$('resume').hidden=false;
+    // the Home page's primary action: the paused lesson, where it stopped and how far through it is
+    $('resumeText').textContent=`${c.title} · chapter ${i+1} of ${chapters.length}, paused at ${fmt(r.time)} of ${fmt(c.dur)}`;if($('resumeBar').style)$('resumeBar').style.width=Math.round(r.time/c.dur*100)+'%';$('continueBtn').onclick=()=>{load(chapters.findIndex(c=>c.id===r.chapter),false);speed=r.speed;$('speed').value=String(speed);store.set('pim-speed',String(speed));seek(r.time);cv.focus();};}}
+  $('main').scrollTop=0;if(focus)$('journeyTitle').focus({preventScroll:true});
+}
+function restoreRoute(){const name=location.hash.slice(1);if(Object.hasOwn(hubNames,name)){restoring=true;showHub(name,true,true,false);restoring=false;return;}const q=quizFor(location.hash),i=q?firstOf(q):chapters.findIndex(c=>'#'+c.id===location.hash);if(i<0)return;const state=history.state,valid=pimRecord(state)&&state.pim===1&&state.quiz===(q||null)&&chapters.some(c=>c.id===state.chapter)&&(q||state.chapter===chapters[i].id),j=valid?chapters.findIndex(c=>c.id===state.chapter):i;
+  restoring=true;load(j,false);if(valid&&Number.isFinite(state.time))seek(state.time);if(q)startQuiz(q);else if(valid&&state.challenge===true)startChal();restoring=false;saveRoute();cv.focus();}
 window.addEventListener('popstate',restoreRoute);
-window.addEventListener('hashchange',()=>{const q=quizFor(location.hash),h='#'+(quizG?QUIZ[quizG].id:chapters[cur].id);if(location.hash!==h||q&&q!==quizG)restoreRoute();});
+window.addEventListener('hashchange',()=>{const q=quizFor(location.hash),h='#'+(hub|| (quizG?QUIZ[quizG].id:chapters[cur].id));if(location.hash!==h||q&&q!==quizG)restoreRoute();});
+// Handle internal links before the browser changes the hash, preserving the
+// outgoing lesson's history entry and bookmark. Modified clicks remain native.
+document.addEventListener('click',e=>{const a=e.target.closest?e.target.closest('a'):null;if(!a||e.defaultPrevented||e.button>0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;const href=a.getAttribute('href');if(!href||!href.startsWith('#'))return;const name=href.slice(1);if(Object.hasOwn(hubNames,name)){e.preventDefault();if(hub!==name)showHub(name);return;}const i=chapters.findIndex(c=>c.id===name);if(i>=0){e.preventDefault();setMenu(false);load(i,true);cv.focus();}});
 // Fullscreen is optional and never locks the user's device orientation.
 const fsOK=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
 function goFull(){const el=document.documentElement,req=el.requestFullscreen||el.webkitRequestFullscreen;
@@ -330,6 +345,7 @@ const IMPORT_LIMIT=1024*1024;
 function validImport(d){if(!pimRecord(d)||d.app!=='packets-in-motion')return 'Choose a Packets in Motion progress file.';
   if(![1,2].includes(d.version))return 'This progress file uses an unsupported version. Export it again from a compatible course.';
   if(!pimRecord(d.seen)||!pimRecord(d.stars))return 'The watched chapters and stars must be objects.';
+  if(d.journey!==undefined&&!journeyDecode(d.journey))return 'The file contains invalid journey progress or mission evidence.';
   const entries=(v,known,check)=>pimRecord(v)&&Object.entries(v).every(([k,x])=>!known(k)||check(x,k));
   if(!entries(d.seen,k=>chapters.some(c=>c.id===k),v=>v===1||v===true)||!entries(d.stars,k=>allIds().includes(k),v=>Number.isInteger(v)&&v>=0&&v<=3))return 'The file contains invalid chapter or star values.';
   if(d.labBest!==undefined&&!entries(d.labBest,k=>Object.hasOwn(LAB_DEFS,k),v=>Number.isSafeInteger(v)&&v>0&&v<=10000))return 'The file contains invalid lab costs.';
@@ -342,7 +358,7 @@ function validImport(d){if(!pimRecord(d)||d.app!=='packets-in-motion')return 'Ch
     if(b.chaos!==undefined&&!entries(b.chaos,known,(v,k)=>!!labCertificate(k,v)))return 'The file contains invalid chaos design evidence.';
   }
   return '';}
-function exportProgress(){const data={app:'packets-in-motion',version:2,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS,labDesigns:labDesigns()};
+function exportProgress(){const data={app:'packets-in-motion',version:2,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS,labDesigns:labDesigns(),journey:journey.export()};
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));a.download='packets-in-motion-progress.json';
   document.body.appendChild(a);a.click();a.remove();ioMsg('Progress saved to packets-in-motion-progress.json.');return data;}
 // merges: a chapter stays watched, and each challenge keeps its best score
@@ -357,7 +373,8 @@ function importProgress(text){if(typeof text!=='string'||text.length>IMPORT_LIMI
   Object.keys(pimFilter(d.labChaos,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true)).forEach(k=>{if(!LAB_CHAOS[k]){LAB_CHAOS[k]=true;nLabs++;}});labPut('pim-lab-chaos',LAB_CHAOS);
   if(d.version===2)nLabs+=labMergeDesigns(d.labDesigns);labSaveBest();labSaveDesigns();
   store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();syncCompletion();
-  const summary=nSeen||nStars||nLabs?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} completed and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}`:'Nothing new in the supported records.';
+  const journeyChanged=d.journey?journey.merge(d.journey):false;if(hub)journey.refresh();
+  const summary=nSeen||nStars||nLabs||journeyChanged?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} completed and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}${journeyChanged?' Updated your learning journey.':''}`:'Nothing new in the supported records.';
   ioMsg(summary+(skipped?` Ignored ${skipped} record${skipped===1?'':'s'} not used by this course.`:''));return true;}
 $('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;try{if(file.size>IMPORT_LIMIT){ioMsg('Progress files must be 1 MB or smaller.');return;}importProgress(await file.text());}catch(_){ioMsg('Could not read that file. Try selecting it again.');}finally{e.target.value='';}};
@@ -367,13 +384,13 @@ function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',Str
 $('soundBtn').onclick=()=>{setSound(!SFX.on);SFX.play('good');};
 
 setSound(store.get('pim-sound')==='1');hideTip();
+journey=initJourney({progress:()=>({seen,stars}),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
 // a shared lab design: ?lab=<id>&d=<design> opens that lab with the design on the board
 const sp=typeof URLSearchParams!=='undefined'?new URLSearchParams(location.search||''):null,sLab=sp&&sp.get('lab'),sIdx=sLab?chapters.findIndex(c=>c.id===sLab):-1;
 const shared=sIdx>=0&&CHAL[sLab]&&labImport(sLab,sp.get('d')||'');
 if(shared){history.replaceState(null,'',location.pathname+'#'+sLab);load(sIdx,false);startChal();}
-else{load(start,!startQ&&!resumeRecord);if(startQ)startQuiz(startQ);}restoring=false;saveRoute();$('speed').value=String(speed);
-if(resumeRecord&&!shared&&!startQ&&!location.search&&!linkedVisit){$('resume').hidden=false;$('resumeText').textContent=`Continue ${chapters.find(c=>c.id===resumeRecord.chapter).title} at ${fmt(resumeRecord.time)}.`;$('continueBtn').onclick=()=>{load(chapters.findIndex(c=>c.id===resumeRecord.chapter),false);speed=resumeRecord.speed;$('speed').value=String(speed);store.set('pim-speed',String(speed));seek(resumeRecord.time);$('resume').hidden=true;cv.focus();};}
+else{load(start,!!initialHash&&!Object.hasOwn(hubNames,initialHash.slice(1))&&!startQ&&!resumeRecord);if(startQ)startQuiz(startQ);else if(!initialHash||Object.hasOwn(hubNames,initialHash.slice(1)))showHub(initialHash.slice(1)||'home',true,false,false);}restoring=false;saveRoute();$('speed').value=String(speed);
 resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();

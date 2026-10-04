@@ -36,7 +36,7 @@ test('wrong sorting feedback includes the next prompt and semantic choices score
 });
 
 test('player shortcuts respect focus, browser modifiers, native inputs and the saved opt-out',()=>{
-  const p=loadPage({player:true}),hash=p.context.location.hash,before=el(p,'scrub').value;
+  const p=loadPage({player:true,hash:'#packets'}),hash=p.context.location.hash,before=el(p,'scrub').value;
   p.key(']',p.document.body);p.key(']',el(p,'theme'));p.key(']',el(p,'cv'),{ctrlKey:true});p.key('p',el(p,'cv'),{metaKey:true});p.key(']',el(p,'cv'),{altKey:true});
   assert.equal(p.context.location.hash,hash);assert.equal(p.document.body.classList.contains('play'),false);
   for(const id of ['scrub','speed'])p.key('ArrowRight',el(p,id));assert.equal(el(p,'scrub').value,before);
@@ -45,19 +45,19 @@ test('player shortcuts respect focus, browser modifiers, native inputs and the s
 });
 
 test('browser find does not invoke fullscreen and modified Tab does not trigger drawer trapping',()=>{
-  const p=loadPage({player:true,fullscreen:true,media:{'(max-width:900px)':true}});p.key('f',el(p,'cv'),{ctrlKey:true});assert.equal(p.document.fullscreenElement,undefined);p.key('f',el(p,'cv'));assert.equal(p.document.fullscreenElement,p.document.documentElement);
+  const p=loadPage({player:true,hash:'#packets',fullscreen:true,media:{'(max-width:900px)':true}});p.key('f',el(p,'cv'),{ctrlKey:true});assert.equal(p.document.fullscreenElement,undefined);p.key('f',el(p,'cv'));assert.equal(p.document.fullscreenElement,p.document.documentElement);
   el(p,'menuBtn').click();el(p,'importBtn').focus();let prevented=false;p.key('Tab',el(p,'importBtn'),{ctrlKey:true,preventDefault(){prevented=true;}});assert.equal(prevented,false);assert.equal(p.document.activeElement.id,'importBtn');
 });
 
 test('timeline describes time and step, jumps between beats, and retains native range keys',()=>{
-  const p=loadPage({player:true}),c=p.get('chapters')[0],scrub=el(p,'scrub');assert.match(scrub.getAttribute('aria-valuetext'),/0:00 of .*Step 1 of/);
+  const p=loadPage({player:true,hash:'#packets'}),c=p.get('chapters')[0],scrub=el(p,'scrub');assert.match(scrub.getAttribute('aria-valuetext'),/0:00 of .*Step 1 of/);
   el(p,'stepNext').click();assert.ok(Math.abs(+scrub.value/1000*c.dur-c.beats[1][0])<=c.dur/1000);assert.match(scrub.getAttribute('aria-valuetext'),/Step 2 of/);
   const before=scrub.value;let prevented=false;p.key('ArrowLeft',scrub,{preventDefault(){prevented=true;}});assert.equal(scrub.value,before);assert.equal(prevented,false);
   scrub.value='500';scrub.dispatch('input');assert.equal(+scrub.value,500);el(p,'stepPrev').click();assert.ok(+scrub.value<500);
 });
 
 test('portrait retains the course and diagram controls offer readable size and touch editing',()=>{
-  const p=loadPage({player:true,media:{'(orientation:portrait) and (pointer:coarse) and (max-width:600px)':true,'(pointer:coarse)':true}});
+  const p=loadPage({player:true,hash:'#packets',media:{'(orientation:portrait) and (pointer:coarse) and (max-width:600px)':true,'(pointer:coarse)':true}});
   assert.ok(!fs.readFileSync('src/page.html','utf8').includes('id="rotate"'));const before=el(p,'scrub').value;p.frame(0);p.frame(100);assert.notEqual(el(p,'scrub').value,before);
   el(p,'diagramReadable').click();assert.equal(el(p,'stage').classList.contains('readable'),true);assert.equal(el(p,'diagramReadable').getAttribute('aria-pressed'),'true');
   const time=el(p,'scrub').value;let prevented=false;p.key('ArrowRight',el(p,'stage'),{preventDefault(){prevented=true;}});assert.equal(el(p,'scrub').value,time);assert.equal(prevented,false);
@@ -99,7 +99,7 @@ test('cancelling a lab move restores its position and creates no undo entry',()=
 
 test('player cancels capture on pointer cancellation, loss, pause and mode changes',()=>{
   for(const action of ['pointercancel','lostpointercapture','pause','exit']){
-    const p=loadPage({player:true});let cancels=0,ups=0;p.get('CHAL').packets.make=()=>({draw(){},down(){},cancel(){cancels++;},up(){ups++;}});p.key('p');el(p,'cStart').click();
+    const p=loadPage({player:true,hash:'#packets'});let cancels=0,ups=0;p.get('CHAL').packets.make=()=>({draw(){},down(){},cancel(){cancels++;},up(){ups++;}});p.key('p');el(p,'cStart').click();
     const cv=el(p,'cv');cv.dispatch('pointerdown',{clientX:500,clientY:200,pointerId:7});
     if(action==='pause')el(p,'cPause').click();else if(action==='exit')el(p,'cBack').click();else cv.dispatch(action,{pointerId:7});
     cv.dispatch('pointerup',{clientX:500,clientY:200,pointerId:7});assert.ok(cancels>=1);assert.equal(ups,0);
