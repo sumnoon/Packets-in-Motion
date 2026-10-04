@@ -13,14 +13,14 @@ const outline=(p,id)=>{const o=p.get('LAB_DEFS')[id],F=o.fixed.length,kinds=[...
 
 test('import rejects unsupported versions, wrong types and invalid nested designs before any write',async()=>{
   for(const bad of [{version:3},{seen:[]},{stars:{packets:'3'}},{labBest:[]},{labChaos:{scaling:1}},{labDesigns:{version:9}},{labDesigns:{version:1,drafts:{scaling:'bad'}}},{labDesigns:{version:1,best:{scaling:{cost:2,design:'bad'}}}},{labDesigns:{version:1,chaos:{scaling:{design:'bad',seeds:[1,2,3]}}}}]){
-    const p=loadPage({player:true}),before=Object.fromEntries(p.storage);
+    const p=loadPage({player:true,hash:'#packets'}),before=Object.fromEntries(p.storage);
     await read(p,{...progress,seen:{packets:1},...bad});
     assert.match(el(p,'ioMsg').textContent,/Nothing was imported/);assert.deepEqual(Object.fromEntries(p.storage),before);
   }
 });
 
 test('oversized and unreadable files produce useful feedback and reset the file picker',async()=>{
-  const p=loadPage({player:true});let called=false;
+  const p=loadPage({player:true,hash:'#packets'});let called=false;
   await read(p,progress,{size:1024*1024+1,text:()=>{called=true;throw Error('must not read');}});
   assert.equal(called,false);assert.match(el(p,'ioMsg').textContent,/1 MB/);
   await read(p,' '.repeat(1024*1024+1));assert.match(el(p,'ioMsg').textContent,/1 MB/);
@@ -29,7 +29,7 @@ test('oversized and unreadable files produce useful feedback and reset the file 
 });
 
 test('badge-only and cost-only imports report updates; imported drafts preserve a local draft',async()=>{
-  const p=loadPage({player:true});await read(p,{...progress,labChaos:{scaling:true}});assert.match(el(p,'ioMsg').textContent,/Updated 1 lab record/);
+  const p=loadPage({player:true,hash:'#packets'});await read(p,{...progress,labChaos:{scaling:true}});assert.match(el(p,'ioMsg').textContent,/Updated 1 lab record/);
   await read(p,{...progress,labBest:{scaling:13}});assert.match(el(p,'ioMsg').textContent,/Updated 1 lab record/);
   const G=outline(p,'scaling'),encode=p.get('labEncode');p.get('LAB_SAVE').scaling=G;
   const old=encode('scaling',G),other={...G,nodes:G.nodes.slice(0,1),edges:[]};
@@ -53,7 +53,7 @@ test('an architecture or option edit resets a chaos streak; a learner badge does
 });
 
 test('lesson drawing failures stop once, expose the transcript, and recover on retry or navigation',()=>{
-  const p=loadPage({player:true}),c=p.get('chapters')[0],draw=c.draw;c.draw=()=>{throw Error('broken lesson');};advance(p,2);
+  const p=loadPage({player:true,hash:'#packets'}),c=p.get('chapters')[0],draw=c.draw;c.draw=()=>{throw Error('broken lesson');};advance(p,2);
   assert.equal(p.errors.length,1);assert.equal(el(p,'renderError').hidden,false);assert.equal(el(p,'transcript').hidden,false);assert.equal(el(p,'cv').hidden,true);
   c.draw=draw;el(p,'renderRetry').click();assert.equal(el(p,'renderError').hidden,true);assert.equal(el(p,'cv').hidden,false);
   p.key(']');assert.equal(p.errors.length,1);assert.equal(el(p,'renderError').hidden,true);
@@ -68,7 +68,7 @@ test('challenge draw failures cancel pending results and keep the saved architec
 });
 
 test('closed trade-offs and results are hidden; modal focus is immediate and returns on close',()=>{
-  const p=loadPage({player:true});assert.equal(el(p,'card').tagName,'DIALOG');assert.equal(el(p,'card').hidden,true);assert.equal(el(p,'result').hidden,true);
+  const p=loadPage({player:true,hash:'#packets'});assert.equal(el(p,'card').tagName,'DIALOG');assert.equal(el(p,'card').hidden,true);assert.equal(el(p,'result').hidden,true);
   el(p,'tradeBtn').focus();p.key('t');assert.equal(el(p,'card').open,true);assert.equal(p.document.activeElement.id,'cardClose');
   p.key(']');assert.equal(p.context.location.hash,'#packets','background navigation is blocked');
   p.key('Escape');assert.equal(el(p,'card').hidden,true);assert.equal(p.document.activeElement.id,'tradeBtn');
@@ -85,7 +85,7 @@ test('mobile drawer removes closed navigation from focus, contains Tab, restores
 });
 
 test('transcript definitions are independent buttons rather than nested inside seek buttons',()=>{
-  const p=loadPage({player:true}),li=el(p,'trList').children.find(li=>li.children[1].querySelector('.term'));
+  const p=loadPage({player:true,hash:'#packets'}),li=el(p,'trList').children.find(li=>li.children[1].querySelector('.term'));
   assert.ok(li);assert.equal(li.children[0].querySelector('button'),null);assert.equal(li.children[1].tagName,'P');
   const before=el(p,'scrub').value;li.children[1].querySelector('.term').click();assert.equal(el(p,'scrub').value,before);li.children[0].click();assert.equal(li.children[0].getAttribute('aria-current'),'step');
 });

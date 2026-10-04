@@ -23,10 +23,11 @@
 <link rel="icon" type="image/png" sizes="32x32" href="<!-- datauri: assets/favicon-32.png -->">
 <style>
 <!-- include: styles.css -->
+<!-- include: journey.css -->
 </style>
 </head>
 <body>
-<a class="skip" href="#main">Skip to the lesson</a>
+<a class="skip" href="#main">Skip to content</a>
 <div id="app">
   <aside id="side" aria-label="Course navigation"><button class="btn sm" id="menuClose">Close chapters</button>
     <div class="brand"><div class="brand-heading"><img class="brand-mark" width="44" height="44" alt="" src="<!-- datauri: assets/logo-96.png -->"><b>Packets in Motion</b></div><span>Watch it, then solve it</span><span class="stars" id="starTotal"></span></div>
@@ -47,19 +48,21 @@
   <div class="scrim" id="scrim" aria-hidden="true"></div>
   <main id="main" tabindex="-1">
     <div class="wrap">
+      <nav class="course-nav" aria-label="Learning views"><a id="navHome" href="#home">Home</a><a id="navMap" href="#map">Learning map</a><a id="navMissions" href="#missions">Missions</a><button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button></nav>
+      <div class="resume" id="resume" hidden><div class="j-resume-copy"><span class="j-resume-label">Continue learning</span><p id="resumeText"></p><span class="j-resume-bar" aria-hidden="true"><i id="resumeBar"></i></span></div><button class="btn pri" id="continueBtn">Continue learning</button></div>
+      <div id="journey" hidden></div>
+      <div id="lessonView">
       <div class="top">
         <div>
           <div class="eyebrow" id="eyebrow"></div>
           <h1 id="title"></h1>
         </div>
         <div class="nav">
-          <button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button>
           <button class="btn chal" id="chalBtn" title="Hands-on challenge (P)" aria-pressed="false">★ Challenge</button>
           <button class="btn" id="prevBtn" title="Previous chapter ( [ )">← Prev</button>
           <button class="btn" id="nextBtn" title="Next chapter ( ] )">Next →</button>
         </div>
       </div>
-      <div class="resume" id="resume" hidden><p id="resumeText"></p><button class="btn" id="continueBtn">Continue lesson</button></div>
       <div id="labIntro" class="lab-intro" hidden><p class="lab-guide">Add a component from the palette or text editor → connect the traffic source to it → run the load test. Undo reverses an edit; Hint helps you choose a design.</p></div>
       <div id="labActions" class="lab-actions" role="group" aria-label="Architecture lab actions" hidden></div>
       <div class="stageWrap">
@@ -104,6 +107,7 @@
         <span><i style="background:var(--red);box-shadow:0 0 8px var(--red)"></i>Failure</span>
         <span><i style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></i>Cached / queued</span>
         <span class="keys">Focus the lesson for shortcuts · Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary</span>
+      </div>
       </div>
     </div>
   </main>
@@ -345,6 +349,10 @@
 </script>
 <script>
 <!-- include: glossary.js -->
+</script>
+<script>
+<!-- include: journey-model.js -->
+<!-- include: journey.js -->
 </script>
 <script>
 <!-- include: player.js -->

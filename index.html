@@ -279,10 +279,146 @@ body.play .stage.editing canvas{touch-action:none}
 .caccessible{display:flex;flex-direction:column}.lab-summary h3{font-size:14px;margin:12px 0 6px}.lab-summary ul{margin:0;padding-left:20px}
 .lab-guide{font-size:14px;line-height:1.6;margin:10px 0}.lab-prerequisites{flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap}
 @media(max-width:720px){.resume{align-items:flex-start;flex-direction:column}.lab-actions{top:-1px}.lab-intro .practice-note{display:none}}
+/* The journey extends the course's existing ink, violet and packet colors. */
+.course-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:8px}
+.course-nav a{color:var(--dim);text-decoration:none;padding:9px 13px;border-radius:8px;font-weight:600}
+.course-nav a[aria-current="page"]{color:var(--text);background:var(--panel);box-shadow:inset 0 -2px var(--accent)}
+.course-nav #menuBtn{margin-left:auto}
+#lessonView{display:flex;flex-direction:column;gap:14px}
+#lessonView[hidden],#journey[hidden]{display:none}
+#journey{color:var(--text);padding:14px 0 26px}
+#journey p{line-height:1.65}
+#journey a{color:var(--accent);text-underline-offset:4px}
+#journey a.btn{text-decoration:none;color:var(--text);display:inline-flex;align-items:center;justify-content:center}
+#journey a.pri{color:var(--on-accent)}
+.journey-heading{margin-bottom:24px}
+.journey-heading h1{font-size:clamp(30px,3.2vw,48px);line-height:1.13;letter-spacing:-.035em;font-weight:720;margin:12px 0 18px;text-wrap:balance}
+.journey-heading>p:last-child{max-width:62ch;color:var(--dim);font-size:16px;margin:0}
+.j-hero{display:grid;grid-template-columns:1.1fr 1fr;gap:20px;align-items:center;padding:8px 0 36px}
+.j-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.j-actions .btn{min-height:44px}
+.j-next{font-size:13px;color:var(--dim);margin:16px 0 0}
+.j-next strong{color:var(--text);font-weight:500}
+.j-practice{font-size:12px;margin-top:16px;min-height:44px;text-align:left;line-height:1.5}
+.j-diagram{margin:0;width:100%;min-width:0}
+.j-diagram svg{width:100%;display:block;max-height:365px}
+.j-diagram figcaption{text-align:center;font-size:12px;color:var(--dim);margin-top:14px}
+.j-wires{fill:none;stroke:var(--blue);stroke-width:2;stroke-dasharray:5 5}
+.j-node rect{fill:var(--panel);stroke:var(--line);stroke-width:2}
+.j-node text{fill:var(--text);font-family:inherit;font-size:17px;font-weight:650;text-anchor:middle}
+.j-node text.j-svg-small{font-size:14px;font-weight:400;fill:var(--dim)}
+.j-node-blue rect{stroke:var(--blue)}.j-node-mint rect{stroke:var(--green)}
+.j-section{border-top:1px solid var(--line);padding:26px 0}
+.j-section-title{display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+#journey h2{font-size:21px;line-height:1.3;letter-spacing:-.015em;margin:0 0 12px}
+.j-section-title h2{margin:0!important}.j-section-title a{font-size:13px}
+.j-paths{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.j-path{color:var(--text);font:inherit;text-align:left;background:transparent;border:1px solid var(--line);border-radius:12px;padding:20px;cursor:pointer;display:flex;flex-direction:column;gap:10px;min-width:0}
+.j-path[aria-pressed="true"]{border-color:var(--accent);background:var(--panel)}
+.j-path strong{font-size:16px}.j-path>span:not(.j-path-index){font-size:13px;line-height:1.5;color:var(--dim)}
+.j-path-index{color:var(--accent);font-variant-numeric:tabular-nums;font-size:12px;margin-bottom:6px}
+.j-path .j-path-selection{color:var(--accent)!important;margin-top:auto;padding-top:10px}
+.j-path-progress,.j-local-note{font-size:12px;color:var(--dim)}
+.j-story-strip{display:grid;grid-template-columns:1fr 1fr;gap:36px;padding:30px 0;border-top:1px solid var(--line)}
+.j-story-strip p:not(.eyebrow){color:var(--dim);max-width:48ch}
+.j-story-track{list-style:none;margin:0;padding:0;align-self:center}
+.j-story-track li{position:relative;display:grid;grid-template-columns:36px 1fr;column-gap:14px;row-gap:5px;padding:0 0 26px}
+.j-story-track li:last-child{padding-bottom:0}
+.j-story-track li:not(:last-child):before{content:'';position:absolute;left:17px;top:36px;bottom:0;border-left:1px solid var(--line)}
+.j-story-track li>span{grid-row:span 2;border:1px solid var(--accent);border-radius:50%;width:36px;height:36px;display:grid;place-items:center;font-size:12px;color:var(--accent)}
+.j-story-track strong{font-size:14px}.j-story-track small{color:var(--dim)}
+.j-map-filter{display:flex;gap:14px;align-items:center;color:var(--dim);font-size:14px;flex-wrap:wrap}
+#journey select{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:10px;font:inherit;max-width:100%;min-height:44px}
+.j-map-key{font-size:12px;color:var(--dim);margin:18px 0 28px}
+.j-map{position:relative;max-width:920px;padding:0 0 0 22px}
+.j-map:before{content:'';position:absolute;left:22px;top:20px;bottom:45px;width:2px;background:var(--accent);opacity:.5}
+.j-map-group{position:relative;margin:0 0 34px;padding-left:36px}
+.j-map-group>header{display:flex;align-items:center;gap:14px;margin-left:-57px;margin-bottom:14px}
+.j-station{width:44px;height:44px;flex-shrink:0;border:2px solid var(--accent);background:var(--bg);color:var(--accent);display:grid;place-items:center;border-radius:50%;font-size:13px}
+.j-map-group h2{margin:0!important}.j-map-group header p{margin:4px 0 0;font-size:12px;color:var(--dim)}
+.j-map-group ol{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.j-map-group li{border-bottom:1px solid var(--line);padding:4px 0 10px}
+.j-map-lesson{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;text-decoration:none;padding:12px 6px;color:var(--text)!important;min-height:44px}
+.j-map-lesson strong{font-size:14px;font-weight:550}.j-map-lesson>span:first-child{color:var(--dim)}
+.j-complete .j-map-lesson>span:first-child{color:var(--green)}
+.j-lesson-state{font-size:11px;color:var(--dim)}
+.j-map-group details{margin-left:40px;font-size:12px;color:var(--dim)}
+#journey summary{cursor:pointer;padding:10px 0;min-height:40px}
+.j-prereqs{display:flex;flex-wrap:wrap;gap:14px;padding:4px 0 10px}
+.j-intro{display:grid;grid-template-columns:1.1fr 1fr;gap:36px;align-items:start;border-top:1px solid var(--line);padding-top:30px}
+.j-intro-scene{padding:20px;background:var(--panel);border-radius:14px}
+.j-intro-copy{padding:20px 0}.j-intro-copy>p{color:var(--dim)}
+.j-loads{display:flex;gap:20px;justify-content:center;padding-top:16px;flex-wrap:wrap}
+.j-loads>div{min-width:130px;flex:1}.j-loads span{font-size:12px;color:var(--dim)}
+.j-loads meter{width:100%;display:block;margin-top:6px}
+.j-metrics{display:flex;gap:28px;flex-wrap:wrap;margin:28px 0}
+.j-metrics dt{font-size:12px;color:var(--dim)}.j-metrics dd{font-size:30px;font-variant-numeric:tabular-nums;margin:6px 0 0;font-weight:650}
+.j-metrics small{color:var(--dim);font-size:16px;font-weight:400}
+.j-warning{color:var(--red)}.j-success{color:var(--green)}
+.j-inline-link{display:inline-block;margin-top:22px;font-size:13px}
+.j-mission-nav{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid var(--line);margin:24px 0 28px;gap:8px}
+.j-mission-tab{background:transparent;color:var(--dim);border:0;border-bottom:2px solid transparent;text-align:left;font:inherit;padding:14px 8px;cursor:pointer;line-height:1.4}
+.j-mission-tab[aria-current]{color:var(--text);border-bottom-color:var(--accent)}
+.j-mission-tab>span{color:var(--accent);margin-right:8px}.j-mission-tab small{display:block;font-size:11px;margin-top:8px}
+.j-mission-tab:disabled{cursor:default;opacity:.65}
+.j-brief{display:grid;grid-template-columns:1.5fr 1fr;gap:36px;margin:0 0 24px}
+.j-brief p{color:var(--dim);margin:8px 0}.j-brief-goal{border-left:1px solid var(--accent);padding:8px 0 8px 20px;align-self:center;font-size:14px}
+.j-workbench{display:grid;grid-template-columns:1.15fr 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.j-blueprint{padding:30px 18px;background:var(--panel);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.j-budget{font-size:18px;text-align:center;font-variant-numeric:tabular-nums;margin:20px 0 0}
+.j-design-controls{padding:24px;display:flex;flex-direction:column;gap:18px;min-width:0}
+.j-design-controls h2{margin:0!important}.j-control-hint{color:var(--dim);font-size:12px;margin:0}
+.j-design-controls>label{display:flex;flex-direction:column;gap:8px;font-size:14px}
+.j-design-controls>label>span:not(:has(strong)){font-size:12px;color:var(--dim)}
+.j-design-controls .j-check{display:flex;flex-direction:row;align-items:flex-start;gap:12px;cursor:pointer;padding:6px 0;min-height:44px}
+.j-check input{width:20px;height:20px;flex-shrink:0;accent-color:var(--accent);margin:2px 0}
+.j-check strong{font-size:14px;font-weight:550}.j-check small{display:block;color:var(--dim);line-height:1.5;margin-top:6px}
+.j-design-controls>.btn{min-height:44px}
+.j-mission-result{margin-top:26px;padding:24px;border:1px solid var(--accent);border-radius:12px}
+.j-mission-result>p:not(.eyebrow){color:var(--dim)}
+.j-condition-list{list-style:none;padding:0;margin:20px 0 0}
+.j-condition-list li{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding:14px 0;font-size:13px}
+.j-condition-list li strong{min-width:160px}.j-condition-list li span{color:var(--dim)}.j-condition-list b{margin-left:auto;font-weight:550}
+.j-model,.j-tested,.j-study{font-size:13px;color:var(--dim);margin:18px 0}
+.j-model p{max-width:85ch}.j-study{display:flex;gap:16px;flex-wrap:wrap}
+:root[data-theme="light"] .j-success{color:#147350}:root[data-theme="light"] .j-warning{color:#b42330}
+#journey ::selection{background:var(--accent);color:var(--on-accent)}
+.j-step-count{font-size:12px}
+@media(hover:hover){.j-path:hover,.j-mission-tab:not(:disabled):hover,.course-nav a:hover,.j-map-lesson:hover{background:var(--panel);color:var(--text)}}
+@media(min-width:1200px){.j-map-group:nth-child(even){margin-left:70px}.j-map-group:nth-child(even):before{content:'';position:absolute;left:-69px;top:21px;width:49px;height:2px;background:var(--accent);opacity:.5}}
+@media(max-width:1100px){.j-hero,.j-intro,.j-workbench{grid-template-columns:1fr}.j-hero>.j-diagram{max-width:440px;justify-self:center}.j-path{padding:16px}.j-story-strip,.j-brief{gap:22px}.j-design-controls{border-top:1px solid var(--line)}.j-intro-scene{max-width:600px;width:100%;justify-self:center}.j-intro-copy{padding-top:0}}
+@media(max-width:600px){.course-nav{gap:1px}.course-nav a{font-size:13px;padding:10px}.course-nav #menuBtn{margin-left:0;width:100%;margin-top:6px}.j-hero{padding-top:0;gap:22px}.journey-heading h1{font-size:36px}.j-paths,.j-story-strip,.j-brief{grid-template-columns:1fr}.j-path{gap:8px}.j-intro-copy{order:-1}.j-path .j-path-selection{padding-top:0}.j-story-strip{gap:26px}.j-map-lesson{grid-template-columns:20px 1fr;gap:6px}.j-lesson-state{grid-column:2}.j-map-group{padding-left:20px}.j-map-group>header{margin-left:-41px}.j-map-group h2{font-size:18px!important}.j-map-group details{margin-left:32px}.j-mission-nav{grid-template-columns:1fr;gap:0}.j-mission-tab{padding:12px 8px}.j-mission-tab small{margin-top:4px;margin-left:26px}.j-condition-list li{align-items:flex-start}.j-condition-list li span{width:100%;order:3}.j-condition-list b{margin-left:auto}.j-mission-result{padding:18px}.j-workbench{border-radius:10px}.j-design-controls{padding:20px}.j-intro-scene{padding:16px 8px}.j-metrics{gap:22px}}
+/* Continue learning: the Home page's one primary action */
+#resume:not([hidden]){display:flex;align-items:center;justify-content:space-between;gap:20px;border:1px solid var(--accent);border-radius:14px;background:var(--panel);padding:18px 22px;margin:18px 0 4px}
+#resume .j-resume-copy{display:flex;flex-direction:column;gap:6px;min-width:0;flex:1}
+#resume #resumeText{margin:0;font-size:17px;font-weight:600;line-height:1.4}
+.j-resume-label{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.j-resume-bar{display:block;height:4px;border-radius:2px;background:var(--line);margin-top:4px;max-width:420px;overflow:hidden}
+.j-resume-bar i{display:block;height:100%;background:var(--accent)}
+#resume #continueBtn{min-height:48px;padding-inline:22px;font-size:15px}
+.j-practice{display:block;border-color:var(--amber);color:var(--text)}
+/* The introduction's scene: separate apps, a visible overload, packets on the wires */
+.j-intro-diagram .j-node-over rect{stroke:var(--red);fill:color-mix(in srgb,var(--red) 14%,var(--panel));filter:drop-shadow(0 0 8px color-mix(in srgb,var(--red) 55%,transparent))}
+.j-intro-diagram .j-node-ok rect{stroke:var(--green)}
+.j-intro-diagram .j-node-idle rect{stroke-dasharray:6 5;opacity:.7}
+.j-intro-diagram .j-node-idle text{opacity:.6}
+.j-tag rect{stroke-width:1.5}.j-tag text{font-size:11px;font-weight:700;letter-spacing:.06em;text-anchor:middle}
+.j-tag-over rect{fill:color-mix(in srgb,var(--red) 22%,var(--bg));stroke:var(--red)}.j-tag-over text{fill:var(--red)}
+.j-tag-idle rect{fill:var(--bg);stroke:var(--line)}.j-tag-idle text{fill:var(--dim)}
+.j-packet{fill:var(--blue);filter:drop-shadow(0 0 4px var(--blue))}
+.j-dropped{fill:var(--red);filter:drop-shadow(0 0 4px var(--red))}
+.j-intro-next{margin-top:18px;font-size:14px;color:var(--dim)}
+@media(prefers-reduced-motion:reduce){.j-flow{display:none}}
+/* Learning map: where you are */
+.j-map-group li.j-here{background:color-mix(in srgb,var(--accent) 10%,transparent);border-radius:8px}
+.j-here .j-map-lesson>span:first-child{color:var(--accent)}
+.j-here-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--on-accent);background:var(--accent);border-radius:999px;padding:2px 9px;margin-right:10px;vertical-align:1px}
+.j-group-here .j-station{background:var(--accent);color:var(--on-accent)}
+@media(max-width:600px){#resume:not([hidden]){flex-direction:column;align-items:stretch}#resume #continueBtn{width:100%}}
 </style>
 </head>
 <body>
-<a class="skip" href="#main">Skip to the lesson</a>
+<a class="skip" href="#main">Skip to content</a>
 <div id="app">
   <aside id="side" aria-label="Course navigation"><button class="btn sm" id="menuClose">Close chapters</button>
     <div class="brand"><div class="brand-heading"><img class="brand-mark" width="44" height="44" alt="" src="data:image/png;base64,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"><b>Packets in Motion</b></div><span>Watch it, then solve it</span><span class="stars" id="starTotal"></span></div>
@@ -303,19 +439,21 @@ body.play .stage.editing canvas{touch-action:none}
   <div class="scrim" id="scrim" aria-hidden="true"></div>
   <main id="main" tabindex="-1">
     <div class="wrap">
+      <nav class="course-nav" aria-label="Learning views"><a id="navHome" href="#home">Home</a><a id="navMap" href="#map">Learning map</a><a id="navMissions" href="#missions">Missions</a><button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button></nav>
+      <div class="resume" id="resume" hidden><div class="j-resume-copy"><span class="j-resume-label">Continue learning</span><p id="resumeText"></p><span class="j-resume-bar" aria-hidden="true"><i id="resumeBar"></i></span></div><button class="btn pri" id="continueBtn">Continue learning</button></div>
+      <div id="journey" hidden></div>
+      <div id="lessonView">
       <div class="top">
         <div>
           <div class="eyebrow" id="eyebrow"></div>
           <h1 id="title"></h1>
         </div>
         <div class="nav">
-          <button class="btn" id="menuBtn" aria-expanded="false" aria-controls="side">☰ Chapters</button>
           <button class="btn chal" id="chalBtn" title="Hands-on challenge (P)" aria-pressed="false">★ Challenge</button>
           <button class="btn" id="prevBtn" title="Previous chapter ( [ )">← Prev</button>
           <button class="btn" id="nextBtn" title="Next chapter ( ] )">Next →</button>
         </div>
       </div>
-      <div class="resume" id="resume" hidden><p id="resumeText"></p><button class="btn" id="continueBtn">Continue lesson</button></div>
       <div id="labIntro" class="lab-intro" hidden><p class="lab-guide">Add a component from the palette or text editor → connect the traffic source to it → run the load test. Undo reverses an edit; Hint helps you choose a design.</p></div>
       <div id="labActions" class="lab-actions" role="group" aria-label="Architecture lab actions" hidden></div>
       <div class="stageWrap">
@@ -360,6 +498,7 @@ body.play .stage.editing canvas{touch-action:none}
         <span><i style="background:var(--red);box-shadow:0 0 8px var(--red)"></i>Failure</span>
         <span><i style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></i>Cached / queued</span>
         <span class="keys">Focus the lesson for shortcuts · Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary</span>
+      </div>
       </div>
     </div>
   </main>
@@ -5427,12 +5566,176 @@ const GLOSSARY=[
 ['302','A temporary HTTP redirect; browsers ask again every time.',[]]];
 </script>
 <script>
+/* Learning journeys and TownSquare's deliberately small, deterministic model.
+   Units are teaching credits, not cloud prices. Every condition must pass. */
+const JOURNEY_PATHS={
+  foundations:{title:'Learn the basics',note:'Start with a packet and build up to a reliable system, one idea at a time.',ids:['packets','client-server','scaling','load-balancers','sessions','sql-nosql','caching','replication','queues-pubsub','spof','timeouts','capstone']},
+  interview:{title:'Prepare for interviews',note:'Sizing, trade-offs and the classic designs, in the order interviews ask for them.',ids:['estimation','scaling','load-balancers','caching','sharding','replication','cap','queues-pubsub','resilience','consensus','capstone','capstone-chat','capstone-feed']},
+  explore:{title:'Explore systems',note:'Every lesson, in any order. Follow whatever catches your interest.',ids:chapters.map(c=>c.id)}
+};
+const JOURNEY_MISSIONS=[
+  {id:'launch',title:'Open the doors',chapter:'01',traffic:300,budget:7,story:'TownSquare helps neighbors find local events. Launch day brings 300 page reads a second. Your single app can serve 200. Keep the doors open without overspending.',goal:'Serve at least 99% of reads within 7 credits.',learn:['scaling','load-balancers'],conditions:[{name:'Launch traffic',eastDown:0,westDown:0}]},
+  {id:'spike',title:'Everyone shares the link',chapter:'02',traffic:900,budget:11,story:'A popular organizer shares TownSquare. Reads triple, and one East app may fail. Most visitors ask for the same event pages. Adapt your launch design to survive both conditions.',goal:'Serve at least 99% of reads in every condition within 11 credits.',learn:['caching','spof'],conditions:[{name:'Viral traffic',eastDown:0,westDown:0},{name:'One East app fails',eastDown:1,westDown:0}]},
+  {id:'regions',title:'Across the ocean',chapter:'03',traffic:1200,budget:20,story:'TownSquare is going international. Forty percent of reads now come from the West. Crossing regions takes 180 ms; a local response takes 40 ms. Bring the system closer to its readers and survive an app failure in either region.',goal:'Serve at least 99% of reads, with at least 95% of all reads within 100 ms, in every condition. Budget: 20 credits.',learn:['cdn','replication'],conditions:[{name:'Two regions online',eastDown:0,westDown:0},{name:'One East app fails',eastDown:1,westDown:0},{name:'One West app fails',eastDown:0,westDown:1}]}
+];
+function journeyDesign(value){
+  if(!pimRecord(value)||!Number.isInteger(value.east)||value.east<1||value.east>6||!Number.isInteger(value.west)||value.west<0||value.west>4||typeof value.balancer!=='boolean'||typeof value.cache!=='boolean')return null;
+  return {east:value.east,west:value.west,balancer:value.balancer,cache:value.cache};
+}
+function journeyCost(d){return 2+d.east*2+d.west*3+(d.west?3:0)+(d.balancer?1:0)+(d.cache?2:0);}
+function journeyTrial(stage,design){
+  const m=JOURNEY_MISSIONS[stage],d=journeyDesign(design);
+  if(!m||!d||(stage<2&&d.west)||(stage===0&&d.cache))return null;
+  const cost=journeyCost(d),rows=m.conditions.map(condition=>{
+    const regions=stage===2&&d.balancer&&d.west>0;
+    const eastReads=m.traffic*(regions?.6:1),westReads=regions?m.traffic*.4:0;
+    const serve=(reads,count,failed)=>{
+      if(!reads)return 0;
+      // Without balancing all reads still go to the first app, even if it fails.
+      const apps=d.balancer?Math.max(0,count-failed):(failed?0:Math.min(1,count));
+      const hits=d.cache?reads*.6:0;
+      return hits+Math.min(reads-hits,apps*200,500);
+    };
+    const east=serve(eastReads,d.east,condition.eastDown),west=serve(westReads,d.west,condition.westDown),served=east+west;
+    const fast=stage===2?(regions?served:east*.6):served;
+    return {...condition,served,delivery:served/m.traffic,fast:fast/m.traffic,passed:served/m.traffic>=.99&&(stage!==2||fast/m.traffic>=.95)};
+  });
+  return {cost,rows,passed:cost<=m.budget&&rows.every(r=>r.passed)};
+}
+function journeyInitial(){return {version:1,path:'foundations',intro:false,stage:0,draft:{east:1,west:0,balancer:false,cache:false},proofs:{}};}
+function journeyDecode(value){
+  if(!pimRecord(value)||value.version!==1||!Object.hasOwn(JOURNEY_PATHS,value.path)||typeof value.intro!=='boolean'||!Number.isInteger(value.stage)||value.stage<0||value.stage>2||!pimRecord(value.proofs))return null;
+  const draft=journeyDesign(value.draft);if(!draft||(value.stage<2&&draft.west)||(value.stage===0&&draft.cache))return null;
+  const proofs={};
+  for(const [id,design] of Object.entries(value.proofs)){
+    const i=JOURNEY_MISSIONS.findIndex(m=>m.id===id),d=journeyDesign(design);
+    if(i<0||!d||!journeyTrial(i,d)?.passed)return null;
+    proofs[id]=d;
+  }
+  // Later milestones require the preceding evidence, including on import.
+  for(let i=1;i<3;i++)if((value.stage>=i||proofs[JOURNEY_MISSIONS[i].id])&&!proofs[JOURNEY_MISSIONS[i-1].id])return null;
+  return {version:1,path:value.path,intro:value.intro,stage:value.stage,draft,proofs};
+}
+function journeyMerge(current,incoming){
+  const a=journeyDecode(current)||journeyInitial(),b=journeyDecode(incoming);if(!b)return a;
+  const result={...a,path:b.path,intro:a.intro||b.intro,proofs:{...a.proofs}};
+  for(const [id,d] of Object.entries(b.proofs))if(!result.proofs[id]||journeyCost(d)<journeyCost(result.proofs[id]))result.proofs[id]=d;
+  // Import brings a later campaign's draft, but never discards local work at the same stage.
+  if(b.stage>a.stage){result.stage=b.stage;result.draft=b.draft;}
+  return result;
+}
+function journeyIntro(step){const offered=step?360:80,servers=step>=2?2:1,balanced=step>=3,loads=balanced?[180,180]:servers===2?[offered,0]:[offered];return {offered,servers,balanced,loads,served:loads.reduce((sum,n)=>sum+Math.min(n,200),0)};}
+/* Four connected learning surfaces. Rendering is synchronous: testing a mission
+   evaluates every named condition, so navigation never leaves a run behind. */
+function initJourney(bridge){
+  const $=id=>document.getElementById(id),root=$('journey');
+  let state=journeyDecode(PIM_STORE.json('pim-journey',null))||journeyInitial(),route='home',introStep=0,result=null;
+  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const save=()=>PIM_STORE.put('pim-journey',state);
+  const button=(id,text,primary=false)=>`<button class="btn${primary?' pri':''}" id="${id}">${text}</button>`;
+  const lessonLink=id=>{const c=chapters.find(c=>c.id===id);return c?`<a href="#${c.id}">${esc(c.title)}</a>`:'';};
+  const heading=(_label,title,copy)=>`<header class="journey-heading"><h1 id="journeyTitle" tabindex="-1">${title}</h1><p>${copy}</p></header>`;
+  function bind(id,fn){$(id).onclick=fn;}
+  function focus(id='journeyTitle'){$(id).focus({preventScroll:true});}
+  function diagram(d,{traffic=300,caption='Architecture preview',intro=false}={}){
+    const west=d.west>0,cache=d.cache,split=west&&d.balancer;
+    const node=(x,y,w,label,sub,kind='')=>`<g class="j-node ${kind}"><rect x="${x}" y="${y}" width="${w}" height="58" rx="9"/><text x="${x+w/2}" y="${y+24}">${label}</text><text class="j-svg-small" x="${x+w/2}" y="${y+43}">${sub}</text></g>`;
+    const line=(x1,y1,x2,y2)=>`<path d="M${x1} ${y1} L${x2} ${y2}"/>`;
+    const appY=cache?268:180,storeY=appY+88,sourceY=cache?238:150,busY=appY-16;
+    const branch=west?`<path d="M300 ${sourceY} V${busY} H150 V${appY}"/>${split?`<path d="M300 ${busY} H450 V${appY}"/>`:''}`:line(300,sourceY,300,appY);
+    const paths=line(300,62,300,92)+(cache?line(300,150,300,180):'')+branch+(west?line(150,appY+58,150,storeY)+line(450,appY+58,450,storeY):line(300,appY+58,300,storeY));
+    const description=cache?'The cache serves 60% of reads before the apps. Remaining reads go through apps to the store. ':'';
+    return `<figure class="j-diagram"><svg viewBox="0 0 600 ${storeY+69}" role="img" aria-label="${esc(description+caption)}"><g class="j-wires">${paths}</g>${node(215,4,170,'READERS',traffic+' reads / second','j-node-blue')}${node(205,92,190,d.balancer?'LOAD BALANCER':'DIRECT CONNECTION',d.balancer?'Distribute the load':'First app receives all reads',d.balancer?'j-node-mint':'')}${cache?node(205,180,190,'EVENT-PAGE CACHE','60% served · 40% continue','j-node-mint'):''}${west?node(55,appY,190,`${d.east} EAST APPS`,'200 reads/s each')+node(355,appY,190,`${d.west} WEST APPS`,split?'200 reads/s each':'No route from readers'):node(185,appY,230,`${d.east} APP${d.east===1?'':'S'}`,d.balancer?'Traffic shared across apps':'Extra apps wait for traffic')}${west?node(55,storeY,190,'EAST STORE','500 reads/s')+node(355,storeY,190,'WEST REPLICA','500 reads/s'):node(185,storeY,230,intro?'RESPONSE':'EVENT STORE',intro?'Follow the requests':'500 reads/s','j-node-mint')}</svg><figcaption>${caption}</figcaption></figure>`;
+  }
+  function home(){
+    const progress=bridge.progress(),path=JOURNEY_PATHS[state.path],next=path.ids.find(id=>!progress.seen[id]),practice=path.ids.find(id=>progress.seen[id]&&CHAL[id]&&(progress.stars[id]||0)<3),done=path.ids.filter(id=>progress.seen[id]).length;
+    const target=next||practice||path.ids[0],chapter=chapters.find(c=>c.id===target),completed=Object.keys(state.proofs).length;
+    // A saved lesson position becomes the page's one primary action (the Continue learning card above);
+    // newcomers get Start learning and a choice of path.
+    const resumed=!!pimResume(PIM_STORE.json('pim-resume',null)),fresh=!resumed&&!Object.keys(progress.seen).length;
+    const startLabel=resumed?'Next on your path':fresh?'Start learning':next?'Continue learning':practice?'Practice your skills':'Revisit the path';
+    root.innerHTML=`<section class="j-hero"><div>${heading('YOUR SYSTEM DESIGN JOURNEY','Build an instinct<br>for systems.','Watch a request travel. Change the architecture. See why it works.')}<div class="j-actions">${button('jStart',startLabel,!resumed)}<a class="btn" href="#intro">${state.intro?'Replay the introduction':'Try the 60-second introduction'}</a></div><p class="j-next">${next?'Up next':practice?'Practice':'Revisit'}: <strong>${esc(chapter.title)}</strong></p></div>${diagram({east:2,west:0,balancer:true,cache:false},{traffic:300,caption:'One request. A whole system of decisions.'})}</section>
+      <section class="j-section" aria-labelledby="jPathTitle"><div class="j-section-title"><h2 id="jPathTitle">${fresh?'Where would you like to start?':'Your learning path'}</h2><a href="#map">Open learning map →</a></div><div class="j-paths">${Object.entries(JOURNEY_PATHS).map(([id,p],i)=>`<button id="jPath-${id}" class="j-path" aria-pressed="${state.path===id}"><strong>${p.title}</strong><span>${p.note}</span><span class="j-path-selection">${state.path===id?'Selected path':'Choose path'}</span></button>`).join('')}</div><p class="j-path-progress">${done} of ${path.ids.length} lessons completed on this path. You can switch paths or open any chapter.</p></section>
+      <section class="j-story-strip"><div><h2>Your first engineering story.</h2><p>Take TownSquare from launch day to two regions. Keep the same design, face new constraints, and make it better.</p><a class="btn" href="#missions">${completed?'Continue the story':'Meet your first mission'} →</a></div><ol class="j-story-track">${JOURNEY_MISSIONS.map((m,i)=>`<li><span>${state.proofs[m.id]?'✓':m.chapter}</span><strong>${m.title}</strong><small>${state.proofs[m.id]?'Completed':i===state.stage?'Your current mission':'Coming up'}</small></li>`).join('')}</ol></section>
+      <p class="j-local-note">Your progress stays in this browser. Use Export in the chapter menu to take it with you.</p>`;
+    bind('jStart',()=>!next&&practice?bridge.practice(target):bridge.lesson(target));
+    // one suggested practice exercise: a completed lesson on this path whose challenge still has stars to earn
+    if(practice&&next){const suggestion=document.createElement('button');suggestion.className='btn j-practice';suggestion.textContent=`Suggested practice: ${CHAL[practice].title} · ${chapters.find(c=>c.id===practice).title} (${progress.stars[practice]||0}/3 ★)`;suggestion.onclick=()=>bridge.practice(practice);root.querySelector('.j-hero>div')?.appendChild(suggestion);}
+    Object.keys(JOURNEY_PATHS).forEach(id=>bind('jPath-'+id,()=>{state.path=id;save();home();focus('jPath-'+id);}));
+  }
+  function map(){
+    const progress=bridge.progress(),ids=JOURNEY_PATHS[state.path].ids,groups=[...new Set(chapters.filter(c=>ids.includes(c.id)).map(c=>c.group))];
+    // You are here: the lesson you paused in, if it is on this route, otherwise the route's next lesson
+    const paused=pimResume(PIM_STORE.json('pim-resume',null)),here=paused&&ids.includes(paused.chapter)?paused.chapter:ids.find(id=>!progress.seen[id]);
+    root.innerHTML=heading('THE LEARNING MAP','Small steps. Connected ideas.','Follow a route or jump to a station. Prerequisites are suggestions, so every lesson stays open.')+`<label class="j-map-filter">Your route <select id="jMapPath">${Object.entries(JOURNEY_PATHS).map(([id,p])=>`<option value="${id}"${id===state.path?' selected':''}>${p.title}</option>`).join('')}</select></label><p class="j-map-key">◉ You are here &nbsp; ○ Not completed &nbsp; ✓ Lesson completed &nbsp; ★ Challenge stars</p><div class="j-map">${groups.map((group,index)=>{
+      const list=ids.map(id=>chapters.find(c=>c.id===id)).filter(c=>c.group===group),n=list.filter(c=>progress.seen[c.id]).length;
+      return `<section class="j-map-group${list.some(c=>c.id===here)?' j-group-here':''}"><header><span class="j-station">${String(index+1).padStart(2,'0')}</span><div><h2>${esc(group)}</h2><p>${n} / ${list.length} lessons completed</p></div></header><ol>${list.map(c=>`<li class="${progress.seen[c.id]?'j-complete':''}${c.id===here?' j-here':''}"><a class="j-map-lesson" href="#${c.id}"${c.id===here?' aria-current="step"':''}><span aria-hidden="true">${c.id===here?'◉':progress.seen[c.id]?'✓':'○'}</span><strong>${c.id===here?'<span class="j-here-tag">You are here</span>':''}${esc(c.title)}</strong><span class="j-lesson-state">${progress.seen[c.id]?'Completed':'Not completed'}${CHAL[c.id]?` · ${progress.stars[c.id]||0}/3 ★`:''}</span></a>${c.needs?.length?`<details><summary>Suggested before this</summary><div class="j-prereqs">${c.needs.map(lessonLink).join('')}</div></details>`:''}</li>`).join('')}</ol></section>`;
+    }).join('')}</div>`;
+    $('jMapPath').onchange=e=>{state.path=e.target.value;save();map();focus('jMapPath');};
+  }
+  // the lesson that picks up where the introduction stops
+  const nextIntroLesson=()=>chapters.find(c=>c.id==='load-balancers');
+  // The introduction's own scene: each app is drawn separately so an overload, an idle app and the
+  // shared load are visible. Packets flow along the wires; reduced motion hides them (journey.css).
+  function introScene(s){
+    const W=600,appW=s.servers===2?210:230,appY=s.balanced?226:196,apps=s.servers===2?[[50,0],[340,1]]:[[185,0]];
+    const srcX=300,srcY=68,lbY=118,from=s.balanced?[srcX,lbY+58]:[srcX,srcY];
+    const node=(x,y,w,label,sub,kind='')=>`<g class="j-node ${kind}"><rect x="${x}" y="${y}" width="${w}" height="58" rx="9"/><text x="${x+w/2}" y="${y+24}">${label}</text><text class="j-svg-small" x="${x+w/2}" y="${y+43}">${sub}</text></g>`;
+    const wire=(x1,y1,x2,y2)=>`M${x1} ${y1} V${(y1+y2)/2} H${x2} V${y2}`;
+    let wires=s.balanced?`<path d="M${srcX} ${srcY} V${lbY}"/>`:'',flow='',nodes=node(215,10,170,'READERS',`${s.offered} reads / second`,'j-node-blue');
+    if(s.balanced){nodes+=node(205,lbY,190,'LOAD BALANCER','Shares reads across apps','j-node-mint');for(let k=0;k<6;k++)flow+=`<circle class="j-packet" r="4.5"><animateMotion dur="0.8s" repeatCount="indefinite" begin="${(-0.8*k/6).toFixed(2)}s" path="M${srcX} ${srcY} V${lbY}"/></circle>`;}
+    apps.forEach(([x,i])=>{const load=s.loads[i]||0,cx=x+appW/2,over=load>200,idle=!load,path=wire(from[0],from[1],cx,appY);
+      if(load)wires+=`<path d="${path}"/>`;
+      // a packet every ~30 reads/s, spread along the wire
+      const n=Math.min(10,Math.ceil(load/40));for(let k=0;k<n;k++)flow+=`<circle class="j-packet" r="4.5"><animateMotion dur="1.6s" repeatCount="indefinite" begin="${(-1.6*k/n).toFixed(2)}s" path="${path}"/></circle>`;
+      // an overloaded app turns readers away: red packets bounce off its side
+      if(over)for(let k=0;k<4;k++)flow+=`<circle class="j-packet j-dropped" r="4.5"><animateMotion dur="1.4s" repeatCount="indefinite" begin="${(-0.35*k).toFixed(2)}s" path="M${x+appW} ${appY+18} q40 -10 60 40"/><animate attributeName="opacity" values="1;0" dur="1.4s" repeatCount="indefinite" begin="${(-0.35*k).toFixed(2)}s"/></circle>`;
+      nodes+=node(x,appY,appW,`APP ${i+1}`,`${load} / 200 reads/s`,over?'j-node-over':idle?'j-node-idle':'j-node-ok');
+      if(over||idle)nodes+=`<g class="j-tag ${over?'j-tag-over':'j-tag-idle'}"><rect x="${cx-48}" y="${appY-26}" width="96" height="22" rx="11"/><text x="${cx}" y="${appY-11}">${over?'OVERLOADED':s.balanced?'IDLE':'IDLE · NO ROUTE'}</text></g>`;});
+    const label=s.balanced?`Readers, a load balancer and two apps, each serving ${s.loads[0]} reads a second.`:s.servers===2?`Every read goes to app 1 (${s.loads[0]} a second, capacity 200); app 2 is idle.`:`Readers send ${s.offered} reads a second to one app with capacity 200${s.offered>200?': it is overloaded and drops '+(s.offered-s.served)+' a second':''}.`;
+    return `<figure class="j-diagram j-intro-diagram"><svg viewBox="0 0 ${W} ${appY+70}" role="img" aria-label="${esc(label)}"><g class="j-wires">${wires}</g><g class="j-flow" aria-hidden="true">${flow}</g>${nodes}</svg><figcaption>${s.balanced?'Readers → load balancer → two apps':'Readers → app 1'+(s.servers===2?' (app 2 gets nothing)':'')}</figcaption></figure>`;
+  }
+  function introduction(moveFocus=false){
+    const s=journeyIntro(introStep),titles=['A quiet morning.','Then everyone arrives.','A second app. Still a bottleneck.','Now the work is shared.'],copy=['One app handles 80 reads a second. It has room for 200. Let’s see what happens when the traffic grows.','360 reads a second reach an app that can handle 200. Some readers miss out. Give the system more capacity.','The new app is idle: every read still goes to the first one. A load balancer can distribute those reads.','Each app handles 180 reads a second. All 360 are served. Capacity and routing need to work together.'];
+    root.innerHTML=heading('ABOUT A MINUTE · GO AT YOUR OWN PACE','Your app suddenly gets popular.','Watch the traffic grow, then fix it with two small changes. About a minute, at your own pace.')+`<section class="j-intro"><div class="j-intro-scene">${introScene(s)}<div class="j-loads">${s.loads.map((n,i)=>`<div><span>App ${i+1} · ${n} / 200 reads/s</span><meter min="0" max="360" low="0" high="200" optimum="180" value="${n}" aria-label="App ${i+1} load"></meter></div>`).join('')}</div></div><div class="j-intro-copy"><h2 id="jIntroStep" tabindex="-1">${titles[introStep]}</h2><p class="j-step-count">Step ${introStep+1} of 4 · About a minute, at your pace</p><p>${copy[introStep]}</p><dl class="j-metrics"><div><dt>Reads served / second</dt><dd>${s.served} <small>/ ${s.offered}</small></dd></div><div><dt>Reads dropped / second</dt><dd class="${s.offered>s.served?'j-warning':'j-success'}">${s.offered-s.served}</dd></div></dl><div class="j-actions">${introStep<3?button('jIntroNext',['Send the traffic spike','Add a second server','Add a load balancer'][introStep],true):button('jIntroLesson',`Next lesson: ${esc(nextIntroLesson().title)} →`,true)+'<a class="btn" href="#missions">Try your first mission</a>'}${introStep?button('jIntroReset','Start over'):''}</div>${introStep===3?`<p class="j-intro-next">You just used horizontal scaling and load balancing. <strong>${esc(nextIntroLesson().title)}</strong> shows how a balancer picks a server, checks health and routes around failures.</p>`:'<a class="j-inline-link" href="#map">Explore the lessons</a>'}</div></section>`;
+    if(introStep<3)bind('jIntroNext',()=>{introStep++;if(introStep===3){state.intro=true;save();}introduction(true);});
+    if(introStep)bind('jIntroReset',()=>{introStep=0;introduction(true);});
+    if(introStep===3)bind('jIntroLesson',()=>bridge.lesson(nextIntroLesson().id));
+    if(moveFocus)focus('jIntroStep');
+  }
+  function mission(){
+    const m=JOURNEY_MISSIONS[state.stage],d=state.draft,done=!!state.proofs[m.id];
+    root.innerHTML=heading('TOWNSQUARE · AN ENGINEERING STORY','A small idea. Room to grow.','A fictional events app. Your architecture. Three moments that change everything.')+`<nav class="j-mission-nav" aria-label="Story chapters">${JOURNEY_MISSIONS.map((x,i)=>`<button class="j-mission-tab" id="jMission-${i}" ${i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id]?'disabled':''} ${i===state.stage?'aria-current="step"':''}><span>${state.proofs[x.id]?'✓':x.chapter}</span>${x.title}<small>${i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id]?'Complete the previous mission':state.proofs[x.id]?'Completed':'Ready to try'}</small></button>`).join('')}</nav>
+      <section class="j-brief"><div><h2>${m.chapter} · ${m.title}</h2><p>${m.story}</p></div><div class="j-brief-goal"><strong>Your goal</strong><p>${m.goal}</p></div></section>
+      <div class="j-workbench"><section class="j-blueprint" aria-label="Your architecture"><div id="jMissionDiagram">${diagram(d,{traffic:m.traffic,caption:'Your current design · test it against every condition'})}</div><p class="j-budget" id="jBudget">${journeyCost(d)} / ${m.budget} credits</p></section><section class="j-design-controls" aria-labelledby="jDesignTitle"><h2 id="jDesignTitle">Shape your system</h2><p class="j-control-hint">Your design carries into the next mission.</p><label>East app servers <span>200 reads/s each · 2 credits each</span><select id="jEast">${Array.from({length:6},(_,i)=>`<option value="${i+1}"${d.east===i+1?' selected':''}>${i+1} app${i?'s':''}</option>`).join('')}</select></label><label class="j-check"><input id="jBalancer" type="checkbox"${d.balancer?' checked':''}><span><strong>Load balancer</strong><small>Distribute reads across apps and available regions · 1 credit</small></span></label>${state.stage>0?`<label class="j-check"><input id="jCache" type="checkbox"${d.cache?' checked':''}><span><strong>Event-page cache</strong><small>Serve 60% of reads before they reach apps · 2 credits total</small></span></label>`:''}${state.stage===2?`<label>West app servers <span>3 credits each + 3 for a local read replica</span><select id="jWest">${Array.from({length:5},(_,i)=>`<option value="${i}"${d.west===i?' selected':''}>${i?i+' app'+(i>1?'s':''):'No West region'}</option>`).join('')}</select></label>`:''}${button('jTest','Test all conditions',true)}<p class="j-control-hint">Instant capacity checks. No countdown.</p></section></div>
+      <section class="j-mission-result" id="jMissionResult" aria-labelledby="jResultTitle" ${result?'':'hidden'}></section>
+      <p class="j-tested" id="jSavedProof">${done?'Completed with a passing design. Edits above are a separate draft until you test them.':''}</p>
+      <details class="j-model"><summary>How this teaching model works</summary><p>Each app serves 200 reads/s. Without a load balancer, only the first East app receives reads; if that app fails, no app reads are served. A cache serves a fixed 60% of reads before the apps, including during app failures. Each region’s store handles 500 reads/s. The East store costs 2 credits and is always included.</p><p>The load balancer splits reads among healthy apps. In mission 3, when West apps exist, it also routes 60% of reads East and 40% West. A West region includes a local read replica. Local reads take 40 ms; West readers served from East take 180 ms. Failed reads never count as fast reads.</p><p>Every named condition must meet the goal independently. Credits are teaching units, not provider prices. This read-only model excludes writes, replication lag, cache misses changing over time, network failures and load balancer failures.</p></details><div class="j-study"><strong>Explore the ideas</strong>${m.learn.map(lessonLink).join('')}</div>`;
+    for(let i=0;i<3;i++)bind('jMission-'+i,()=>{if(i>0&&!state.proofs[JOURNEY_MISSIONS[i-1].id])return;if(i===state.stage)return;const previous=state.stage;state.stage=i;state.draft={...(state.proofs[JOURNEY_MISSIONS[i].id]||(i>previous?state.proofs[JOURNEY_MISSIONS[i-1].id]:journeyInitial().draft))};if(i<2)state.draft.west=0;if(i===0)state.draft.cache=false;result=null;save();mission();focus('jMission-'+i);});
+    const change=()=>{state.draft={east:+$('jEast').value,west:state.stage===2?+$('jWest').value:0,balancer:$('jBalancer').checked,cache:state.stage>0&&$('jCache').checked};result=null;save();$('jMissionDiagram').innerHTML=diagram(state.draft,{traffic:m.traffic,caption:'Your current design · test it against every condition'});$('jBudget').textContent=`${journeyCost(state.draft)} / ${m.budget} credits`;$('jMissionResult').hidden=true;$('jSavedProof').textContent=done?'Previously completed. This edited draft has not been tested.':'Design changed. Test all conditions to check it.';};
+    ['jEast','jBalancer',...(state.stage>0?['jCache']:[]),...(state.stage===2?['jWest']:[])].forEach(id=>{$(id).onchange=change;});
+    bind('jTest',()=>{result=journeyTrial(state.stage,state.draft);if(result.passed){state.proofs[m.id]={...state.draft};save();}renderResult();focus('jResultTitle');});
+    if(result)renderResult();
+  }
+  function renderResult(){
+    const m=JOURNEY_MISSIONS[state.stage],r=result,box=$('jMissionResult');if(!r)return;
+    box.hidden=false;box.innerHTML=`<h2 id="jResultTitle" tabindex="-1">${r.passed?'Your design holds up.':'A useful failure. A better next move.'}</h2><p>${r.passed?state.stage===2?'TownSquare is ready for readers in both regions. You completed the story.':'You met the delivery goal and the budget. Bring this design into the next chapter.':r.cost>m.budget?'Your design exceeds the budget. Reduce its cost and test again.':!state.draft.balancer?'Extra servers need traffic. Add a load balancer to distribute the work.':state.stage>0&&!state.draft.cache?'Repeated reads overload the apps or store. Try caching event pages.':state.stage===2&&!state.draft.west?'West readers still cross the ocean. Add apps in the West region.':'A failure leaves too little capacity. Add an app in the affected region and test again.'}</p><ul class="j-condition-list">${r.rows.map(x=>`<li><strong>${x.name}</strong><span>${(x.delivery*100).toFixed(1)}% served${state.stage===2?` · ${(x.fast*100).toFixed(1)}% within 100 ms`:''}</span><b class="${x.passed?'j-success':'j-warning'}">${x.passed?'Pass':'Needs work'}</b></li>`).join('')}<li><strong>Budget</strong><span>${r.cost} / ${m.budget} credits</span><b class="${r.cost<=m.budget?'j-success':'j-warning'}">${r.cost<=m.budget?'Pass':'Over budget'}</b></li></ul><div class="j-actions">${r.passed&&state.stage<2?button('jNextMission','Continue the story →',true):r.passed?'<a class="btn pri" href="#map">Keep exploring →</a>':''}</div>`;
+    if(r.passed&&state.stage<2)bind('jNextMission',()=>{state.stage++;result=null;save();mission();focus();$('main').scrollTop=0;});
+    $('jSavedProof').textContent=r.passed?'This passing design is saved.':'This draft has not passed all checks.';
+  }
+  function show(next){route=next;if(next==='home')home();else if(next==='map')map();else if(next==='intro')introduction();else mission();}
+  return {show,export:()=>journeyDecode(state),merge:incoming=>{const before=JSON.stringify(state);state=journeyMerge(state,incoming);save();result=null;return before!==JSON.stringify(state);},refresh:()=>show(route)};
+}
+</script>
+<script>
 /* ============================================================
    PLAYER / UI
    ============================================================ */
 (function(){
 const $=id=>document.getElementById(id);
 const store=PIM_STORE;
+const initialHash=location.hash,hubNames={home:'Home',map:'Learning map',intro:'Introduction',missions:'Engineering missions'};
+let hub=null,journey=null;
 labRestore();
 let seen=pimSeen(store.json('sdve-seen',{}));
 let stars=pimStars(store.json('pim-stars',{}));
@@ -5441,7 +5744,7 @@ let challengeToken=0;
 let renderFault=null,challengeReady=false,challengePaused=false;
 let practiceTimed=store.get('pim-practice-timed')!=='0';
 let shortcuts=store.get('pim-shortcuts')!=='0',diagramEditing=!matchMedia('(pointer:coarse)').matches;
-const resumeRecord=pimResume(store.json('pim-resume',null)),linkedVisit=!!location.hash;let restoring=true,loaded=false,checkpoint=-1;
+const resumeRecord=pimResume(store.json('pim-resume',null));let restoring=true,loaded=false,checkpoint=-1;
 let cur=0,t=0,playing=false,speed=pimSpeed(store.get('pim-speed')),last=null,capIdx=-1,captions=store.get('sdve-cc')!=='0',K=1,dragging=false,wasPlaying=false;
 const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
 
@@ -5483,7 +5786,7 @@ function failRender(e){if(renderFault)return;renderFault={mode,id:quizG?QUIZ[qui
   console.error('Stage failed',renderFault,e);setPlaying(false);if(api)api.dispose();pdown=null;cv.hidden=true;
   $('renderError').hidden=false;$('renderErrorText').textContent=mode==='play'?'This challenge could not be drawn. Your saved design is available when you retry. No result was awarded.':'This animation could not be drawn. You can still read every step in the transcript.';
   if(mode==='watch')setTranscript(true);announce($('renderErrorText').textContent);}
-function blocked(){return document.hidden||document.body.classList.contains('menu')||$('glossary').open||$('card').open||$('result').open;}
+function blocked(){return !!hub||document.hidden||document.body.classList.contains('menu')||$('glossary').open||$('card').open||$('result').open;}
 function render(){if(renderFault)return;if(mode==='play'){renderChal(0);return;}const c=chapters[cur];
   try{g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBackground();c.draw(t);
     g.setTransform(K,0,0,K,0,0);g.globalAlpha=1;drawBeatTitle(c,t);}catch(e){failRender(e);}
@@ -5512,26 +5815,26 @@ function showCard(v,done){$('card').classList.toggle('done',!!done);if(v)openDia
 $('card').addEventListener('cancel',e=>{e.preventDefault();showCard(false);});
 $('result').addEventListener('cancel',e=>{e.preventDefault();hideResult();});
 function routeState(){return {pim:1,chapter:chapters[cur].id,quiz:quizG,challenge:mode==='play',time:t};}
-function saveRoute(){if(loaded&&!restoring)history.replaceState(routeState(),'');}
-function rememberLesson(){if(!loaded||quizG)return;store.put('pim-resume',{version:1,chapter:chapters[cur].id,time:t,speed});saveRoute();checkpoint=t;}
+function saveRoute(){if(loaded&&!restoring&&!hub)history.replaceState(routeState(),'');}
+function rememberLesson(){if(!loaded||quizG||hub)return;store.put('pim-resume',{version:1,chapter:chapters[cur].id,time:t,speed});saveRoute();checkpoint=t;}
 function syncCompletion(){const done=!!seen[chapters[cur].id];['completeBtn','cardComplete'].forEach(id=>{$(id).textContent=done?'Lesson completed':'Mark lesson complete';$(id).disabled=done;});}
 function seek(nt){const c=chapters[cur];t=clamp(nt,0,c.dur);if(t<c.dur)showCard(false);render();rememberLesson();}
 window.seek=seek;
-function load(i,autoplay){rememberLesson();if(loaded)$('resume').hidden=true;if(mode==='play')exitChal(true);hideResult();showCard(false);clearRenderFault();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;checkpoint=-1;loaded=true;$('main').scrollTop=0;
+function load(i,autoplay){rememberLesson();hub=null;$('journey').hidden=true;$('lessonView').hidden=false;syncHubNav();if(loaded)$('resume').hidden=true;if(mode==='play')exitChal(true);hideResult();showCard(false);clearRenderFault();cur=(i+chapters.length)%chapters.length;const c=chapters[cur];t=0;capIdx=-1;checkpoint=-1;loaded=true;$('main').scrollTop=0;
   heading();$('cardChal').hidden=!CHAL[c.id];
   $('cardTitle').textContent=c.title;buildTranscript(c);annTitle=true;listTerms($('useList'),c.use);listTerms($('conList'),c.cons);cardLinks(c);
   $('ticks').innerHTML=c.beats.slice(1).map(b=>`<b style="left:${b[0]/c.dur*100}%"></b>`).join('');
   markToc();
   $('nextBtn').disabled=false;$('cardNext').textContent=cur===chapters.length-1?'Back to chapter 1 →':'Next chapter →';
-  $('learningStatus').textContent='';syncCompletion();setPlaying(!!autoplay);last=null;render();}
+  $('learningStatus').textContent='';syncCompletion();setPlaying(!!autoplay);last=null;resize();}
 // title, eyebrow, tab title and URL for the current chapter (or the running quiz)
 function heading(){const c=chapters[cur],q=quizG&&QUIZ[quizG];
   $('eyebrow').textContent=q?`${q.group} · Section quiz`:`${c.group} · Chapter ${cur+1} of ${chapters.length}`;$('title').textContent=q?q.title:c.title;
   document.title=(q?q.title:c.title)+' · Packets in Motion';$('chalBtn').hidden=!!q||!CHAL[c.id];
   const h='#'+(q?q.id:c.id);if(location.hash!==h)history[restoring?'replaceState':'pushState'](routeState(),'',h);else if(!restoring)saveRoute();}
 // sidebar state: the current chapter (or quiz), watched marks, names for screen readers
-function markToc(){document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i,on=!quizG&&j===cur;b.classList.toggle('on',on);b.classList.toggle('seen',!!seen[chapters[j].id]);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');tocLabel(b);});
-  document.querySelectorAll('.qz').forEach(b=>{const on=b.dataset.q===quizG;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');qzLabel(b);});
+function markToc(){document.querySelectorAll('.ch').forEach(b=>{const j=+b.dataset.i,on=!hub&&!quizG&&j===cur;b.classList.toggle('on',on);b.classList.toggle('seen',!!seen[chapters[j].id]);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');tocLabel(b);});
+  document.querySelectorAll('.qz').forEach(b=>{const on=!hub&&b.dataset.q===quizG;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');qzLabel(b);});
   const on=document.querySelector(quizG?'.qz.on':'.ch.on');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest'});}
 // "Before this" and "Related" chapter links on the trade-offs card
 function cardLinks(c){const box=$('cardLinks');box.innerHTML='';
@@ -5603,13 +5906,13 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
 function disposeChallenge(){cancelPointer();challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
 function labLayout(v){const hint=$('cHintBtn');$('cpanel').querySelector('.cbar').appendChild(hint);$('labIntro').hidden=!v;$('labActions').hidden=!v;$('labActions').innerHTML='';(v?$('labIntro'):$('cpanel')).prepend($('cBrief'));if(v)$('labActions').appendChild(hint);}
-function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');labLayout(!!LAB_DEFS[c.id]&&!gname);
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();hub=null;$('journey').hidden=true;$('lessonView').hidden=false;$('resume').hidden=true;syncHubNav();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');labLayout(!!LAB_DEFS[c.id]&&!gname);
   $('diagramEdit').hidden=false;syncDiagramEditing();
   challengeReady=!!LAB_DEFS[c.id]&&!gname;challengePaused=false;$('cStart').hidden=challengeReady;$('cPause').hidden=!challengeReady;$('cPause').textContent='Pause challenge';$('cPause').setAttribute('aria-pressed','false');
   $('cTimingLabel').hidden=!d.timed;$('cTiming').value=practiceTimed?'timed':'untimed';$('cTiming').disabled=false;
   $('cTitle').textContent=d.title;$('cGoal').textContent=!practiceTimed&&d.untimedGoal?d.untimedGoal:d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();try{inst=d.make(api);}catch(e){failRender(e);}$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
-  $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();render();}
+  $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();resize();}
 function exitChal(quiet){disposeChallenge();labLayout(false);clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;mode='watch';if(wasQuiz&&!quiet){heading();markToc();}capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet){saveRoute();render();}}
 function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
@@ -5662,7 +5965,7 @@ window.addEventListener('keydown',e=>{const dialog=[$('glossary'),$('card'),$('r
   if(e.target===$('stage')&&$('stage').classList.contains('readable')&&/^(?:Arrow(?:Left|Right|Up|Down)|PageUp|PageDown|Home|End| )$/.test(e.key))return;
   if(!$('main').contains(e.target))return;
   if(e.ctrlKey||e.metaKey||e.altKey){if(mode==='play'&&e.target===cv&&(e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='z'&&inst&&inst.key&&challengeInput()){e.preventDefault();inst.key(e.key,ct,e);}return;}
-  if(!shortcuts)return;const c=chapters[cur];
+  if(!shortcuts)return;if(hub){if(e.key==='/'){e.preventDefault();setMenu(true);$('find').focus();}else if(e.key==='g'||e.key==='G')openGlossary();return;}const c=chapters[cur];
   if(mode!=='play'&&(e.target.tagName==='BUTTON'||e.target.tagName==='A')&&(e.key===' '||e.key==='Enter'))return;   // the focused control handles it
   if(mode==='play'){if(e.key==='Escape'){if($('result').classList.contains('show'))hideResult();else exitChal();}
     else if(e.key===']')load(cur+1,true);else if(e.key==='[')load(cur-1,true);
@@ -5688,10 +5991,23 @@ document.addEventListener('visibilitychange',()=>{last=null;if(document.hidden){
 window.addEventListener('resize',resize);
 if(window.ResizeObserver)new ResizeObserver(resize).observe(cv);
 const quizFor=h=>Object.keys(QUIZ).find(g=>'#'+QUIZ[g].id===h);
-function restoreRoute(){const q=quizFor(location.hash),i=q?firstOf(q):chapters.findIndex(c=>'#'+c.id===location.hash);if(i<0)return;const state=history.state,valid=pimRecord(state)&&state.pim===1&&state.quiz===(q||null)&&chapters.some(c=>c.id===state.chapter)&&(q||state.chapter===chapters[i].id),j=valid?chapters.findIndex(c=>c.id===state.chapter):i;
-  restoring=true;load(j,false);if(valid&&Number.isFinite(state.time))seek(state.time);if(q)startQuiz(q);else if(valid&&state.challenge===true)startChal();restoring=false;saveRoute();}
+function syncHubNav(){[['navHome','home'],['navMap','map'],['navMissions','missions']].forEach(([id,name])=>{if(hub===name)$(id).setAttribute('aria-current','page');else $(id).removeAttribute('aria-current');});}
+function showHub(name,replace=false,focus=true,saveLesson=true){
+  if(saveLesson)rememberLesson();setPlaying(false);if(mode==='play')exitChal(true);hideResult();showCard(false);hideTip();clearTimeout(liveT);setMenu(false);
+  hub=name;$('lessonView').hidden=true;$('journey').hidden=false;$('resume').hidden=true;syncHubNav();markToc();journey.show(name);
+  document.title=hubNames[name]+' · Packets in Motion';history[replace?'replaceState':'pushState']({pim:1,hub:name},'','#'+name);
+  if(name==='home'){const r=pimResume(store.json('pim-resume',null));if(r){const i=chapters.findIndex(c=>c.id===r.chapter),c=chapters[i];$('resume').hidden=false;
+    // the Home page's primary action: the paused lesson, where it stopped and how far through it is
+    $('resumeText').textContent=`${c.title} · chapter ${i+1} of ${chapters.length}, paused at ${fmt(r.time)} of ${fmt(c.dur)}`;if($('resumeBar').style)$('resumeBar').style.width=Math.round(r.time/c.dur*100)+'%';$('continueBtn').onclick=()=>{load(chapters.findIndex(c=>c.id===r.chapter),false);speed=r.speed;$('speed').value=String(speed);store.set('pim-speed',String(speed));seek(r.time);cv.focus();};}}
+  $('main').scrollTop=0;if(focus)$('journeyTitle').focus({preventScroll:true});
+}
+function restoreRoute(){const name=location.hash.slice(1);if(Object.hasOwn(hubNames,name)){restoring=true;showHub(name,true,true,false);restoring=false;return;}const q=quizFor(location.hash),i=q?firstOf(q):chapters.findIndex(c=>'#'+c.id===location.hash);if(i<0)return;const state=history.state,valid=pimRecord(state)&&state.pim===1&&state.quiz===(q||null)&&chapters.some(c=>c.id===state.chapter)&&(q||state.chapter===chapters[i].id),j=valid?chapters.findIndex(c=>c.id===state.chapter):i;
+  restoring=true;load(j,false);if(valid&&Number.isFinite(state.time))seek(state.time);if(q)startQuiz(q);else if(valid&&state.challenge===true)startChal();restoring=false;saveRoute();cv.focus();}
 window.addEventListener('popstate',restoreRoute);
-window.addEventListener('hashchange',()=>{const q=quizFor(location.hash),h='#'+(quizG?QUIZ[quizG].id:chapters[cur].id);if(location.hash!==h||q&&q!==quizG)restoreRoute();});
+window.addEventListener('hashchange',()=>{const q=quizFor(location.hash),h='#'+(hub|| (quizG?QUIZ[quizG].id:chapters[cur].id));if(location.hash!==h||q&&q!==quizG)restoreRoute();});
+// Handle internal links before the browser changes the hash, preserving the
+// outgoing lesson's history entry and bookmark. Modified clicks remain native.
+document.addEventListener('click',e=>{const a=e.target.closest?e.target.closest('a'):null;if(!a||e.defaultPrevented||e.button>0||e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;const href=a.getAttribute('href');if(!href||!href.startsWith('#'))return;const name=href.slice(1);if(Object.hasOwn(hubNames,name)){e.preventDefault();if(hub!==name)showHub(name);return;}const i=chapters.findIndex(c=>c.id===name);if(i>=0){e.preventDefault();setMenu(false);load(i,true);cv.focus();}});
 // Fullscreen is optional and never locks the user's device orientation.
 const fsOK=!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
 function goFull(){const el=document.documentElement,req=el.requestFullscreen||el.webkitRequestFullscreen;
@@ -5759,6 +6075,7 @@ const IMPORT_LIMIT=1024*1024;
 function validImport(d){if(!pimRecord(d)||d.app!=='packets-in-motion')return 'Choose a Packets in Motion progress file.';
   if(![1,2].includes(d.version))return 'This progress file uses an unsupported version. Export it again from a compatible course.';
   if(!pimRecord(d.seen)||!pimRecord(d.stars))return 'The watched chapters and stars must be objects.';
+  if(d.journey!==undefined&&!journeyDecode(d.journey))return 'The file contains invalid journey progress or mission evidence.';
   const entries=(v,known,check)=>pimRecord(v)&&Object.entries(v).every(([k,x])=>!known(k)||check(x,k));
   if(!entries(d.seen,k=>chapters.some(c=>c.id===k),v=>v===1||v===true)||!entries(d.stars,k=>allIds().includes(k),v=>Number.isInteger(v)&&v>=0&&v<=3))return 'The file contains invalid chapter or star values.';
   if(d.labBest!==undefined&&!entries(d.labBest,k=>Object.hasOwn(LAB_DEFS,k),v=>Number.isSafeInteger(v)&&v>0&&v<=10000))return 'The file contains invalid lab costs.';
@@ -5771,7 +6088,7 @@ function validImport(d){if(!pimRecord(d)||d.app!=='packets-in-motion')return 'Ch
     if(b.chaos!==undefined&&!entries(b.chaos,known,(v,k)=>!!labCertificate(k,v)))return 'The file contains invalid chaos design evidence.';
   }
   return '';}
-function exportProgress(){const data={app:'packets-in-motion',version:2,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS,labDesigns:labDesigns()};
+function exportProgress(){const data={app:'packets-in-motion',version:2,exported:new Date().toISOString(),seen,stars,labBest:LAB_BEST,labChaos:LAB_CHAOS,labDesigns:labDesigns(),journey:journey.export()};
   const a=document.createElement('a');a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(data,null,2));a.download='packets-in-motion-progress.json';
   document.body.appendChild(a);a.click();a.remove();ioMsg('Progress saved to packets-in-motion-progress.json.');return data;}
 // merges: a chapter stays watched, and each challenge keeps its best score
@@ -5786,7 +6103,8 @@ function importProgress(text){if(typeof text!=='string'||text.length>IMPORT_LIMI
   Object.keys(pimFilter(d.labChaos,(k,v)=>Object.hasOwn(LAB_DEFS,k)&&v===true)).forEach(k=>{if(!LAB_CHAOS[k]){LAB_CHAOS[k]=true;nLabs++;}});labPut('pim-lab-chaos',LAB_CHAOS);
   if(d.version===2)nLabs+=labMergeDesigns(d.labDesigns);labSaveBest();labSaveDesigns();
   store.set('sdve-seen',JSON.stringify(seen));store.set('pim-stars',JSON.stringify(stars));updProg();updStars();markToc();syncCompletion();
-  const summary=nSeen||nStars||nLabs?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} completed and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}`:'Nothing new in the supported records.';
+  const journeyChanged=d.journey?journey.merge(d.journey):false;if(hub)journey.refresh();
+  const summary=nSeen||nStars||nLabs||journeyChanged?`Imported ${nSeen} more chapter${nSeen===1?'':'s'} completed and ${nStars} more star${nStars===1?'':'s'}.${nLabs?` Updated ${nLabs} lab record${nLabs===1?'':'s'}.`:''}${journeyChanged?' Updated your learning journey.':''}`:'Nothing new in the supported records.';
   ioMsg(summary+(skipped?` Ignored ${skipped} record${skipped===1?'':'s'} not used by this course.`:''));return true;}
 $('exportBtn').onclick=exportProgress;$('importBtn').onclick=()=>$('importFile').click();
 $('importFile').onchange=async e=>{const file=e.target.files&&e.target.files[0];if(!file)return;try{if(file.size>IMPORT_LIMIT){ioMsg('Progress files must be 1 MB or smaller.');return;}importProgress(await file.text());}catch(_){ioMsg('Could not read that file. Try selecting it again.');}finally{e.target.value='';}};
@@ -5796,14 +6114,14 @@ function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',Str
 $('soundBtn').onclick=()=>{setSound(!SFX.on);SFX.play('good');};
 
 setSound(store.get('pim-sound')==='1');hideTip();
+journey=initJourney({progress:()=>({seen,stars}),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
 // a shared lab design: ?lab=<id>&d=<design> opens that lab with the design on the board
 const sp=typeof URLSearchParams!=='undefined'?new URLSearchParams(location.search||''):null,sLab=sp&&sp.get('lab'),sIdx=sLab?chapters.findIndex(c=>c.id===sLab):-1;
 const shared=sIdx>=0&&CHAL[sLab]&&labImport(sLab,sp.get('d')||'');
 if(shared){history.replaceState(null,'',location.pathname+'#'+sLab);load(sIdx,false);startChal();}
-else{load(start,!startQ&&!resumeRecord);if(startQ)startQuiz(startQ);}restoring=false;saveRoute();$('speed').value=String(speed);
-if(resumeRecord&&!shared&&!startQ&&!location.search&&!linkedVisit){$('resume').hidden=false;$('resumeText').textContent=`Continue ${chapters.find(c=>c.id===resumeRecord.chapter).title} at ${fmt(resumeRecord.time)}.`;$('continueBtn').onclick=()=>{load(chapters.findIndex(c=>c.id===resumeRecord.chapter),false);speed=resumeRecord.speed;$('speed').value=String(speed);store.set('pim-speed',String(speed));seek(resumeRecord.time);$('resume').hidden=true;cv.focus();};}
+else{load(start,!!initialHash&&!Object.hasOwn(hubNames,initialHash.slice(1))&&!startQ&&!resumeRecord);if(startQ)startQuiz(startQ);else if(!initialHash||Object.hasOwn(hubNames,initialHash.slice(1)))showHub(initialHash.slice(1)||'home',true,false,false);}restoring=false;saveRoute();$('speed').value=String(speed);
 resize();if(portrait.matches)onOrient();requestAnimationFrame(frame);
 })();
 </script>

@@ -18,6 +18,14 @@ Or run it offline: `index.html` is a single self-contained file with no dependen
 
 ## What's inside
 
+**Home** greets new visitors with **Start learning** and a choice of three paths: **Learn the basics**, **Prepare for interviews** or **Explore systems**. Returning learners get one prominent **Continue learning** card that reopens their last lesson at its saved position, the progress on their current path, and one suggested practice exercise: a challenge from a finished lesson that still has stars to earn. **Learning map** draws each section as a route and each lesson as a station, marks **You are here**, and shows completion, challenge stars and suggested prerequisites. The chapter list and existing lesson links still work.
+
+The **60-second introduction** starts with "Your app suddenly gets popular." Packets flow on the screen: send a traffic spike and watch one app overload and turn readers away, add a second app that sits idle, then add a load balancer and see the dropped reads disappear. It ends with a working system and a clear next lesson, Load Balancers. It is self-paced, with no timer or account, and the moving packets are hidden under reduced motion.
+
+**Engineering missions** follow TownSquare, a fictional local-events app, through launch, viral traffic, and regional expansion. Adapt one design across three chapters, then test every named traffic/failure condition instantly. Each chapter checks delivery and budget; the last also checks regional response times. These are deterministic teaching capacity checks, with assumptions available beside the design, rather than the animated load tests used in architecture labs. Mission completion is separate from lesson stars.
+
+Selected paths, introduction completion, mission drafts, and passing designs are saved locally and included in progress exports. Imported mission evidence is rechecked against the model before any records are merged. Older progress files remain supported.
+
 <!-- course-counts:start -->
 45 chapters in 10 sections; 10 architecture labs; 9 section quizzes. Lesson animations run 28.5–62 seconds.
 

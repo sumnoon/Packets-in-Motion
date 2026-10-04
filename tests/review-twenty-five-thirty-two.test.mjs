@@ -8,7 +8,7 @@ const advance=(p,seconds,start=0)=>{for(let t=start;t<=start+seconds*1000;t+=50)
 const quizButton=(p,group)=>el(p,'toc').children.find(b=>b.dataset.q===group);
 
 test('Back and Forward restore chapter position, paused, without adding scrub entries',()=>{
-  const p=loadPage({player:true});p.context.seek(12);const count=p.context.history.length;
+  const p=loadPage({player:true,hash:'#packets'});p.context.seek(12);const count=p.context.history.length;
   for(let i=0;i<10;i++)p.context.seek(i);assert.equal(p.context.history.length,count);
   p.context.seek(12);el(p,'nextBtn').click();assert.equal(p.context.history.length,count+1);p.context.seek(5);
   p.context.history.back();assert.equal(p.context.location.hash,'#packets');assert.match(el(p,'time').textContent,/0:12/);assert.equal(el(p,'playBtn').getAttribute('aria-label'),'Play');
@@ -38,7 +38,7 @@ test('deep links win over Continue and invalid bookmarks cannot poison navigatio
 });
 
 test('lesson ending and seeking never grant completion; explicit completion persists independently of stars',()=>{
-  const p=loadPage({player:true}),c=p.get('chapters')[0];p.context.seek(c.dur-.01);advance(p,.5);
+  const p=loadPage({player:true,hash:'#packets'}),c=p.get('chapters')[0];p.context.seek(c.dur-.01);advance(p,.5);
   assert.equal(p.storage.has('sdve-seen'),false);assert.equal(el(p,'card').open,true);el(p,'cardComplete').click();assert.equal(JSON.parse(p.storage.get('sdve-seen')).packets,1);assert.equal(p.storage.has('pim-stars'),false);
   const q=loadPage({player:true,storage:Object.fromEntries(p.storage)});assert.equal(el(q,'completeBtn').disabled,true);assert.match(el(q,'toc').children.find(b=>+b.dataset.i===0).getAttribute('aria-label'),/completed, 0 of 3 stars/);
 });

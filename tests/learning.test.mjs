@@ -72,7 +72,7 @@ test('glossary: unique terms, full-sentence definitions, every term used somewhe
 
 // ---------- player ----------
 test('search filters chapters, hides empty sections, Enter opens the first match', () => {
-  const p = loadPage({ player: true });
+  const p = loadPage({ player: true, hash: '#packets' });
   const find = p.document.getElementById('find');
   find.value = 'cache';
   find.dispatch('input', { target: find });
@@ -94,7 +94,7 @@ test('search filters chapters, hides empty sections, Enter opens the first match
 });
 
 test('quizzes sit at the end of their section and run in challenge mode', () => {
-  const p = loadPage({ player: true });
+  const p = loadPage({ player: true, hash: '#packets' });
   const toc = p.document.getElementById('toc').children;
   const qz = toc.filter(e => e.className.startsWith('qz'));
   assert.equal(qz.length, Object.keys(QUIZ).length);
@@ -140,7 +140,7 @@ test('glossary terms in captions and the glossary dialog', () => {
 });
 
 test('progress export and import merge, and reject bad files', async () => {
-  const p = loadPage({ player: true });
+  const p = loadPage({ player: true, hash: '#packets' });
   p.context.localStorage.setItem('x', '1');
   const file = { app: 'packets-in-motion', version: 1, seen: { caching: 1, nope: 1 }, stars: { caching: 3, 'quiz-data': 2, 'unknown-challenge': 9 } };
   const input = p.document.getElementById('importFile');
@@ -163,7 +163,7 @@ test('progress export and import merge, and reject bad files', async () => {
 });
 
 test('sound cues are off by default and remembered', () => {
-  const p = loadPage({ player: true });
+  const p = loadPage({ player: true, hash: '#packets' });
   const b = p.document.getElementById('soundBtn');
   assert.equal(b.getAttribute('aria-pressed'), 'false');
   b.click();
