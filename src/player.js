@@ -421,7 +421,8 @@ function tourKey(e){if(e.key==='Escape'){e.preventDefault();endTour();return;}
 $('tourNext').onclick=()=>tourAt<TOUR.length-1?showTourStep(tourAt+1):endTour();
 $('tourBack').onclick=()=>showTourStep(Math.max(0,tourAt-1));$('tourSkip').onclick=endTour;$('tourBtn').onclick=startTour;
 window.addEventListener('resize',placeTour);
-journey=initJourney({progress:()=>({seen,stars}),missionHelp:first=>setTimeout(()=>{if($('missionHelp').open)return;$('mhStart').textContent=first?'Start the first mission':'Got it';openDialog('missionHelp','mhStart');},0),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
+journey=initJourney({progress:()=>({seen,stars}),missionHelp:first=>setTimeout(()=>{if($('missionHelp').open)return;$('mhStart').textContent=first?'Start the first mission':'Got it';
+  $('mhScene').innerHTML=missionScene({maya:'wave',eng:'type',say:"Hi, I'm Maya! I run TownSquare, a little app that helps neighbors find local events. Things are about to get busy. Will you be our engineer?",reply:'Happy to help. Show me the first brief.'});openDialog('missionHelp','mhStart');},0),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));
 // a shared lab design: ?lab=<id>&d=<design> opens that lab with the design on the board
