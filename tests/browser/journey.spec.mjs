@@ -24,12 +24,14 @@ test('the map shows completion, practice and open prerequisites, while the list 
   await go(page,'navHome');if(info.project.name==='touch-portrait')await go(page,'menuBtn');
   await page.locator('#find').fill('sharding');await page.locator('#toc').getByRole('button',{name:/16\. Sharding/}).click();await expect(page).toHaveURL(/#sharding$/);await expect(page.locator('#lessonView')).toBeVisible();
 });
-test('interactive introduction exposes overload, idle app and balanced recovery without a timer',async({page})=>{
-  await page.goto('/#intro');await expect(page.locator('.j-metrics')).toContainText('80');
+test('interactive introduction explains system design, then shows overload, idle app and balanced recovery without a timer',async({page})=>{
+  await page.goto('/#intro');await expect(page.locator('#journeyTitle')).toHaveText('What is system design?');await expect(page.locator('#jIntroStep')).toHaveText('Every app you use is a system.');await expect(page.locator('.j-what')).toBeVisible();await expect(page.locator('.j-metrics')).toHaveCount(0);
+  await go(page,'jIntroNext');await expect(page.locator('.j-metrics')).toContainText('80');
   await go(page,'jIntroNext');await expect(page.locator('.j-metrics')).toContainText('160');
   await go(page,'jIntroNext');await expect(page.locator('.j-loads')).toContainText('App 2 · 0 / 200');
-  await page.locator('#jIntroNext').focus();await page.keyboard.press('Enter');await expect(page.locator('#jIntroStep')).toHaveText('Now the work is shared.');await expect(page.locator('#jIntroStep')).toBeFocused();
-  expect((await stored(page)).intro).toBe(true);await expect(page.locator('.j-loads')).toContainText('App 2 · 180 / 200');await go(page,'jIntroReset');await expect(page.locator('#jIntroStep')).toHaveText('A quiet morning.');
+  await go(page,'jIntroNext');await expect(page.locator('#jIntroStep')).toHaveText('Now the work is shared.');await expect(page.locator('.j-loads')).toContainText('App 2 · 180 / 200');
+  await page.locator('#jIntroNext').focus();await page.keyboard.press('Enter');await expect(page.locator('#jIntroStep')).toHaveText('That was system design.');await expect(page.locator('#jIntroStep')).toBeFocused();await expect(page.locator('.j-recap li')).toHaveCount(3);await expect(page.locator('.j-why li')).toHaveCount(4);
+  expect((await stored(page)).intro).toBe(true);await go(page,'jIntroReset');await expect(page.locator('#jIntroStep')).toHaveText('Every app you use is a system.');
 });
 test('quizzes open their visible challenge, and Back returns Home',async({page},info)=>{
   await page.goto('/');if(info.project.name==='touch-portrait')await go(page,'menuBtn');
@@ -73,10 +75,12 @@ test('Home shows only Start learning for a newcomer, then only Continue learning
   await expect(page.locator('#jStart')).toHaveCount(0);
 });
 test('the introduction animates the overload and ends with a clear next lesson',async({page})=>{
-  await page.goto('/#intro');await expect(page.locator('#journeyTitle')).toHaveText('Your app suddenly gets popular.');
+  await page.goto('/#intro');await expect(page.locator('#journeyTitle')).toHaveText('What is system design?');await expect(page.locator('.j-what .j-flow circle')).toHaveCount(8);
+  await go(page,'jIntroNext');
   await go(page,'jIntroNext');await expect(page.locator('.j-intro-diagram .j-node-over')).toHaveCount(1);await expect(page.locator('.j-tag-over')).toContainText('OVERLOADED');expect(await page.locator('.j-flow circle').count()).toBeGreaterThan(0);
   await go(page,'jIntroNext');await expect(page.locator('.j-tag-idle')).toContainText('IDLE');
   await go(page,'jIntroNext');await expect(page.locator('.j-intro-diagram .j-node-over')).toHaveCount(0);await expect(page.locator('.j-intro-diagram .j-node-ok')).toHaveCount(2);
+  await go(page,'jIntroNext');await expect(page.locator('#jIntroStep')).toHaveText('That was system design.');
   await expect(page.locator('#jIntroLesson')).toHaveText(/^Start your first lesson: How Computers Talk/);await expect(page.locator('#jIntroBalancer')).toHaveCount(0);await expect(page.locator('.j-intro-next')).toContainText('starting with How Computers Talk');await go(page,'jIntroLesson');await expect(page).toHaveURL(/#packets$/);await expect(page.locator('#lessonView')).toBeVisible();
 });
 test('the map marks where you are: the paused lesson, otherwise the route\u2019s next lesson',async({page})=>{
