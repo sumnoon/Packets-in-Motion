@@ -77,7 +77,7 @@ test('the introduction animates the overload and ends with a clear next lesson',
   await go(page,'jIntroNext');await expect(page.locator('.j-intro-diagram .j-node-over')).toHaveCount(1);await expect(page.locator('.j-tag-over')).toContainText('OVERLOADED');expect(await page.locator('.j-flow circle').count()).toBeGreaterThan(0);
   await go(page,'jIntroNext');await expect(page.locator('.j-tag-idle')).toContainText('IDLE');
   await go(page,'jIntroNext');await expect(page.locator('.j-intro-diagram .j-node-over')).toHaveCount(0);await expect(page.locator('.j-intro-diagram .j-node-ok')).toHaveCount(2);
-  await expect(page.locator('#jIntroLesson')).toHaveText('Next lesson: Load Balancers →');await go(page,'jIntroLesson');await expect(page).toHaveURL(/#load-balancers$/);await expect(page.locator('#lessonView')).toBeVisible();
+  await expect(page.locator('#jIntroLesson')).toHaveText(/^Start your first lesson: How Computers Talk/);await expect(page.locator('#jIntroBalancer')).toHaveCount(0);await expect(page.locator('.j-intro-next')).toContainText('starting with How Computers Talk');await go(page,'jIntroLesson');await expect(page).toHaveURL(/#packets$/);await expect(page.locator('#lessonView')).toBeVisible();
 });
 test('the map marks where you are: the paused lesson, otherwise the route\u2019s next lesson',async({page})=>{
   await page.goto('/#map');await expect(page.locator('li.j-here a.j-map-lesson')).toHaveAttribute('href','#packets');await expect(page.locator('li.j-here')).toContainText('You are here');await expect(page.locator('li.j-here')).toHaveCount(1);
