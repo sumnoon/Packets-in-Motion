@@ -35,9 +35,10 @@ draw(t){
     const y=lerp(PH[1],206+k*62,sp);draw(PH[0],y,{a:sp},()=>{rr(-42,-22,84,44,8);g.fillStyle=C.panel2;g.fill();g.strokeStyle=hexA(C.blue,.8);g.lineWidth=1.8;g.stroke();tx(`#${n}`,0,1,{z:15,wt:800,c:C.blue});});}
   if(t>4.4&&t<11)pill('split into 4 packets',PH[0],470,{c:C.blue,z:12.5,a:V(t,4.4,10.6)});
   // what a packet carries
-  const la=A(t,6.3,11.3);draw(560,300,la,()=>{rr(-175,-86,350,172,14);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.blue;g.lineWidth=2;g.stroke();
+  // wide enough that the longest value (the IP address) and its note never meet
+  const la=A(t,6.3,11.3);draw(560,300,la,()=>{rr(-210,-86,420,172,14);g.fillStyle=C.panel;g.fill();g.strokeStyle=C.blue;g.lineWidth=2;g.stroke();
     [['to',  '93.184.216.34','IP address: which computer'],['port','443','which program (door)'],['from','10.0.0.7','so replies can find you'],['piece','#1 of 4','so pieces can be re-ordered']]
-      .forEach(([k,v,s],i)=>{tx(k,-155,-54+i*36,{z:12,c:C.dim,al:'left'});tx(v,-95,-54+i*36,{z:15,wt:750,f:MONO,al:'left',c:C.blue});tx(s,155,-54+i*36,{z:11.5,c:C.dim,al:'right'});});});
+      .forEach(([k,v,s],i)=>{tx(k,-190,-54+i*36,{z:12,c:C.dim,al:'left'});tx(v,-134,-54+i*36,{z:15,wt:750,f:MONO,al:'left',c:C.blue});tx(s,190,-54+i*36,{z:11.5,c:C.dim,al:'right'});});});
   // travel
   SENT.forEach(s=>pk(t,s.t0,s.d,s.path,C.blue,{label:`#${s.n}`,r:6}));
   const lostPath=[atLaptop('a'),R.a,R.d];pk(t,13.6,1.6,lostPath,C.blue,{label:'#3',r:6});drop(t,15.2,R.d[0],R.d[1],{label:'lost!'});
