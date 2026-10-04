@@ -119,6 +119,7 @@ The ID lesson distinguishes sequences that allow gaps, transactional business-nu
 - **Before this / Related:** the trade-offs card links to the chapters a lesson builds on and the ones that go further.
 - **Export / import progress** from the sidebar. Progress (chapters completed, stars, lab drafts, your cheapest saved lab designs and chaos-proof badges) lives in your browser, so this is how you move it to another browser or keep a backup. Importing merges: nothing you have already earned is lost, and an existing draft is kept. Both original version 1 files and the new version 2 files are supported. Files are limited to 1 MB; invalid supported records or design schemas reject the whole import before merging, and unknown course records are reported as ignored.
 - **Sound cues** (off by default): soft tones for right and wrong moves, new steps and results. They are synthesized in the browser; nothing is downloaded.
+- **Background music** (off by default; press M or use the sidebar button): a slow ambient score of warm pads, a soft bass and a few plucked notes that never repeat exactly, synthesized in the browser like the sound cues. Lessons and the hub stay calm; a running challenge adds a gentle pulse. A volume slider appears when it is on, your choice is remembered, and the music fades out while the tab is hidden.
 
 ## Visual language
 
@@ -142,6 +143,7 @@ The project logo traces a **P** with a routing path and two traveling packets, u
 | F | Fullscreen |
 | / | Search chapters |
 | G | Glossary |
+| M | Background music on / off |
 
 In a challenge, number keys (or letters, in the put-in-order games) do everything the mouse does; each target on the stage shows its key.
 

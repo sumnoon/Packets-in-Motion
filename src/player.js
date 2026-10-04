@@ -176,14 +176,14 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
 function disposeChallenge(){cancelPointer();challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
 function labLayout(v){const hint=$('cHintBtn');$('cpanel').querySelector('.cbar').appendChild(hint);$('labIntro').hidden=!v;$('labActions').hidden=!v;$('labActions').innerHTML='';(v?$('labIntro'):$('cpanel')).prepend($('cBrief'));if(v)$('labActions').appendChild(hint);}
-function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();hub=null;$('journey').hidden=true;$('lessonView').hidden=false;$('resume').hidden=true;syncHubNav();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');labLayout(!!LAB_DEFS[c.id]&&!gname);
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();hub=null;$('journey').hidden=true;$('lessonView').hidden=false;$('resume').hidden=true;syncHubNav();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');MUSIC.setMood('focus');labLayout(!!LAB_DEFS[c.id]&&!gname);
   $('diagramEdit').hidden=false;syncDiagramEditing();
   challengeReady=!!LAB_DEFS[c.id]&&!gname;challengePaused=false;$('cStart').hidden=challengeReady;$('cPause').hidden=!challengeReady;$('cPause').textContent='Pause challenge';$('cPause').setAttribute('aria-pressed','false');
   $('cTimingLabel').hidden=!d.timed;$('cTiming').value=practiceTimed?'timed':'untimed';$('cTiming').disabled=false;
   $('cTitle').textContent=d.title;$('cGoal').textContent=!practiceTimed&&d.untimedGoal?d.untimedGoal:d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();try{inst=d.make(api);}catch(e){failRender(e);}$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
   $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();resize();}
-function exitChal(quiet){disposeChallenge();labLayout(false);clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;mode='watch';if(wasQuiz&&!quiet){heading();markToc();}capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet){saveRoute();render();}}
+function exitChal(quiet){disposeChallenge();MUSIC.setMood('calm');labLayout(false);clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;mode='watch';if(wasQuiz&&!quiet){heading();markToc();}capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet){saveRoute();render();}}
 function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
   $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
@@ -235,7 +235,7 @@ window.addEventListener('keydown',e=>{const dialog=[$('glossary'),$('card'),$('r
   if(e.target===$('stage')&&$('stage').classList.contains('readable')&&/^(?:Arrow(?:Left|Right|Up|Down)|PageUp|PageDown|Home|End| )$/.test(e.key))return;
   if(!$('main').contains(e.target))return;
   if(e.ctrlKey||e.metaKey||e.altKey){if(mode==='play'&&e.target===cv&&(e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='z'&&inst&&inst.key&&challengeInput()){e.preventDefault();inst.key(e.key,ct,e);}return;}
-  if(!shortcuts)return;if(hub){if(e.key==='/'){e.preventDefault();setMenu(true);$('find').focus();}else if(e.key==='g'||e.key==='G')openGlossary();return;}const c=chapters[cur];
+  if(!shortcuts)return;if((e.key==='m'||e.key==='M')&&mode!=='play'){setMusic(!MUSIC.on);return;}if(hub){if(e.key==='/'){e.preventDefault();setMenu(true);$('find').focus();}else if(e.key==='g'||e.key==='G')openGlossary();return;}const c=chapters[cur];
   if(mode!=='play'&&(e.target.tagName==='BUTTON'||e.target.tagName==='A')&&(e.key===' '||e.key==='Enter'))return;   // the focused control handles it
   if(mode==='play'){if(e.key==='Escape'){if($('result').classList.contains('show'))hideResult();else exitChal();}
     else if(e.key===']')load(cur+1,true);else if(e.key==='[')load(cur-1,true);
@@ -382,8 +382,15 @@ $('importFile').onchange=async e=>{const file=e.target.files&&e.target.files[0];
 /* ---------------- sound cues ---------------- */
 function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',String(v));$('soundBtn').textContent='Sound cues: '+(v?'on':'off');store.set('pim-sound',v?'1':'0');}
 $('soundBtn').onclick=()=>{setSound(!SFX.on);SFX.play('good');};
+// background music: a remembered choice, off by default, with its own volume
+function setMusic(v){MUSIC.enable(v);$('musicBtn').setAttribute('aria-pressed',String(v));$('musicBtn').textContent='Music: '+(v?'on':'off');$('musicVolWrap').hidden=!v;store.set('pim-music',v?'1':'0');}
+$('musicBtn').onclick=()=>setMusic(!MUSIC.on);
+$('musicVol').oninput=e=>{MUSIC.setVolume(e.target.value/100);store.set('pim-music-vol',String(e.target.value));};
+// browsers start audio suspended until the viewer interacts; the first tap or key resumes it
+['pointerdown','keydown'].forEach(t=>window.addEventListener(t,()=>MUSIC.unlock(),{capture:true}));
+document.addEventListener('visibilitychange',()=>MUSIC.visibility());
 
-setSound(store.get('pim-sound')==='1');hideTip();
+setSound(store.get('pim-sound')==='1');{const v=Number(store.get('pim-music-vol'));const vol=Number.isFinite(v)&&v>=0&&v<=100&&store.get('pim-music-vol')!==null?v:50;$('musicVol').value=String(vol);MUSIC.setVolume(vol/100);}setMusic(store.get('pim-music')==='1');hideTip();
 journey=initJourney({progress:()=>({seen,stars}),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));

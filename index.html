@@ -205,6 +205,7 @@ body.play .transcript{display:none}
 .share-link label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--dim)}
 .share-link input{width:100%;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--text);font:inherit}
 .btn.tg[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
+.music-vol{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--dim)}.music-vol[hidden]{display:none}.music-vol input{flex:1;min-width:0;accent-color:var(--accent)}
 .prog-io{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dim)}
 .prog-io span{margin-right:auto}
 .io-msg{margin:0;font-size:12px;color:var(--dim);min-height:1em}
@@ -430,6 +431,8 @@ body.play .stage.editing canvas{touch-action:none}
       <button class="btn sm" id="glossBtn" title="Glossary (G)">Glossary</button>
       <button class="btn sm tg" id="shortcutsBtn" aria-pressed="true">Keyboard shortcuts: on</button>
       <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button>
+      <button class="btn sm tg" id="musicBtn" aria-pressed="false" title="Background music (M)">Music: off</button>
+      <label class="music-vol" id="musicVolWrap" hidden>Music volume <input type="range" id="musicVol" min="0" max="100" step="5" value="50"></label>
       <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
       <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
       <p class="io-msg" id="ioMsg" role="status"></p>
@@ -497,7 +500,7 @@ body.play .stage.editing canvas{touch-action:none}
         <span><i style="background:var(--green);box-shadow:0 0 8px var(--green)"></i>Success / response</span>
         <span><i style="background:var(--red);box-shadow:0 0 8px var(--red)"></i>Failure</span>
         <span><i style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></i>Cached / queued</span>
-        <span class="keys">Focus the lesson for shortcuts · Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary</span>
+        <span class="keys">Focus the lesson for shortcuts · Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary · M music</span>
       </div>
       </div>
     </div>
@@ -3528,6 +3531,62 @@ function simGame(o){return api=>{
     down(x,y,now){sim.down&&sim.down(x,y,now,running);},move(x,y){sim.move&&sim.move(x,y);},up(x,y,now){sim.up&&sim.up(x,y,now);},
     key(k,now){sim.key&&sim.key(k,now,running);}};
 };}
+/* ---------------- background music (off until the viewer turns it on) ----------------
+   A slow generative ambient score, synthesized in the browser like the sound cues: nothing is
+   downloaded. Warm pads move through a four-chord loop over a soft bass, and a few plucked notes
+   from A minor pentatonic drift over each bar, picked fresh every time so the music never loops
+   exactly. Lessons and the learning hub stay calm; a running challenge adds a gentle pulse and a
+   slightly brighter tone ("focus"). The music fades out while the tab is hidden. */
+const MUSIC={
+  on:false,vol:.5,mood:'calm',ctx:null,out:null,bus:null,tone:null,timer:null,next:0,bar:0,seed:1,
+  BAR:8,                                              // seconds per chord: eight slow beats
+  // MIDI notes: pad voicing and bass for Fmaj7, G6, Em7, Am9
+  CHORDS:[{pad:[53,57,60,64],bass:41},{pad:[55,59,62,64],bass:43},{pad:[52,55,59,62],bass:40},{pad:[57,60,64,71],bass:45}],
+  SCALE:[69,72,74,76,79,81],                          // A minor pentatonic, A4 to A5
+  hz:m=>440*Math.pow(2,(m-69)/12),
+  // music has its own small random source, so it can never disturb the course's seeded randomness
+  rand(){this.seed=(this.seed*1664525+1013904223)>>>0;return this.seed/4294967296;},
+  // the shared output chain: score bus → warm low-pass → dry + generated reverb → volume
+  chain(ctx){const out=ctx.createGain(),bus=ctx.createGain(),tone=ctx.createBiquadFilter(),verb=ctx.createConvolver(),wet=ctx.createGain(),dry=ctx.createGain();
+    tone.type='lowpass';tone.frequency.value=1800;tone.Q.value=.4;
+    const len=Math.floor(ctx.sampleRate*3.2),ir=ctx.createBuffer(2,len,ctx.sampleRate);
+    for(let c=0;c<2;c++){const d=ir.getChannelData(c);for(let i=0;i<len;i++)d[i]=(this.rand()*2-1)*Math.pow(1-i/len,2.6);}
+    verb.buffer=ir;wet.gain.value=.55;dry.gain.value=.7;
+    bus.connect(tone);tone.connect(dry);tone.connect(verb);verb.connect(wet);dry.connect(out);wet.connect(out);out.connect(ctx.destination);
+    return {out,bus,tone};},
+  // one note with an envelope: a slow swell for pads and bass, a quick pluck for melody
+  note(ctx,dest,m,t,dur,o){const osc=ctx.createOscillator(),g=ctx.createGain();osc.type=o.type||'sine';osc.frequency.value=this.hz(m);if(o.cents)osc.detune.value=o.cents;
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(o.vol,t+o.attack);
+    if(o.pluck)g.gain.exponentialRampToValueAtTime(.0001,t+dur);else{g.gain.setValueAtTime(o.vol,t+dur-o.release);g.gain.linearRampToValueAtTime(0,t+dur);}
+    osc.connect(g);g.connect(dest);osc.start(t);osc.stop(t+dur+.05);},
+  // everything that plays during one chord, starting at time t
+  scheduleBar(ctx,bus,t,bar,mood){const B=this.BAR,ch=this.CHORDS[bar%this.CHORDS.length],beat=B/8;
+    // pads overlap the next chord by a breath so the changes stay smooth
+    ch.pad.forEach(m=>{this.note(ctx,bus,m,t,B+1.6,{type:'triangle',vol:.035,attack:2.6,release:2.2});this.note(ctx,bus,m,t,B+1.6,{vol:.028,attack:3,release:2.4,cents:6});});
+    this.note(ctx,bus,ch.bass,t,B+.8,{vol:.1,attack:1.2,release:1.8});
+    // two to four plucked notes on half beats, never two at once
+    const n=2+Math.floor(this.rand()*3),slots=new Set();
+    while(slots.size<n)slots.add(1+Math.floor(this.rand()*13));
+    [...slots].sort((a,b)=>a-b).forEach(s=>{const m=this.SCALE[Math.floor(this.rand()*this.SCALE.length)];this.note(ctx,bus,m,t+s*beat/2,2.4,{vol:.075,attack:.006,pluck:true});this.note(ctx,bus,m+12,t+s*beat/2,1.2,{vol:.012,attack:.006,pluck:true,type:'triangle'});});
+    // focus: a soft heartbeat on every beat, an octave above the bass
+    if(mood==='focus')for(let k=0;k<8;k++)this.note(ctx,bus,ch.bass+12,t+k*beat,.45,{vol:k%2?.035:.06,attack:.01,pluck:true});},
+  tick(){if(!this.on||!this.ctx)return;const ctx=this.ctx;
+    if(this.next<ctx.currentTime)this.next=ctx.currentTime+.1;
+    while(this.next<ctx.currentTime+1.5){this.scheduleBar(ctx,this.bus,this.next,this.bar++,this.mood);this.next+=this.BAR;}
+    this.timer=setTimeout(()=>this.tick(),400);},
+  level(){return this.on&&!document.hidden?this.vol*1.1:0;},
+  fade(to,secs){if(!this.out)return;const g=this.out.gain,t=this.ctx.currentTime;g.cancelScheduledValues(t);g.setValueAtTime(g.value,t);g.linearRampToValueAtTime(to,t+secs);},
+  // turn on (the browser may keep audio suspended until the next tap or key; unlock() resumes it)
+  enable(v){this.on=!!v;clearTimeout(this.timer);this.timer=null;
+    if(!v){this.fade(0,.6);return;}
+    if(!this.ctx){const A=window.AudioContext||window.webkitAudioContext;if(!A)return;this.ctx=SFX.ctx||new A();SFX.ctx=SFX.ctx||this.ctx;this.seed=(Date.now()>>>0)||1;Object.assign(this,this.chain(this.ctx));this.out.gain.value=0;}
+    this.unlock();this.setMood(this.mood);this.fade(this.level(),2.5);this.next=0;this.tick();},
+  unlock(){if(this.ctx&&this.ctx.state==='suspended')this.ctx.resume().catch(()=>{});},
+  setVolume(v){this.vol=Math.min(1,Math.max(0,+v||0));if(this.on)this.fade(this.level(),.25);},
+  setMood(m){this.mood=m==='focus'?'focus':'calm';if(this.tone){const f=this.tone.frequency,t=this.ctx.currentTime;f.cancelScheduledValues(t);f.setValueAtTime(f.value,t);f.linearRampToValueAtTime(this.mood==='focus'?2600:1800,t+3);}},
+  // a hidden tab fades out and stops scheduling; coming back fades in where it left off
+  visibility(){if(!this.on||!this.ctx)return;if(document.hidden){clearTimeout(this.timer);this.timer=null;this.fade(0,.4);}else{this.fade(this.level(),1.5);if(!this.timer){this.next=0;this.tick();}}}
+};
 /* ============================================================
    ARCHITECTURE LAB: build the system yourself, then load-test it.
    Drag components from the palette onto the board, drag from a
@@ -5906,14 +5965,14 @@ function makeApi(){const ctl=$('cCtl'),run=$('cRun'),els=[],timers=new Set(),tok
 function disposeChallenge(){cancelPointer();challengeToken++;if(api&&api.dispose)api.dispose();if(inst&&inst.dispose)inst.dispose();inst=null;api=null;pdown=null;}
 function startQuiz(gname){if(!QUIZ[gname])return;startChal(gname);}
 function labLayout(v){const hint=$('cHintBtn');$('cpanel').querySelector('.cbar').appendChild(hint);$('labIntro').hidden=!v;$('labActions').hidden=!v;$('labActions').innerHTML='';(v?$('labIntro'):$('cpanel')).prepend($('cBrief'));if(v)$('labActions').appendChild(hint);}
-function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();hub=null;$('journey').hidden=true;$('lessonView').hidden=false;$('resume').hidden=true;syncHubNav();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');labLayout(!!LAB_DEFS[c.id]&&!gname);
+function startChal(gname){const c=chapters[cur],d=gname?QUIZ[gname]:CHAL[c.id];if(!d)return;rememberLesson();hub=null;$('journey').hidden=true;$('lessonView').hidden=false;$('resume').hidden=true;syncHubNav();disposeChallenge();quizG=gname||null;setPlaying(false);showCard(false);hideResult();clearRenderFault();mode='play';document.body.classList.add('play');MUSIC.setMood('focus');labLayout(!!LAB_DEFS[c.id]&&!gname);
   $('diagramEdit').hidden=false;syncDiagramEditing();
   challengeReady=!!LAB_DEFS[c.id]&&!gname;challengePaused=false;$('cStart').hidden=challengeReady;$('cPause').hidden=!challengeReady;$('cPause').textContent='Pause challenge';$('cPause').setAttribute('aria-pressed','false');
   $('cTimingLabel').hidden=!d.timed;$('cTiming').value=practiceTimed?'timed':'untimed';$('cTiming').disabled=false;
   $('cTitle').textContent=d.title;$('cGoal').textContent=!practiceTimed&&d.untimedGoal?d.untimedGoal:d.goal;$('cHint').hidden=true;$('cHint').textContent='Hint: '+d.hint;$('cStatus').textContent='';
   FX.clear();ct=0;api=makeApi();try{inst=d.make(api);}catch(e){failRender(e);}$('cHintBtn').textContent=inst&&inst.hintLabel?inst.hintLabel():'Hint';$('chalBtn').setAttribute('aria-pressed','true');$('chalBtn').textContent='★ Challenge (on)';cv.setAttribute('aria-label',`${quizG?'Quiz':'Challenge'}: ${d.title}. ${d.goal}`);
   $('cTag').textContent=quizG?'Quiz':'Challenge';$('cBack').textContent=quizG?'Back to the lessons':'Back to lesson';heading();markToc();resize();}
-function exitChal(quiet){disposeChallenge();labLayout(false);clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;mode='watch';if(wasQuiz&&!quiet){heading();markToc();}capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet){saveRoute();render();}}
+function exitChal(quiet){disposeChallenge();MUSIC.setMood('calm');labLayout(false);clearRenderFault();$('diagramEdit').hidden=true;const wasQuiz=quizG;quizG=null;mode='watch';if(wasQuiz&&!quiet){heading();markToc();}capIdx=-1;document.body.classList.remove('play');hideResult();FX.clear();$('chalBtn').setAttribute('aria-pressed','false');$('chalBtn').textContent='★ Challenge';if(!quiet){saveRoute();render();}}
 function showResult(st,title,msg,id,token){if(!Number.isInteger(st)||st<0||st>3)return;const c=chapters[cur];if(st>(stars[id]||0)){stars[id]=st;store.set('pim-stars',JSON.stringify(stars));updStars();markToc();}
   const all=allIds().every(id=>stars[id]===3);SFX.play('win',st);
   $('resStars').innerHTML=[0,1,2].map(i=>`<i class="${i<st?'on':''}" style="--i:${i}">★</i>`).join('');$('resTitle').textContent=title;
@@ -5965,7 +6024,7 @@ window.addEventListener('keydown',e=>{const dialog=[$('glossary'),$('card'),$('r
   if(e.target===$('stage')&&$('stage').classList.contains('readable')&&/^(?:Arrow(?:Left|Right|Up|Down)|PageUp|PageDown|Home|End| )$/.test(e.key))return;
   if(!$('main').contains(e.target))return;
   if(e.ctrlKey||e.metaKey||e.altKey){if(mode==='play'&&e.target===cv&&(e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='z'&&inst&&inst.key&&challengeInput()){e.preventDefault();inst.key(e.key,ct,e);}return;}
-  if(!shortcuts)return;if(hub){if(e.key==='/'){e.preventDefault();setMenu(true);$('find').focus();}else if(e.key==='g'||e.key==='G')openGlossary();return;}const c=chapters[cur];
+  if(!shortcuts)return;if((e.key==='m'||e.key==='M')&&mode!=='play'){setMusic(!MUSIC.on);return;}if(hub){if(e.key==='/'){e.preventDefault();setMenu(true);$('find').focus();}else if(e.key==='g'||e.key==='G')openGlossary();return;}const c=chapters[cur];
   if(mode!=='play'&&(e.target.tagName==='BUTTON'||e.target.tagName==='A')&&(e.key===' '||e.key==='Enter'))return;   // the focused control handles it
   if(mode==='play'){if(e.key==='Escape'){if($('result').classList.contains('show'))hideResult();else exitChal();}
     else if(e.key===']')load(cur+1,true);else if(e.key==='[')load(cur-1,true);
@@ -6112,8 +6171,15 @@ $('importFile').onchange=async e=>{const file=e.target.files&&e.target.files[0];
 /* ---------------- sound cues ---------------- */
 function setSound(v){SFX.enable(v);$('soundBtn').setAttribute('aria-pressed',String(v));$('soundBtn').textContent='Sound cues: '+(v?'on':'off');store.set('pim-sound',v?'1':'0');}
 $('soundBtn').onclick=()=>{setSound(!SFX.on);SFX.play('good');};
+// background music: a remembered choice, off by default, with its own volume
+function setMusic(v){MUSIC.enable(v);$('musicBtn').setAttribute('aria-pressed',String(v));$('musicBtn').textContent='Music: '+(v?'on':'off');$('musicVolWrap').hidden=!v;store.set('pim-music',v?'1':'0');}
+$('musicBtn').onclick=()=>setMusic(!MUSIC.on);
+$('musicVol').oninput=e=>{MUSIC.setVolume(e.target.value/100);store.set('pim-music-vol',String(e.target.value));};
+// browsers start audio suspended until the viewer interacts; the first tap or key resumes it
+['pointerdown','keydown'].forEach(t=>window.addEventListener(t,()=>MUSIC.unlock(),{capture:true}));
+document.addEventListener('visibilitychange',()=>MUSIC.visibility());
 
-setSound(store.get('pim-sound')==='1');hideTip();
+setSound(store.get('pim-sound')==='1');{const v=Number(store.get('pim-music-vol'));const vol=Number.isFinite(v)&&v>=0&&v<=100&&store.get('pim-music-vol')!==null?v:50;$('musicVol').value=String(vol);MUSIC.setVolume(vol/100);}setMusic(store.get('pim-music')==='1');hideTip();
 journey=initJourney({progress:()=>({seen,stars}),lesson:id=>{load(chapters.findIndex(c=>c.id===id),true);cv.focus();},practice:id=>{load(chapters.findIndex(c=>c.id===id),false);startChal();($('cStart').hidden?$('cPause'):$('cStart')).focus();}});
 setCC(captions);setTranscript(store.get('pim-tr')==='1');setTheme(store.get('pim-theme')||(matchMedia('(prefers-contrast: more)').matches?'contrast':'dark'));updProg();updStars();
 const startQ=quizFor(location.hash),start=startQ?firstOf(startQ):Math.max(0,chapters.findIndex(c=>'#'+c.id===location.hash));

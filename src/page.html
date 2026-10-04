@@ -39,6 +39,8 @@
       <button class="btn sm" id="glossBtn" title="Glossary (G)">Glossary</button>
       <button class="btn sm tg" id="shortcutsBtn" aria-pressed="true">Keyboard shortcuts: on</button>
       <button class="btn sm tg" id="soundBtn" aria-pressed="false">Sound cues: off</button>
+      <button class="btn sm tg" id="musicBtn" aria-pressed="false" title="Background music (M)">Music: off</button>
+      <label class="music-vol" id="musicVolWrap" hidden>Music volume <input type="range" id="musicVol" min="0" max="100" step="5" value="50"></label>
       <label class="theme">Theme <select id="theme"><option value="dark">Dark</option><option value="light">Light</option><option value="contrast">High contrast</option></select></label>
       <div class="prog-io"><span>Your progress</span><button class="btn sm" id="exportBtn">Export</button><button class="btn sm" id="importBtn">Import</button><input type="file" id="importFile" accept="application/json,.json" hidden></div>
       <p class="io-msg" id="ioMsg" role="status"></p>
@@ -106,7 +108,7 @@
         <span><i style="background:var(--green);box-shadow:0 0 8px var(--green)"></i>Success / response</span>
         <span><i style="background:var(--red);box-shadow:0 0 8px var(--red)"></i>Failure</span>
         <span><i style="background:var(--amber);box-shadow:0 0 8px var(--amber)"></i>Cached / queued</span>
-        <span class="keys">Focus the lesson for shortcuts · Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary</span>
+        <span class="keys">Focus the lesson for shortcuts · Space play · ←/→ seek · [ ] chapters · C captions · S transcript · P challenge · / search · G glossary · M music</span>
       </div>
       </div>
     </div>
@@ -237,6 +239,7 @@
 </script>
 <script>
 <!-- include: challenges/_mechanics.js -->
+<!-- include: music.js -->
 <!-- include: challenges/_lab.js -->
 
 <!-- include: challenges/packets.js -->
