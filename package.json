@@ -9,8 +9,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "node scripts/build-characters.mjs && node scripts/build.mjs",
-    "check": "node scripts/build-characters.mjs --check && node scripts/build.mjs --check",
+    "build": "node scripts/build-characters.mjs && node scripts/build-mission-art.mjs && node scripts/build.mjs",
+    "check": "node scripts/build-characters.mjs --check && node scripts/build-mission-art.mjs --check && node scripts/build.mjs --check",
     "test": "node --test \"tests/*.test.mjs\"",
     "test:browser": "playwright test"
   },
