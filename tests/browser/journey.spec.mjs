@@ -110,8 +110,8 @@ test('Settings opens from the top navigation without scrolling, on Home and in a
     await page.keyboard.press('Escape');await expect(page.locator('#settings')).toBeHidden();await page.evaluate(()=>localStorage.setItem('pim-theme','dark'));}
 });
 test('Maya tells each mission\u2019s story and reacts to your result, with you beside the rack',async({page})=>{
-  await page.goto('/#missions');await expect(page.locator('.j-brief .mc-maya')).toBeVisible();await expect(page.locator('.j-brief .m-bubble-maya')).toContainText('We launch TownSquare tomorrow');
-  await go(page,'jTest');await expect(page.locator('#jMissionResult .mc-maya.mc-worried')).toBeVisible();await expect(page.locator('#jMissionResult .m-rack-fail')).toBeVisible();await expect(page.locator('#jMissionResult .m-bubble-maya')).toContainText('turned away');
-  await solveLaunch(page);await expect(page.locator('#jMissionResult .mc-maya.mc-celebrate')).toBeVisible();await expect(page.locator('#jMissionResult .m-bubble-maya')).toContainText('Launch day is a success');
+  await page.goto('/#missions');await expect(page.locator('.j-brief .mc-maya')).toBeVisible();await expect(page.locator('.j-brief .m-bubble-maya')).toContainText('We launch TownSquare tomorrow');await expect(page.locator('.j-brief .j-postcard svg')).toBeVisible();
+  await go(page,'jTest');await expect(page.locator('#jMissionResult .mc-maya.mc-worried')).toBeVisible();await expect(page.locator('#jMissionResult .m-rack-fail')).toBeVisible();await expect(page.locator('#jMissionResult .m-fx-sweat')).toBeVisible();await expect(page.locator('#jMissionResult .m-fx-alert')).toBeVisible();await expect(page.locator('#jMissionResult .m-bubble-maya')).toContainText('turned away');
+  await solveLaunch(page);await expect(page.locator('#jMissionResult .mc-maya.mc-celebrate')).toBeVisible();await expect(page.locator('#jMissionResult .m-confetti svg')).toHaveCount(14);await expect(page.locator('#jMissionResult .m-fx-sparkle')).toBeVisible();expect(await page.evaluate(()=>{const ids=[...document.querySelectorAll('[id]')].map(e=>e.id);return ids.length===new Set(ids).size;})).toBe(true);await expect(page.locator('#jMissionResult .m-bubble-maya')).toContainText('Launch day is a success');
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
 });

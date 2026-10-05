@@ -98,3 +98,13 @@ test('mission characters: every pose draws, lines are escaped, and each mission 
   assert.doesNotMatch(scene({say:'hi'}),/m-bubble-you/,'no reply bubble unless there is a reply');
   for(const m of missions){assert.ok(poses.maya.includes(m.pose),m.id);assert.ok(m.story.length>40&&m.win.length>20,m.id);}
 });
+test('mission art: decorative inline SVG with no ids, a postcard per mission, and effects that match the mood',()=>{
+  const art=page.get('MISSION_ART'),scene=page.get('missionScene'),missions=page.get('JOURNEY_MISSIONS');
+  for(const [name,svg] of Object.entries(art)){assert.match(svg,/^<svg [^>]*aria-hidden="true"/,name);assert.doesNotMatch(svg,/ id=|<title|inkscape:|undefined|NaN/,name);}
+  for(const m of missions)assert.ok(art['postcard-'+m.postcard],m.id);
+  const win=scene({maya:'celebrate',eng:'celebrate',say:'yes',mood:'win'}),fail=scene({maya:'worried',eng:'point',rack:'fail',say:'no',mood:'fail'});
+  assert.equal((win.match(/m-confetti/g)||[]).length,1);assert.match(win,/m-fx-sparkle/);assert.doesNotMatch(win,/m-fx-sweat|m-fx-alert/);
+  assert.match(fail,/m-fx-sweat/);assert.match(fail,/m-fx-alert/);assert.doesNotMatch(fail,/m-confetti|m-fx-sparkle/);
+  assert.doesNotMatch(scene({say:'calm'}),/m-fx|m-confetti/,'a calm scene has no effects');
+  assert.match(scene({rack:'hot',say:'busy'}),/m-rack-hot/);
+});

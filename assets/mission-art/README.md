@@ -17,4 +17,8 @@ Every asset has a top-level group named after its file. Component groups have st
 
 The assets are deliberately static. Animate failure by swapping the two failure files, or changing the `lights-1` group's opacity between 1 and .22. Under reduced motion, keep the bright red failure frame so status remains visible. Region markers expose local pivot coordinates. Confetti pieces can be translated and rotated independently. If multiple copies of an SVG are inserted inline, prefix IDs and update its `aria-labelledby` reference per instance; `<img>` use isolates IDs automatically.
 
-Source geometry lives in `scripts/build-mission-art.mjs`. Run `npm run build` to regenerate; `npm run check` verifies generated files. The palette is limited to the supplied colors, skin tones and neutral shades. Flat shadow areas and translucent ellipses replace gradients and blur. These assets match the existing geometric character SVGs and do not introduce a new runtime dependency or change mission behavior.
+Source geometry lives in `scripts/build-mission-art.mjs`. Run `npm run build` to regenerate; `npm run check` verifies generated files. The palette is limited to the supplied colors, skin tones and neutral shades. Flat shadow areas and translucent ellipses replace gradients and blur. These assets match the existing geometric character SVGs and add no runtime dependency.
+
+## In the course
+
+The build also writes `src/mission-art-assets.js`, which the missions embed as decorative inline SVG (no ids, titles or Inkscape attributes, so several copies can share a page). The scenes use the healthy, under-load and failing racks (the failed unit's `lights-1` group blinks), each mission brief shows its postcard, a passing result gets confetti and a sparkle, and a failing one gets a sweat drop and an exclamation mark over the rack. The office corner, world map, laptop, tablet, speech tails and dim rack frame stay available in this folder but are not used yet.
