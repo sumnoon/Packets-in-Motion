@@ -41,7 +41,8 @@ function office(){
   return g('ground-shadow',ellipse(250,210,221,5,C.muted,'opacity=".08"'))+
     g('night-window',rect(220,22,199,126,7,C.line)+rect(226,28,187,111,3,C.navy)+ellipse(382,48,8,8,C.muted,'opacity=".5"')+g('city-silhouette',city)+line('M316 28 V140 M226 92 H413',C.panel,5)+rect(213,145,213,8,2,C.line))+
     g('desk',pathEl('M139 143 H342 L329 153 H130 Z',C.muted)+rect(131,153,208,8,2,C.line)+pathEl('M147 161 H157 L151 206 H140 Z M315 161 H325 L334 206 H323 Z',C.line)+rect(270,165,51,21,3,C.panel)+line('M288 174 H304',C.muted,1.5))+
-    g('desk-lamp',rect(171,139,39,4,2,C.line)+line('M188 139 V110 L210 93',C.muted,3)+pathEl('M196 94 Q212 82 226 98 L220 104 L201 102 Z',C.line))+
+    // the lamp sits left of the window so its shade stays clear of the frame
+    g('desk-lamp',move(-18,0,rect(171,139,39,4,2,C.line)+line('M188 139 V110 L210 93',C.muted,3)+pathEl('M196 94 Q212 82 226 98 L220 104 L201 102 Z',C.line)))+
     g('desk-items',pathEl('M243 138 L279 138 L287 143 H240 Z',C.line)+pathEl('M247 116 H275 L279 138 H243 Z',C.panel)+rect(300,128,13,14,3,C.line)+line('M313 131 Q323 130 319 138 H314',C.line,2))+
     g('plant-stem',line('M91 175 V102 M91 133 L70 114 M91 150 L111 125 M91 115 L107 96',C.muted,2))+
     g('plant-leaves',pathEl('M91 126 Q61 124 61 100 Q86 102 91 126 M92 147 Q121 144 123 119 Q102 119 92 147 M92 112 Q88 86 109 81 Q119 103 92 112 M89 158 Q64 157 66 137 Q82 136 89 158',C.line)+line('M69 107 L84 120 M116 127 L99 142 M106 91 L96 107',C.muted,1,'opacity=".5"'))+
@@ -52,7 +53,17 @@ add('townsquare-office',480,230,office(),'Scene pieces','Muted office corner wit
 // An illustrative continent silhouette, not a political or navigational map.
 function continents(fill=C.line){return pathEl('M38 45 L53 31 L80 29 L93 18 L126 21 L135 33 L118 40 L114 52 L98 61 L91 75 L77 81 L78 95 L93 103 L101 118 L115 122 L114 131 L98 129 L88 115 L77 111 L62 90 L47 82 L38 65 L25 61 Z M102 130 L122 128 L139 146 L147 164 L140 180 L131 188 L126 207 L115 224 L107 211 L109 190 L99 173 L94 150 Z M139 23 L157 13 L174 18 L169 41 L155 52 L141 41 Z M205 47 L212 33 L225 32 L237 45 L254 35 L283 33 L299 23 L343 24 L361 37 L393 37 L414 48 L422 63 L408 75 L389 69 L380 83 L362 86 L350 104 L332 110 L316 100 L303 106 L296 125 L282 118 L273 96 L258 93 L247 76 L233 79 L222 66 L208 66 Z M215 79 L237 80 L256 102 L263 129 L247 151 L237 178 L224 184 L212 165 L211 142 L197 124 L194 105 L204 88 Z M284 130 L297 136 L304 153 L316 157 L318 167 L303 164 L293 155 Z M343 168 L365 157 L387 170 L398 190 L383 201 L359 197 L347 205 L332 194 Z M405 207 L412 202 L417 214 L411 221 Z M259 166 L266 164 L264 182 L258 189 Z M405 87 L411 91 L410 112 L403 120 L398 111 Z',fill);}
 function marker(id,x,y,color){return g(id,ellipse(x,y,16,16,color,'opacity=".08"')+ellipse(x,y,10,10,color,'opacity=".18"')+ellipse(x,y,5,5,color)+ellipse(x-1.2,y-1.2,1.7,1.7,C.white),`data-pivot="${x} ${y}"`);}
-function world(linked=true){return g('continents',continents())+(linked?g('region-link',line('M91 72 Q211 -7 343 86',C.blue,2,'stroke-dasharray="5 7"')+pathEl('M334 76 L346 87 L331 87',C.blue)): '')+marker('region-west',91,72,C.blue)+marker('region-east',343,86,C.mint);}
+// The route is a quadratic curve from the west marker towards the east one. It stops short of the east
+// marker's glow so the arrowhead stays visible, pointing along the curve's final direction.
+const ROUTE=[[91,72],[211,-7],[343,86]];
+const routeAt=t=>[0,1].map(k=>(1-t)**2*ROUTE[0][k]+2*(1-t)*t*ROUTE[1][k]+t*t*ROUTE[2][k]);
+function routeArrow(){
+  const [a,b,c]=ROUTE,len=Math.hypot(c[0]-b[0],c[1]-b[1]),d=[(c[0]-b[0])/len,(c[1]-b[1])/len],n=[-d[1],d[0]];
+  const tip=[c[0]-d[0]*19,c[1]-d[1]*19],base=[tip[0]-d[0]*11,tip[1]-d[1]*11],f=v=>v.toFixed(1);
+  const corner=s=>`${f(base[0]+n[0]*6*s)} ${f(base[1]+n[1]*6*s)}`;
+  return line(`M${a} Q${b} ${f(base[0])} ${f(base[1])}`,C.blue,2,'stroke-dasharray="5 7"')+pathEl(`M${f(tip[0])} ${f(tip[1])} L${corner(1)} L${corner(-1)} Z`,C.blue);
+}
+function world(linked=true){return g('continents',continents())+(linked?g('region-link',routeArrow()):'')+marker('region-west',...ROUTE[0],C.blue)+marker('region-east',...ROUTE[2],C.mint);}
 add('world-regions',450,240,world(),'Scene pieces','World silhouette with West and East region markers and a packet route');
 
 for(const [name,color] of Object.entries({violet:C.violet,mint:C.mint,blue:C.blue,amber:C.amber,red:C.red})){
@@ -85,12 +96,19 @@ const viral=g('ground-shadow',ellipse(300,350,249,9,C.line,'opacity=".3"'))+g('n
   [[96,77,.85],[252,43,1.17],[428,66,.86],[176,205,.56],[355,228,.51]].map(([x,y,s],i)=>g('lit-phone-'+i,ellipse(x+40*s,y+68*s,56*s,91*s,C.blue,'opacity=".06"')+phone('viral-phone-'+i,x,y,s,C.line,rect(17,28,46,31,4,C.blue)+rect(17,68,32,5,2,C.white)+rect(17,79,43,4,2,C.muted)+rect(17,92,21,9,3,C.mint))+marker('notification-'+i,x+68*s,y+18*s,i%2?C.amber:C.blue))).join('')+
   person('night-reader-left',75,257,C.violet,C.lightSkin,'phone')+person('night-reader-right',502,252,C.mint,C.skin,'phone');
 add('postcard-viral-night',600,400,viral,'Mission postcards','The viral night: phones lighting up across a night city');
+// The map is placed at (41, 48) and scaled 1.15; each rack stands under its region marker, its link
+// rising from the rack's top to the marker, and the packets ride on the route.
+const onMap=([x,y])=>[41+x*1.15,48+y*1.15],RACK=.73,f1=v=>+v.toFixed(1);
+const [westPin,eastPin]=[onMap(ROUTE[0]),onMap(ROUTE[2])];
+const datacenter=(id,[x],y)=>g(id,move(f1(x-50*RACK),y,scope(id.split('-')[0],rack('healthy')),RACK));
+const link=([x,y],rackY)=>`M${f1(x)} ${f1(y+13)} V${f1(rackY+8*RACK)}`;
+const packet=(t,size,color,turn)=>{const [x,y]=onMap(routeAt(t));return rect(f1(x-size/2),f1(y-size/2),size,size,2,color,`transform="rotate(${turn} ${f1(x)} ${f1(y)})"`);};
 const global=g('ground-shadow',ellipse(300,356,241,8,C.line,'opacity=".22"'))+
   move(41,48,g('global-map',world()),1.15)+
-  g('west-datacenter',move(93,201,scope('west',rack('healthy')),.73))+
-  g('east-datacenter',move(443,215,scope('east',rack('healthy')),.73))+
-  g('datacenter-links',line('M127 202 V161 M479 215 V178',C.blue,2,'stroke-dasharray="4 6"'))+
-  g('travelling-packets',rect(272,49,10,10,2,C.blue,'transform="rotate(-4 277 54)"')+rect(343,64,8,8,2,C.mint,'transform="rotate(14 347 68)"'));
+  datacenter('west-datacenter',westPin,201)+
+  datacenter('east-datacenter',eastPin,215)+
+  g('datacenter-links',line(link(westPin,201)+' '+link(eastPin,215),C.blue,2,'stroke-dasharray="4 6"'))+
+  g('travelling-packets',packet(.4,10,C.blue,-4)+packet(.62,8,C.mint,14));
 add('postcard-going-global',600,400,global,'Mission postcards','Going global: two regions connected across the world');
 
 // Prefix IDs when composing sheets: every anatomical or prop layer stays independently selectable.
