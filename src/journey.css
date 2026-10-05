@@ -212,7 +212,26 @@ dialog.mission-help{width:min(600px,calc(100vw - 32px));max-height:min(92vh,860p
 .mc-celebrate .mc-body{animation:chHop .9s ease-in-out infinite}
 .mc-worried .mc-body{animation:chFidget 1.6s ease-in-out infinite}
 .mc-confetti>*{animation:chConfetti 1.8s ease-in infinite}.mc-confetti>:nth-child(2){animation-delay:-.6s}.mc-confetti>:nth-child(3){animation-delay:-1.1s}.mc-confetti>:nth-child(4){animation-delay:-.3s}.mc-confetti>:nth-child(5){animation-delay:-1.4s}
-.m-rack-fail [data-part="lights-1"]{animation:mLed .7s steps(2) infinite}
+.m-rack-fail{position:relative}.m-rack-frame{position:absolute;inset:0;width:100%;height:100%}
+.m-rack-dim{opacity:0;animation:mRackBlink .7s steps(1) infinite}
+@keyframes mRackBlink{50%{opacity:1}}
+/* speech tails join the bubble's bottom edge; their colours follow the bubble */
+.m-tail{position:absolute;top:calc(100% - 4px);width:30px;height:24px;pointer-events:none;overflow:visible}
+.m-bubble-maya .m-tail{left:4px}.m-bubble-you .m-tail{right:4px}
+.m-tail path:first-child{fill:var(--panel)}.m-tail path:last-child{stroke-width:1.4}
+.m-bubble-maya .m-tail path:last-child{stroke:color-mix(in srgb,var(--accent) 55%,var(--line))}
+.m-bubble-you .m-tail path:last-child{stroke:color-mix(in srgb,var(--green) 55%,var(--line))}
+/* the office corner sits quietly behind the brief, between Maya's bubble and the engineer */
+.m-office{position:absolute;right:190px;bottom:0;width:min(34%,330px);opacity:.5;pointer-events:none;line-height:0}
+.m-office svg{width:100%;height:auto;display:block}
+.m-scene>.m-side{position:relative;z-index:1}
+/* mission 3's region map reacts to the design */
+.j-regions{margin:0 auto 18px;max-width:420px;text-align:center}
+.j-regions svg{width:100%;height:auto;display:block}
+.j-regions figcaption{font-size:13px;color:var(--dim);margin-top:6px}
+.j-regions [data-part="region-west"],.j-regions [data-part="region-link"]{transition:opacity .3s}
+.j-regions [data-part="region-west"]{opacity:.3}.j-regions-west [data-part="region-west"]{opacity:1}
+.j-regions-local [data-part="region-link"]{opacity:.15}
 /* effect art around the cast: a sparkle on a win, a sweat drop when Maya worries, an alert over a failing rack */
 .m-scene{position:relative}
 .m-cast{position:relative;display:block;flex:none;line-height:0}
@@ -238,7 +257,7 @@ dialog.mission-help{width:min(600px,calc(100vw - 32px));max-height:min(92vh,860p
 @keyframes mPop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
 @keyframes mLed{50%{opacity:.2}}
 @media(prefers-reduced-motion:reduce){.m-confetti{display:none}}
-@media(prefers-reduced-motion:reduce){.mc-body,.mc-eyes,.mc-confetti>*,.m-bubble,.m-rack-fail [data-part="lights-1"],.m-fx{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.mc-body,.mc-eyes,.mc-confetti>*,.m-bubble,.m-rack-dim,.m-fx{animation:none!important}}
 /* the explanation dialog opens with Maya's introduction: stacked, since the dialog is narrow */
 .mh-scene .m-scene{grid-template-columns:1fr;gap:6px;margin:0 0 10px}
 .mh-scene .mc{width:72px;height:132px}.mh-scene .m-bubble{margin-bottom:22px}.mh-scene .m-rack{width:42px;height:76px}
@@ -246,4 +265,4 @@ dialog.mission-help{width:min(600px,calc(100vw - 32px));max-height:min(92vh,860p
 @media(max-width:900px){.mc.mc-maya,.mc.mc-engineer{width:114px}.mh-scene .mc.mc-maya,.mh-scene .mc.mc-engineer{width:98px}}
 .j-brief .m-scene{margin-top:10px}
 .j-mission-result .m-scene{margin:0 0 12px}
-@media(max-width:900px){.m-scene{grid-template-columns:1fr;gap:6px}.m-side-you:not(:has(.m-bubble)){display:none}.mc{width:84px;height:154px}.m-bubble{margin-bottom:28px}.m-rack{width:44px;height:80px}}
+@media(max-width:900px){.m-office{display:none}.m-scene{grid-template-columns:1fr;gap:6px}.m-side-you:not(:has(.m-bubble)){display:none}.mc{width:84px;height:154px}.m-bubble{margin-bottom:28px}.m-rack{width:44px;height:80px}}

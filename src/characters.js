@@ -14,8 +14,14 @@ function charSVG(who,pose,label){
 }
 // mission art (mission-art-assets.js) with a class added to its root
 const artSVG=(name,cls,attrs='')=>MISSION_ART[name].replace('<svg ',`<svg class="${cls}" ${attrs}`);
-// the server rack, whose lights show how the system is doing: ok, hot (under load) or fail (the failed unit blinks)
-function rackSVG(state){return artSVG(({hot:'server-rack-under-load',fail:'server-rack-failing'})[state]||'server-rack-healthy',`m-rack m-rack-${state}`);}
+// the server rack, whose lights show how the system is doing: ok, hot (under load) or fail. A failing rack
+// stacks its dim frame over the bright one and blinks between them; reduced motion keeps the bright frame.
+function rackSVG(state){
+  if(state==='fail')return `<span class="m-rack m-rack-fail">${artSVG('server-rack-failing','m-rack-frame')}${artSVG('server-rack-failing-dim','m-rack-frame m-rack-dim')}</span>`;
+  return artSVG(state==='hot'?'server-rack-under-load':'server-rack-healthy',`m-rack m-rack-${state}`);
+}
+// a speech bubble with its tail pointing down towards the speaker
+const bubble=(who,side,name,text)=>`<div class="m-bubble m-bubble-${who}"><span class="m-who">${name}</span><p>${esc(text)}</p>${artSVG('speech-tail-'+side,'m-tail')}</div>`;
 // a burst of falling confetti over a passing result
 function confettiBurst(){
   const colors=['violet','mint','blue','amber','red'];
@@ -23,13 +29,14 @@ function confettiBurst(){
 }
 // a scene: Maya speaking on the left; you, the engineer, with an optional reply and the rack on the right.
 // Small effects carry the mood: a sparkle and confetti on a win, a sweat drop when Maya worries, an alert over a failing rack.
-function missionScene({maya='calm',eng='type',rack='ok',say='',reply='',mood=''}){
+// office: the TownSquare office corner as a quiet backdrop between the two of them.
+function missionScene({maya='calm',eng='type',rack='ok',say='',reply='',mood='',office=false}){
   const mayaFx=mood==='win'?artSVG('sparkle','m-fx m-fx-sparkle'):maya==='worried'?artSVG('sweat-drop','m-fx m-fx-sweat'):'';
   const rackFx=rack==='fail'?artSVG('exclamation','m-fx m-fx-alert'):'';
-  return `<div class="m-scene${mood?' m-scene-'+mood:''}">${mood==='win'?confettiBurst():''}
+  return `<div class="m-scene${mood?' m-scene-'+mood:''}">${office?`<div class="m-office" aria-hidden="true">${MISSION_ART['townsquare-office']}</div>`:''}${mood==='win'?confettiBurst():''}
 <div class="m-side m-side-maya"><span class="m-cast">${charSVG('maya',maya,`Maya, TownSquare's founder, ${({calm:'holding a tablet',wave:'waving hello',worried:'looking worried',celebrate:'celebrating',point:'pointing ahead'})[maya]||''}`)}${mayaFx}</span>
-<div class="m-bubble m-bubble-maya"><span class="m-who">Maya · founder, TownSquare</span><p>${esc(say)}</p></div></div>
-<div class="m-side m-side-you">${reply?`<div class="m-bubble m-bubble-you"><span class="m-who">You · engineer</span><p>${esc(reply)}</p></div>`:''}
+${bubble('maya','left','Maya · founder, TownSquare',say)}</div>
+<div class="m-side m-side-you">${reply?bubble('you','right','You · engineer',reply):''}
 <div class="m-you">${charSVG('engineer',eng,`You, the engineer, ${({type:'typing on a laptop',think:'thinking',point:'pointing at the server rack',celebrate:'celebrating'})[eng]||''}`)}<span class="m-cast">${rackSVG(rack)}${rackFx}</span></div></div>
 </div>`;
 }

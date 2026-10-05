@@ -137,7 +137,7 @@ Labs work with the keyboard too: digits add components, pressing two components'
 
 The page explains itself: a title and goal, three steps (read the brief, shape your system, test all conditions), and on the first visit a short **How missions work** introduction, which the button of the same name brings back. Choose app servers, a load balancer, a cache and later a second region; the diagram updates as you go. Passing a mission unlocks the next, and your design carries over.
 
-The story has a cast. **Maya**, TownSquare's founder, delivers each brief in her own words and reacts to your results: worried when readers are turned away, celebrating when the design holds. **You**, the engineer, stand beside a server rack whose lights show how the system is doing: healthy, under load, or a failed unit blinking red. Each mission has its own postcard beside the goal (launch day, the viral night, going global). Small effects carry the mood: confetti and a sparkle when a design passes, a sweat drop and an alert over the rack when it fails. Both characters are full-body, layered vector art with breathing, blinking and celebration motion; all of this motion switches off under reduced motion. Their poses, expressions and character sheets live in [assets/maya](assets/maya) and [assets/engineer](assets/engineer); the racks, postcards and effects live in [assets/mission-art](assets/mission-art).
+The story has a cast. **Maya**, TownSquare's founder, delivers each brief in her own words and reacts to your results: worried when readers are turned away, celebrating when the design holds. **You**, the engineer, stand beside a server rack whose lights show how the system is doing. Both are full-body, layered vector characters with breathing, blinking and celebration motion that switches off under reduced motion. Their poses, expressions and character sheets live in [assets/maya](assets/maya) and [assets/engineer](assets/engineer); the mission art lives in [assets/mission-art](assets/mission-art).
 
 Missions are deterministic teaching capacity checks, with the model's assumptions available beside the design, rather than the animated load tests used in architecture labs. Credits are teaching units, not provider prices. Mission completion is separate from lesson stars, and nothing is timed. Mission drafts, passing designs, your chosen path and introduction completion are saved locally and included in progress exports; imported mission evidence is rechecked against the model before any records are merged.
 
@@ -222,9 +222,9 @@ The consensus, quorum, SQL migration, saga and vector-clock lessons state their 
 | `src/glossary.js` | Glossary terms, definitions and other spellings |
 | `src/journey-model.js` | Learning paths, the introduction's model and the missions' deterministic trials and saved-progress rules |
 | `src/journey.js` | Home, the introduction, the learning map and the missions pages |
-| `src/characters.js` | Mission scenes: places Maya, the engineer and the server rack, with speech bubbles and mood effects |
+| `src/characters.js` | Mission scenes: places Maya, the engineer and the server rack, with speech bubbles |
 | `src/character-assets.js` | Generated: the characters' poses as embedded SVG (do not edit) |
-| `src/mission-art-assets.js` | Generated: the racks, postcards and effects the missions use, as embedded SVG (do not edit) |
+| `src/mission-art-assets.js` | Generated: the mission art as embedded SVG (do not edit) |
 | `src/player.js` | The player: controls, sidebar, progress, challenge mode, Settings and the first-visit tour |
 | `scripts/build-characters.mjs` | Editable character geometry; writes `assets/maya`, `assets/engineer` and `src/character-assets.js` |
 | `scripts/build-mission-art.mjs` | Editable mission art geometry; writes `assets/mission-art` and `src/mission-art-assets.js` |
