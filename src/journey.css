@@ -198,7 +198,7 @@ dialog.mission-help{width:min(600px,calc(100vw - 32px));max-height:min(92vh,860p
 .m-you{display:flex;align-items:flex-end;gap:6px;flex:none}
 .mc{width:104px;height:190px;flex:none;overflow:visible;display:block}
 .mc.mc-maya,.mc.mc-engineer{width:141px}
-.m-rack{width:40px;height:100px;flex:none;margin-bottom:8px}
+.m-rack{width:56px;height:100px;flex:none;display:block;margin-bottom:2px}
 .m-bubble{position:relative;flex:1 1 auto;min-width:0;max-width:52ch;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin-bottom:40px;animation:mPop .35s cubic-bezier(.2,.9,.3,1.25) both}
 .m-bubble p{margin:3px 0 0!important;font-size:14.5px;line-height:1.55;color:var(--text)!important}
 .m-who{font-size:11.5px;font-weight:700;letter-spacing:.03em;color:var(--accent)}
@@ -212,7 +212,24 @@ dialog.mission-help{width:min(600px,calc(100vw - 32px));max-height:min(92vh,860p
 .mc-celebrate .mc-body{animation:chHop .9s ease-in-out infinite}
 .mc-worried .mc-body{animation:chFidget 1.6s ease-in-out infinite}
 .mc-confetti>*{animation:chConfetti 1.8s ease-in infinite}.mc-confetti>:nth-child(2){animation-delay:-.6s}.mc-confetti>:nth-child(3){animation-delay:-1.1s}.mc-confetti>:nth-child(4){animation-delay:-.3s}.mc-confetti>:nth-child(5){animation-delay:-1.4s}
-.m-rack-fail .m-led{animation:mLed .7s steps(2) infinite}
+.m-rack-fail [data-part="lights-1"]{animation:mLed .7s steps(2) infinite}
+/* effect art around the cast: a sparkle on a win, a sweat drop when Maya worries, an alert over a failing rack */
+.m-scene{position:relative}
+.m-cast{position:relative;display:block;flex:none;line-height:0}
+.m-fx{position:absolute;pointer-events:none;overflow:visible}
+.m-fx-sparkle{width:34px;height:34px;left:2px;top:6px;animation:mTwinkle 1.6s ease-in-out infinite}
+.m-fx-sweat{width:16px;height:24px;right:27%;top:9%;animation:mSweat 1.8s ease-in infinite}
+.m-fx-alert{width:15px;height:26px;left:50%;top:-30px;margin-left:-7.5px;animation:mAlert .9s ease-in-out infinite}
+.m-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.m-confetti svg{position:absolute;top:-16px;width:12px;height:12px;animation:mConfetti 2.4s linear infinite}
+@keyframes mConfetti{0%{transform:translateY(0) rotate(0);opacity:0}10%{opacity:1}85%{opacity:1}100%{transform:translateY(230px) rotate(320deg);opacity:0}}
+@keyframes mTwinkle{50%{transform:scale(.7) rotate(18deg);opacity:.65}}
+@keyframes mSweat{0%{transform:translateY(-3px);opacity:0}30%{opacity:1}100%{transform:translateY(9px);opacity:0}}
+@keyframes mAlert{50%{transform:translateY(-4px)}}
+/* each mission's postcard sits beside its goal */
+.j-brief-row{display:flex;align-items:center;gap:24px}
+.j-postcard{margin:0;flex:0 0 240px;line-height:0}.j-postcard svg{width:100%;height:auto;display:block}
+@media(max-width:600px){.j-brief-row{flex-direction:column;align-items:stretch;gap:12px}.j-postcard{flex:none;max-width:300px;align-self:center;width:100%}}
 @keyframes mcBreathe{50%{transform:scaleY(1.012) translateY(-1px)}}
 @keyframes chBlink{0%,95%,100%{transform:scaleY(1)}97%{transform:scaleY(.1)}}
 @keyframes chHop{0%,100%{transform:translateY(0)}40%{transform:translateY(-10px)}60%{transform:translateY(-10px)}}
@@ -220,12 +237,13 @@ dialog.mission-help{width:min(600px,calc(100vw - 32px));max-height:min(92vh,860p
 @keyframes chConfetti{0%{transform:translateY(-6px);opacity:0}15%{opacity:1}100%{transform:translateY(60px) rotate(180deg);opacity:0}}
 @keyframes mPop{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
 @keyframes mLed{50%{opacity:.2}}
-@media(prefers-reduced-motion:reduce){.mc-body,.mc-eyes,.mc-confetti>*,.m-bubble,.m-rack-fail .m-led{animation:none!important}}
+@media(prefers-reduced-motion:reduce){.m-confetti{display:none}}
+@media(prefers-reduced-motion:reduce){.mc-body,.mc-eyes,.mc-confetti>*,.m-bubble,.m-rack-fail [data-part="lights-1"],.m-fx{animation:none!important}}
 /* the explanation dialog opens with Maya's introduction: stacked, since the dialog is narrow */
 .mh-scene .m-scene{grid-template-columns:1fr;gap:6px;margin:0 0 10px}
-.mh-scene .mc{width:72px;height:132px}.mh-scene .m-bubble{margin-bottom:22px}.mh-scene .m-rack{width:30px;height:76px}
+.mh-scene .mc{width:72px;height:132px}.mh-scene .m-bubble{margin-bottom:22px}.mh-scene .m-rack{width:42px;height:76px}
 .mh-scene .mc.mc-maya,.mh-scene .mc.mc-engineer{width:98px}
 @media(max-width:900px){.mc.mc-maya,.mc.mc-engineer{width:114px}.mh-scene .mc.mc-maya,.mh-scene .mc.mc-engineer{width:98px}}
 .j-brief .m-scene{margin-top:10px}
 .j-mission-result .m-scene{margin:0 0 12px}
-@media(max-width:900px){.m-scene{grid-template-columns:1fr;gap:6px}.m-side-you:not(:has(.m-bubble)){display:none}.mc{width:84px;height:154px}.m-bubble{margin-bottom:28px}.m-rack{width:32px;height:80px}}
+@media(max-width:900px){.m-scene{grid-template-columns:1fr;gap:6px}.m-side-you:not(:has(.m-bubble)){display:none}.mc{width:84px;height:154px}.m-bubble{margin-bottom:28px}.m-rack{width:44px;height:80px}}
