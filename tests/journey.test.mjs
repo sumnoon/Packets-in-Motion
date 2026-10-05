@@ -107,4 +107,11 @@ test('mission art: decorative inline SVG with no ids, a postcard per mission, an
   assert.match(fail,/m-fx-sweat/);assert.match(fail,/m-fx-alert/);assert.doesNotMatch(fail,/m-confetti|m-fx-sparkle/);
   assert.doesNotMatch(scene({say:'calm'}),/m-fx|m-confetti/,'a calm scene has no effects');
   assert.match(scene({rack:'hot',say:'busy'}),/m-rack-hot/);
+  // every piece of art is used: the failing rack blinks between its bright and dim frames, bubbles have tails,
+  // the brief has the office backdrop, and the characters hold the laptop and tablet
+  assert.match(fail,/m-rack-fail[\s\S]*m-rack-frame[\s\S]*m-rack-dim/);
+  assert.equal((scene({say:'a',reply:'b'}).match(/class="m-tail"/g)||[]).length,2,'one tail per bubble');assert.equal((scene({say:'hi'}).match(/class="m-tail"/g)||[]).length,1);
+  assert.match(scene({say:'hi',office:true}),/m-office/);assert.doesNotMatch(scene({say:'hi'}),/m-office/);
+  assert.match(page.get('MAYA_VECTORS').calm,/data-part="chart-screen"/);assert.match(page.get('ENGINEER_VECTORS').typing,/data-part="screen-code"/);
+  assert.ok(art['world-regions'].includes('data-part="region-west"')&&art['world-regions'].includes('data-part="region-link"'));
 });

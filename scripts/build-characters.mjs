@@ -12,6 +12,10 @@ const p=(d,fill,extra='')=>`<path d="${d}" fill="${fill}" ${extra}/>`;
 const line=(d,color=c.ink,width=1.8)=>p(d,'none',`stroke="${color}" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round"`);
 const ellipse=(x,y,rx,ry,fill,extra='')=>`<ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${fill}" ${extra}/>`;
 const group=(prefix,name,content,extra='')=>`<g id="${prefix}-${name}" data-part="${name}" inkscape:groupmode="layer" inkscape:label="${name}" ${extra}>${content}</g>`;
+// The held laptop and tablet come from the mission art (built first): its layers, ids prefixed per figure,
+// placed in the characters' 260 x 350 space where the hands meet them.
+const missionProp=name=>fs.readFileSync(path.resolve(path.dirname(fileURLToPath(import.meta.url)),`../assets/mission-art/${name}.svg`),'utf8').replace(/^<svg[^>]*>|<title[^>]*>.*?<\/title>|<\/svg>\s*$/g,'');
+const heldProp=(id,name,file,transform)=>group(id,name,`<g transform="${transform}">${missionProp(file).replace(/id="([^"]+)"/g,(_,x)=>`id="${id}-${x}"`)}</g>`);
 function mouth(kind='neutral',x=130,y=77){
   const shape={neutral:line('M-5 0 Q0 2 5 0','#754b49',1.7),closed:line('M-6 0 Q0 3 6 0','#754b49',1.7),smile:p('M-7 -1 Q0 3 7 -1 Q4 7 0 7 Q-5 7 -7 -1','#713c45')+p('M-5 0 Q0 3 5 0 L4 2 Q0 4 -4 2',c.white),worried:p('M-5 3 Q-4 -4 0 -4 Q5 -4 5 3 Q0 0 -5 3','#713c45'),surprised:ellipse(0,1,4,6,'#713c45'),delighted:p('M-8 -1 Q0 2 8 -1 Q6 10 0 10 Q-6 10 -8 -1','#713c45')+p('M-6 0 Q0 2 6 0 L5 3 Q0 5 -5 3',c.white)+p('M-4 7 Q0 4 4 7 Q0 11 -4 7','#d79470'),thinking:line('M-5 2 Q0 -1 5 1','#754b49',1.7),blink:line('M-6 0 Q0 5 6 0','#754b49',1.7),small:p('M-4 0 C-4 -5 4 -5 4 0 C4 6 -4 6 -4 0','#713c45'),wide:p('M-8 -2 Q0 1 8 -2 Q7 10 0 10 Q-7 10 -8 -2','#713c45')+p('M-5 -1 Q0 1 5 -1 L4 2 L-4 2',c.white)};
   return `<g transform="translate(${x} ${y})">${shape[kind]||shape.neutral}</g>`;
@@ -62,7 +66,7 @@ function figure(id,pose){
   const q=poses[pose],side=q.view==='side',quarter=q.view==='three-quarter',arms=q.arms||[[[104,112],[94,151],[94,188]],[[156,112],[166,151],[166,188]]];
   const torso=group(id,'torso',p('M104 107 Q107 99 121 99 L139 99 Q153 99 157 111 L157 151 L165 185 L139 191 L130 174 L124 192 L95 185 L103 150 Z',c.violet)+p('M143 103 Q155 110 153 143 L165 185 L148 189 L139 171 Z',c.violetShade)+p('M121 85 L139 85 L139 101 L130 113 L121 101 Z',c.skin)+p('M124 88 Q132 96 139 89 L139 100 Q130 101 124 95 Z',c.shade)+ellipse(146,116,3.5,3.5,c.gold)+line('M108 160 L103 178',c.violetShade,2),`data-pivot="130 148"`);
   const limbs=leg(id,'left',[117,182],q.hop?[111,233]:[114,244],q.hop?[106,284]:[111,303])+leg(id,'right',[143,182],q.hop?[162,229]:[149,243],q.hop?[138,262]:[153,303]);
-  const tablet=q.tablet?group(id,'prop-tablet',`<rect x="107" y="121" width="47" height="48" rx="5" fill="${c.navy}" stroke="${c.ink}" stroke-width="2"/><rect x="112" y="126" width="37" height="35" rx="2" fill="#34445e"/>${ellipse(130,165,1.5,1.5,c.white)}`):'';
+  const tablet=q.tablet?heldProp(id,'prop-tablet','tablet-chart','translate(107 119) scale(.62)'):'';
   // three-quarter: the far (left) arm goes behind the torso and the body narrows
   const farArm=arm(id,'left',quarter&&!q.arms?[[108,112],[104,151],[106,186]]:arms[0],q.hands?.[0]),nearArm=arm(id,'right',arms[1],q.hands?.[1]);
   const body=quarter?limbs+farArm+torso+head(id,q.expression,q.view)+tablet+nearArm:limbs+torso+head(id,q.expression,q.view)+tablet+farArm+nearArm;
@@ -116,7 +120,7 @@ function engineerTorso(id,portrait=false){return group(id,'torso',
   `<rect x="124" y="134" width="13" height="16" rx="2" fill="${c.white}"/>`+(portrait?'':line('M108 157 L119 153 M141 153 L152 157',ec.mintShade,1.8)), 'data-pivot="130 148"');}
 function engineerFigure(id,pose){
   const q=engineerPoses[pose],arms=q.arms||[[[104,112],[94,151],[94,188]],[[156,112],[166,151],[166,188]]];
-  const laptop=q.laptop?group(id,'prop-laptop',p('M110 116 L170 116 L165 150 L105 150 Z',c.navy,`stroke="#56668c" stroke-width="2"`)+line('M116 126 L140 126 M114 133 L150 133 M112 140 L132 140','#4ea1ff',2)+p('M104 150 L166 150 L186 178 L84 178 Z','#9aa5bb',`stroke="#56668c" stroke-width="1.5"`)+line('M107 155 L163 155 M103 161 L167 161 M99 167 L171 167','#c9d1e0',1.8)+`<rect x="122" y="170" width="26" height="5" rx="1.5" fill="#c9d1e0"/>`):'';
+  const laptop=q.laptop?heldProp(id,'prop-laptop','laptop-open','translate(91 117) scale(.65)'):'';
   const quarter=q.view==='three-quarter',legs=engineerColors(leg(id,'left',[117,182],[114,244],[111,303])+leg(id,'right',[143,182],[149,243],[153,303]));
   const farArm=engineerArm(id,'left',quarter&&!q.arms?[[108,112],[104,151],[106,186]]:arms[0],q.hands?.[0]),nearArm=engineerArm(id,'right',arms[1],q.hands?.[1]);
   const body=quarter?legs+farArm+engineerTorso(id)+engineerHead(id,q.expression,q.view)+laptop+nearArm:legs+engineerTorso(id)+engineerHead(id,q.expression,q.view)+laptop+farArm+nearArm;
